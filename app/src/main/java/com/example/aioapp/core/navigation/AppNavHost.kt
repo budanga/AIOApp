@@ -5,6 +5,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.example.aioapp.ui.home.HomeScreen
+import com.example.aioapp.ui.filemanager.FileManagerScreen
 
 @Composable
 fun AppNavHost() {
@@ -23,7 +24,7 @@ fun AppNavHost() {
         }
 
         composable("filemanager") {
-
+            FileManagerScreen()
         }
     }
 }
