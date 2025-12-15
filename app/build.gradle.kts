@@ -50,8 +50,15 @@ dependencies {
     implementation(libs.androidx.compose.ui.graphics)
     implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.compose.material3)
+<<<<<<< HEAD
     implementation(libs.androidx.core.splashscreen)
     implementation(libs.material)
+=======
+    implementation(libs.androidx.navigation.compose)
+    implementation(libs.androidx.documentfile)
+    implementation(libs.coil.compose)
+    implementation(libs.androidx.material.icons.extended)
+>>>>>>> master
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
