@@ -4,6 +4,7 @@ import android.app.Application
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import android.provider.DocumentsContract
 import androidx.documentfile.provider.DocumentFile
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
@@ -17,6 +18,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -33,6 +35,12 @@ data class DirectoryData(
     val uri: Uri,
     val name: String
 )
+
+data class ClipboardItem(val uri: Uri, val action: ClipboardAction)
+
+enum class ClipboardAction {
+    COPY, CUT
+}
 
 enum class SortOrder {
     NAME_AZ,
@@ -60,11 +68,18 @@ class FileManagerViewModel(application: Application) : AndroidViewModel(applicat
     private val _isRefreshing = MutableStateFlow(false)
     private val _canNavigateUp = MutableStateFlow(false)
 
+    private val _clipboardItem = MutableStateFlow<ClipboardItem?>(null)
+    val clipboardItem: StateFlow<ClipboardItem?> = _clipboardItem.asStateFlow()
+
     val isRefreshing: StateFlow<Boolean> = _isRefreshing.asStateFlow()
     val toastMessage: SharedFlow<String> = _toastMessage.asSharedFlow()
     val sortOrder: StateFlow<SortOrder> = _sortOrder.asStateFlow()
     val directories: StateFlow<List<DirectoryData>> = _directories.asStateFlow()
     val canNavigateUp: StateFlow<Boolean> = _canNavigateUp.asStateFlow()
+
+    val cutItemUri: StateFlow<Uri?> = clipboardItem.map {
+        if (it?.action == ClipboardAction.CUT) it.uri else null
+    }.stateIn(viewModelScope, kotlinx.coroutines.flow.SharingStarted.WhileSubscribed(5000), null)
 
     val sortedFiles: StateFlow<List<FileData>> = combine(_files, _sortOrder) { files, sortOrder ->
         sortFiles(files, sortOrder)
@@ -247,6 +262,182 @@ class FileManagerViewModel(application: Application) : AndroidViewModel(applicat
             }
             invalidateCacheForCurrentDir()
             loadDirectoryContentsInternal(directoryUri)
+        }
+    }
+
+    fun copy(uri: Uri) {
+        _clipboardItem.value = ClipboardItem(uri, ClipboardAction.COPY)
+        viewModelScope.launch { _toastMessage.emit("Copied to clipboard") }
+    }
+
+    fun cut(uri: Uri) {
+        _clipboardItem.value = ClipboardItem(uri, ClipboardAction.CUT)
+        viewModelScope.launch { _toastMessage.emit("Cut to clipboard") }
+    }
+
+    fun delete(uri: Uri) {
+        viewModelScope.launch {
+            withContext(Dispatchers.IO) {
+                val context = getApplication<Application>().applicationContext
+                val contentResolver = context.contentResolver
+                try {
+                    if (DocumentsContract.deleteDocument(contentResolver, uri)) {
+                        _toastMessage.emit("File deleted successfully.")
+                        invalidateCacheForCurrentDir()
+                        loadDirectoryContentsInternal(_currentDirectory.value!!)
+                    } else {
+                        _toastMessage.emit("Failed to delete file.")
+                    }
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                    _toastMessage.emit("Failed to delete file: ${e.message}")
+                }
+            }
+        }
+    }
+
+    fun paste() {
+        val itemToPaste = _clipboardItem.value ?: return
+        val destinationDirUri = _currentDirectory.value ?: return
+
+        viewModelScope.launch {
+            withContext(Dispatchers.IO) {
+                val context = getApplication<Application>().applicationContext
+                val contentResolver = context.contentResolver
+                val sourceFile = DocumentFile.fromTreeUri(context, itemToPaste.uri)
+
+                if (sourceFile == null) {
+                    _toastMessage.emit("Error accessing source file.")
+                    return@withContext
+                }
+
+                if (destinationDirUri == sourceFile.uri) {
+                    _toastMessage.emit("Cannot paste into the same directory.")
+                    return@withContext
+                }
+
+                if (sourceFile.isDirectory) {
+                    var parent = DocumentFile.fromTreeUri(context, destinationDirUri)
+                    while (parent != null) {
+                        if (parent.uri == sourceFile.uri) {
+                            _toastMessage.emit("Cannot paste a directory into its own subdirectory.")
+                            return@withContext
+                        }
+                        parent = parent.parentFile
+                    }
+                }
+
+                val destinationDir = DocumentFile.fromTreeUri(context, destinationDirUri)
+                if (destinationDir == null || !destinationDir.isDirectory) {
+                    _toastMessage.emit("Invalid destination directory.")
+                    return@withContext
+                }
+
+                val existingFile = destinationDir.findFile(sourceFile.name ?: "")
+                if (existingFile != null) {
+                    _toastMessage.emit("A file with the same name already exists.")
+                    return@withContext
+                }
+
+                try {
+                    when (itemToPaste.action) {
+                        ClipboardAction.COPY -> {
+                            try {
+                                DocumentsContract.copyDocument(contentResolver, sourceFile.uri, destinationDir.uri)
+                                _toastMessage.emit("File copied successfully.")
+                            } catch (e: Exception) {
+                                if (copyFileManually(sourceFile, destinationDir)) {
+                                    _toastMessage.emit("File copied successfully.")
+                                } else {
+                                    _toastMessage.emit("File copy failed.")
+                                }
+                            }
+                        }
+                        ClipboardAction.CUT -> {
+                            try {
+                                val sourceParentUri = sourceFile.parentFile?.uri
+                                if (sourceParentUri == null) {
+                                    _toastMessage.emit("Cannot move this file or directory.")
+                                    return@withContext
+                                }
+
+                                DocumentsContract.moveDocument(contentResolver, sourceFile.uri, sourceParentUri, destinationDir.uri)
+                                _toastMessage.emit("File moved successfully.")
+                            } catch (e: Exception) {
+                                if (copyFileManually(sourceFile, destinationDir)) {
+                                    if (DocumentsContract.deleteDocument(contentResolver, sourceFile.uri)) {
+                                        _toastMessage.emit("File moved successfully.")
+                                    } else {
+                                        _toastMessage.emit("Copied, but failed to delete original file.")
+                                    }
+                                } else {
+                                    _toastMessage.emit("File move failed.")
+                                }
+                            }
+                        }
+                    }
+                    _clipboardItem.value = null
+                    invalidateCacheForCurrentDir()
+                    if (itemToPaste.action == ClipboardAction.CUT) {
+                        sourceFile.parentFile?.uri?.let { directoryContentCache.remove(it) }
+                    }
+                    loadDirectoryContentsInternal(destinationDirUri)
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                    _toastMessage.emit("Failed to paste: ${e.message}")
+                }
+            }
+        }
+    }
+
+    private suspend fun copyFileManually(source: DocumentFile, destinationDir: DocumentFile): Boolean {
+        val context = getApplication<Application>().applicationContext
+        val contentResolver = context.contentResolver
+
+        if (source.isDirectory) {
+            val newDir = destinationDir.createDirectory(source.name ?: "New Folder")
+            if (newDir == null) {
+                _toastMessage.emit("Failed to create directory: ${source.name}")
+                return false
+            }
+            return source.listFiles().all { fileInDir ->
+                copyFileManually(fileInDir, newDir)
+            }
+        } else {
+            val newFile = destinationDir.createFile(source.type ?: "application/octet-stream", source.name ?: "new_file")
+            if (newFile == null) {
+                _toastMessage.emit("Failed to create file: ${source.name}")
+                return false
+            }
+            return try {
+                contentResolver.openInputStream(source.uri)?.use { inputStream ->
+                    contentResolver.openOutputStream(newFile.uri)?.use { outputStream ->
+                        inputStream.copyTo(outputStream)
+                    }
+                }
+                true
+            } catch (e: Exception) {
+                _toastMessage.emit("Error copying file: ${source.name}")
+                newFile.delete()
+                false
+            }
+        }
+    }
+
+    fun openFile(uri: Uri, mimeType: String?) {
+        val context = getApplication<Application>().applicationContext
+        val intent = Intent(Intent.ACTION_VIEW).apply {
+            setDataAndType(uri, mimeType ?: "*/*")
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
+
+        try {
+            context.startActivity(intent)
+        } catch (e: android.content.ActivityNotFoundException) {
+            viewModelScope.launch {
+                _toastMessage.emit("No application found to open this file.")
+            }
         }
     }
 }

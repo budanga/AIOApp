@@ -5,7 +5,8 @@ import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -21,6 +22,10 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Article
 import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material.icons.filled.ContentCut
+import androidx.compose.material.icons.filled.ContentPaste
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.AlertDialog
@@ -33,6 +38,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
@@ -45,6 +51,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalContext
@@ -65,6 +72,9 @@ fun FileManagerScreen(
     var showCreateFileDialog by remember { mutableStateOf(false) }
     var showCreateFolderDialog by remember { mutableStateOf(false) }
     val context = LocalContext.current
+    val clipboardItem by viewModel.clipboardItem.collectAsState()
+    val cutItemUri by viewModel.cutItemUri.collectAsState()
+    var showDeleteConfirmationDialog by remember { mutableStateOf<Uri?>(null) }
 
     val launcher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocumentTree(),
@@ -89,7 +99,9 @@ fun FileManagerScreen(
                 canNavigateUp = canNavigateUp,
                 onNavigateUp = viewModel::navigateUp,
                 onSetSortOrder = viewModel::setSortOrder,
-                onShowCreateFolderDialog = { showCreateFolderDialog = true }
+                onShowCreateFolderDialog = { showCreateFolderDialog = true },
+                isClipboardEmpty = clipboardItem == null,
+                onPaste = viewModel::paste
             )
         },
         floatingActionButton = {
@@ -107,7 +119,13 @@ fun FileManagerScreen(
                 }
             } else {
                 PullToRefreshBox(isRefreshing = isRefreshing, onRefresh = { viewModel.refresh() }) {
-                    DirectoryContent(viewModel)
+                    DirectoryContent(
+                        viewModel = viewModel,
+                        cutItemUri = cutItemUri,
+                        onCopy = viewModel::copy,
+                        onCut = viewModel::cut,
+                        onDelete = { showDeleteConfirmationDialog = it }
+                    )
                 }
             }
 
@@ -132,6 +150,16 @@ fun FileManagerScreen(
                     }
                 )
             }
+
+            showDeleteConfirmationDialog?.let { uri ->
+                DeleteConfirmationDialog(
+                    onConfirm = {
+                        viewModel.delete(uri)
+                        showDeleteConfirmationDialog = null
+                    },
+                    onDismiss = { showDeleteConfirmationDialog = null }
+                )
+            }
         }
     }
 }
@@ -143,6 +171,8 @@ private fun FileManagerTopAppBar(
     onNavigateUp: () -> Unit,
     onSetSortOrder: (SortOrder) -> Unit,
     onShowCreateFolderDialog: () -> Unit,
+    isClipboardEmpty: Boolean,
+    onPaste: () -> Unit,
 ) {
     var showSortMenu by remember { mutableStateOf(false) }
     var showOptionsMenu by remember { mutableStateOf(false) }
@@ -168,16 +198,31 @@ private fun FileManagerTopAppBar(
             IconButton(onClick = { showOptionsMenu = true }) {
                 Icon(Icons.Default.MoreVert, contentDescription = "More options")
             }
-            OptionsMenu(showOptionsMenu, { showOptionsMenu = false }) {
-                onShowCreateFolderDialog()
-                showOptionsMenu = false
-            }
+            OptionsMenu(
+                expanded = showOptionsMenu,
+                onDismiss = { showOptionsMenu = false },
+                onCreateFolder = {
+                    onShowCreateFolderDialog()
+                    showOptionsMenu = false
+                },
+                isClipboardEmpty = isClipboardEmpty,
+                onPaste = {
+                    onPaste()
+                    showOptionsMenu = false
+                }
+            )
         }
     )
 }
 
 @Composable
-fun DirectoryContent(viewModel: FileManagerViewModel) {
+fun DirectoryContent(
+    viewModel: FileManagerViewModel,
+    cutItemUri: Uri?,
+    onCopy: (Uri) -> Unit,
+    onCut: (Uri) -> Unit,
+    onDelete: (Uri) -> Unit
+) {
     val directories by viewModel.directories.collectAsState()
     val files by viewModel.sortedFiles.collectAsState()
 
@@ -191,54 +236,136 @@ fun DirectoryContent(viewModel: FileManagerViewModel) {
                 DirectoryItem(
                     name = directory.name,
                     uri = directory.uri,
-                    onDirectoryClick = viewModel::navigateToDirectory
+                    onDirectoryClick = viewModel::navigateToDirectory,
+                    isCut = directory.uri == cutItemUri,
+                    onCopy = { onCopy(directory.uri) },
+                    onCut = { onCut(directory.uri) },
+                    onDelete = { onDelete(directory.uri) }
                 )
             }
             items(files, key = { it.uri }) { file ->
                 FileItem(
-                    name = file.name,
-                    uri = file.uri,
-                    mimeType = file.mimeType
+                    file = file,
+                    isCut = file.uri == cutItemUri,
+                    onCopy = { onCopy(file.uri) },
+                    onCut = { onCut(file.uri) },
+                    onDelete = { onDelete(file.uri) },
+                    onFileClick = { viewModel.openFile(file.uri, file.mimeType) }
                 )
             }
         }
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun DirectoryItem(name: String, uri: Uri, onDirectoryClick: (Uri) -> Unit) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable { onDirectoryClick(uri) }
-            .padding(16.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Icon(Icons.Default.Folder, contentDescription = "Directory")
-        Spacer(modifier = Modifier.width(16.dp))
-        Text(text = name, fontSize = 18.sp)
+fun DirectoryItem(
+    name: String,
+    uri: Uri,
+    onDirectoryClick: (Uri) -> Unit,
+    isCut: Boolean,
+    onCopy: () -> Unit,
+    onCut: () -> Unit,
+    onDelete: () -> Unit
+) {
+    var showMenu by remember { mutableStateOf(false) }
+
+    Box {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .combinedClickable(
+                    onClick = { onDirectoryClick(uri) },
+                    onLongClick = { showMenu = true }
+                )
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                Icons.Default.Folder,
+                contentDescription = "Directory",
+                modifier = Modifier.alpha(if (isCut) 0.5f else 1f)
+            )
+            Spacer(modifier = Modifier.width(16.dp))
+            Text(text = name, fontSize = 18.sp)
+        }
+        ItemContextMenu(
+            expanded = showMenu,
+            onDismiss = { showMenu = false },
+            onCopy = {
+                onCopy()
+                showMenu = false
+            },
+            onCut = {
+                onCut()
+                showMenu = false
+            },
+            onDelete = {
+                onDelete()
+                showMenu = false
+            }
+        )
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun FileItem(name: String, uri: Uri, mimeType: String?) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(16.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        if (mimeType?.startsWith("image/") == true) {
-            AsyncImage(
-                model = uri,
-                contentDescription = "Image preview",
-                modifier = Modifier.size(40.dp)
-            )
-        } else {
-            Icon(Icons.AutoMirrored.Filled.Article, contentDescription = "File")
+fun FileItem(
+    file: FileData,
+    isCut: Boolean,
+    onCopy: () -> Unit,
+    onCut: () -> Unit,
+    onDelete: () -> Unit,
+    onFileClick: (Uri) -> Unit
+) {
+    var showMenu by remember { mutableStateOf(false) }
+
+    Box {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .combinedClickable(
+                    onClick = { onFileClick(file.uri) },
+                    onLongClick = { showMenu = true }
+                )
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            val iconAlpha = if (isCut) 0.5f else 1f
+            if (file.mimeType?.startsWith("image/") == true) {
+                AsyncImage(
+                    model = file.uri,
+                    contentDescription = "Image preview",
+                    modifier = Modifier
+                        .size(40.dp)
+                        .alpha(iconAlpha)
+                )
+            } else {
+                Icon(
+                    Icons.AutoMirrored.Filled.Article,
+                    contentDescription = "File",
+                    modifier = Modifier.alpha(iconAlpha)
+                )
+            }
+            Spacer(modifier = Modifier.width(16.dp))
+            Text(text = file.name, fontSize = 18.sp)
         }
-        Spacer(modifier = Modifier.width(16.dp))
-        Text(text = name, fontSize = 18.sp)
+        ItemContextMenu(
+            expanded = showMenu,
+            onDismiss = { showMenu = false },
+            onCopy = {
+                onCopy()
+                showMenu = false
+            },
+            onCut = {
+                onCut()
+                showMenu = false
+            },
+            onDelete = {
+                onDelete()
+                showMenu = false
+            }
+        )
     }
 }
 
@@ -294,8 +421,70 @@ fun SortMenu(expanded: Boolean, onDismiss: () -> Unit, onSortSelected: (SortOrde
 }
 
 @Composable
-fun OptionsMenu(expanded: Boolean, onDismiss: () -> Unit, onCreateFolder: () -> Unit) {
+fun OptionsMenu(
+    expanded: Boolean,
+    onDismiss: () -> Unit,
+    onCreateFolder: () -> Unit,
+    isClipboardEmpty: Boolean,
+    onPaste: () -> Unit
+) {
     DropdownMenu(expanded = expanded, onDismissRequest = onDismiss) {
         DropdownMenuItem(text = { Text("Create Folder") }, onClick = onCreateFolder)
+        if (!isClipboardEmpty) {
+            DropdownMenuItem(
+                text = { Text("Paste") },
+                onClick = onPaste,
+                leadingIcon = { Icon(Icons.Filled.ContentPaste, contentDescription = "Paste") }
+            )
+        }
     }
+}
+
+@Composable
+fun ItemContextMenu(
+    expanded: Boolean,
+    onDismiss: () -> Unit,
+    onCopy: () -> Unit,
+    onCut: () -> Unit,
+    onDelete: () -> Unit
+) {
+    DropdownMenu(
+        expanded = expanded,
+        onDismissRequest = onDismiss
+    ) {
+        DropdownMenuItem(
+            text = { Text("Copy") },
+            onClick = onCopy,
+            leadingIcon = { Icon(Icons.Filled.ContentCopy, contentDescription = "Copy") }
+        )
+        DropdownMenuItem(
+            text = { Text("Cut") },
+            onClick = onCut,
+            leadingIcon = { Icon(Icons.Filled.ContentCut, contentDescription = "Cut") }
+        )
+        DropdownMenuItem(
+            text = { Text("Delete") },
+            onClick = onDelete,
+            leadingIcon = { Icon(Icons.Filled.Delete, contentDescription = "Delete") }
+        )
+    }
+}
+
+@Composable
+fun DeleteConfirmationDialog(onConfirm: () -> Unit, onDismiss: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Delete file") },
+        text = { Text("Are you sure you want to delete this file? This action cannot be undone.") },
+        confirmButton = {
+            TextButton(onClick = onConfirm) {
+                Text("Delete")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        }
+    )
 }
