@@ -1,5 +1,15 @@
-<?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <!-- Base application theme. -->
+    <style name="Theme.AIOApp" parent="Theme.Material3.Dark.NoActionBar">
+        <!-- Customize your light theme here. -->
+        <item name="colorPrimary">@color/blue</item>
+        <item name="colorOnPrimary">@color/white</item>
+        <item name="android:textColor">@color/blue</item>
+    </style>
 
-    <style name="Theme.AIOApp" parent="android:Theme.Material.Light.NoActionBar" />
+    <style name="Theme.App.Starting" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@color/white</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/icon</item>
+        <item name="postSplashScreenTheme">@style/Theme.AIOApp</item>
+    </style>
 </resources>
