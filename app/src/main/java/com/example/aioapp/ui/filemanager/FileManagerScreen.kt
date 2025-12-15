@@ -1,6 +1,7 @@
 package com.example.aioapp.ui.filemanager
 
 import android.net.Uri
+import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -17,11 +18,11 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.Article
+import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Article
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.filled.Sort
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.DropdownMenu
@@ -34,7 +35,9 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -42,10 +45,14 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
+import kotlinx.coroutines.flow.collectLatest
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -54,10 +61,10 @@ fun FileManagerScreen(
 ) {
     val currentDirectory by viewModel.currentDirectory.collectAsState()
     val canNavigateUp by viewModel.canNavigateUp.collectAsState()
+    val isRefreshing by viewModel.isRefreshing.collectAsState()
     var showCreateFileDialog by remember { mutableStateOf(false) }
     var showCreateFolderDialog by remember { mutableStateOf(false) }
-    var showSortMenu by remember { mutableStateOf(false) }
-    var showOptionsMenu by remember { mutableStateOf(false) }
+    val context = LocalContext.current
 
     val launcher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocumentTree(),
@@ -66,37 +73,23 @@ fun FileManagerScreen(
         }
     )
 
+    LaunchedEffect(viewModel.toastMessage) {
+        viewModel.toastMessage.collectLatest {
+            Toast.makeText(context, it, Toast.LENGTH_SHORT).show()
+        }
+    }
+
     BackHandler(enabled = canNavigateUp) {
         viewModel.navigateUp()
     }
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text("File Manager") },
-                navigationIcon = {
-                    if (canNavigateUp) {
-                        IconButton(onClick = { viewModel.navigateUp() }) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Navigate up")
-                        }
-                    }
-                },
-                actions = {
-                    IconButton(onClick = { showSortMenu = true }) {
-                        Icon(Icons.Default.Sort, contentDescription = "Sort options")
-                    }
-                    SortMenu(showSortMenu, { showSortMenu = false }) { sortOrder ->
-                        viewModel.setSortOrder(sortOrder)
-                        showSortMenu = false
-                    }
-                    IconButton(onClick = { showOptionsMenu = true }) {
-                        Icon(Icons.Default.MoreVert, contentDescription = "More options")
-                    }
-                    OptionsMenu(showOptionsMenu, { showOptionsMenu = false }) {
-                        showCreateFolderDialog = true
-                        showOptionsMenu = false
-                    }
-                }
+            FileManagerTopAppBar(
+                canNavigateUp = canNavigateUp,
+                onNavigateUp = viewModel::navigateUp,
+                onSetSortOrder = viewModel::setSortOrder,
+                onShowCreateFolderDialog = { showCreateFolderDialog = true }
             )
         },
         floatingActionButton = {
@@ -113,7 +106,9 @@ fun FileManagerScreen(
                     Text("Select a directory to continue")
                 }
             } else {
-                DirectoryContent(viewModel)
+                PullToRefreshBox(isRefreshing = isRefreshing, onRefresh = { viewModel.refresh() }) {
+                    DirectoryContent(viewModel)
+                }
             }
 
             if (showCreateFileDialog) {
@@ -141,6 +136,46 @@ fun FileManagerScreen(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun FileManagerTopAppBar(
+    canNavigateUp: Boolean,
+    onNavigateUp: () -> Unit,
+    onSetSortOrder: (SortOrder) -> Unit,
+    onShowCreateFolderDialog: () -> Unit,
+) {
+    var showSortMenu by remember { mutableStateOf(false) }
+    var showOptionsMenu by remember { mutableStateOf(false) }
+
+    TopAppBar(
+        title = { Text("File Manager") },
+        navigationIcon = {
+            if (canNavigateUp) {
+                IconButton(onClick = onNavigateUp) {
+                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Navigate up")
+                }
+            }
+        },
+        actions = {
+            IconButton(onClick = { showSortMenu = true }) {
+                Icon(Icons.AutoMirrored.Filled.Sort, contentDescription = "Sort options")
+            }
+            SortMenu(showSortMenu, { showSortMenu = false }) { sortOrder ->
+                onSetSortOrder(sortOrder)
+                showSortMenu = false
+            }
+
+            IconButton(onClick = { showOptionsMenu = true }) {
+                Icon(Icons.Default.MoreVert, contentDescription = "More options")
+            }
+            OptionsMenu(showOptionsMenu, { showOptionsMenu = false }) {
+                onShowCreateFolderDialog()
+                showOptionsMenu = false
+            }
+        }
+    )
+}
+
 @Composable
 fun DirectoryContent(viewModel: FileManagerViewModel) {
     val directories by viewModel.directories.collectAsState()
@@ -153,49 +188,57 @@ fun DirectoryContent(viewModel: FileManagerViewModel) {
     } else {
         LazyColumn(modifier = Modifier.fillMaxSize()) {
             items(directories, key = { it.uri }) { directory ->
-                DirectoryItem(directory = directory, onClick = { viewModel.navigateToDirectory(directory.uri) })
+                DirectoryItem(
+                    name = directory.name,
+                    uri = directory.uri,
+                    onDirectoryClick = viewModel::navigateToDirectory
+                )
             }
             items(files, key = { it.uri }) { file ->
-                FileItem(file = file)
+                FileItem(
+                    name = file.name,
+                    uri = file.uri,
+                    mimeType = file.mimeType
+                )
             }
         }
     }
 }
 
 @Composable
-fun DirectoryItem(directory: DirectoryData, onClick: () -> Unit) {
+fun DirectoryItem(name: String, uri: Uri, onDirectoryClick: (Uri) -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { onClick() }
+            .clickable { onDirectoryClick(uri) }
             .padding(16.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Icon(Icons.Default.Folder, contentDescription = "Directory")
         Spacer(modifier = Modifier.width(16.dp))
-        Text(text = directory.name, fontSize = 18.sp)
+        Text(text = name, fontSize = 18.sp)
     }
 }
 
 @Composable
-fun FileItem(file: FileData) {
+fun FileItem(name: String, uri: Uri, mimeType: String?) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .padding(16.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        if (file.mimeType?.startsWith("image/") == true) {
+        if (mimeType?.startsWith("image/") == true) {
             AsyncImage(
-                model = file.uri,
+                model = uri,
                 contentDescription = "Image preview",
                 modifier = Modifier.size(40.dp)
             )
         } else {
-            Icon(Icons.Default.Article, contentDescription = "File")
+            Icon(Icons.AutoMirrored.Filled.Article, contentDescription = "File")
         }
         Spacer(modifier = Modifier.width(16.dp))
-        Text(text = file.name, fontSize = 18.sp)
+        Text(text = name, fontSize = 18.sp)
     }
 }
 
@@ -206,6 +249,7 @@ fun CreateDialog(
     onCreate: (String) -> Unit
 ) {
     var name by remember { mutableStateOf("") }
+    val focusRequester = remember { FocusRequester() }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -214,7 +258,8 @@ fun CreateDialog(
             TextField(
                 value = name,
                 onValueChange = { name = it },
-                label = { Text("Name") }
+                label = { Text("Name") },
+                modifier = Modifier.focusRequester(focusRequester)
             )
         },
         confirmButton = {
@@ -230,6 +275,10 @@ fun CreateDialog(
             }
         }
     )
+
+    LaunchedEffect(Unit) {
+        focusRequester.requestFocus()
+    }
 }
 
 @Composable

@@ -9,8 +9,11 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import java.util.Stack
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
@@ -43,6 +46,7 @@ class FileManagerViewModel(application: Application) : AndroidViewModel(applicat
 
     private val prefs = application.getSharedPreferences("file_manager_prefs", Context.MODE_PRIVATE)
     private val directoryStack = Stack<Uri>()
+    private val directoryContentCache = mutableMapOf<Uri, Pair<List<DirectoryData>, List<FileData>>>()
 
     private val _currentDirectory = MutableStateFlow<Uri?>(null)
     val currentDirectory: StateFlow<Uri?> = _currentDirectory.asStateFlow()
@@ -50,15 +54,19 @@ class FileManagerViewModel(application: Application) : AndroidViewModel(applicat
     private val _files = MutableStateFlow<List<FileData>>(emptyList())
     private val _directories = MutableStateFlow<List<DirectoryData>>(emptyList())
     private val _sortOrder = MutableStateFlow(SortOrder.NAME_AZ)
+    private val _toastMessage = MutableSharedFlow<String>()
+    private val _isRefreshing = MutableStateFlow(false)
+    private val _canNavigateUp = MutableStateFlow(false)
 
+    val isRefreshing: StateFlow<Boolean> = _isRefreshing.asStateFlow()
+    val toastMessage: SharedFlow<String> = _toastMessage.asSharedFlow()
     val sortOrder: StateFlow<SortOrder> = _sortOrder.asStateFlow()
+    val directories: StateFlow<List<DirectoryData>> = _directories.asStateFlow()
+    val canNavigateUp: StateFlow<Boolean> = _canNavigateUp.asStateFlow()
 
     val sortedFiles: StateFlow<List<FileData>> = combine(_files, _sortOrder) { files, sortOrder ->
         sortFiles(files, sortOrder)
     }.stateIn(viewModelScope, kotlinx.coroutines.flow.SharingStarted.WhileSubscribed(5000), emptyList())
-
-    val directories: StateFlow<List<DirectoryData>> = _directories.asStateFlow()
-    val canNavigateUp: StateFlow<Boolean> = MutableStateFlow(false)
 
     init {
         val uriString = prefs.getString("root_uri", null)
@@ -69,7 +77,7 @@ class FileManagerViewModel(application: Application) : AndroidViewModel(applicat
             if (persistedUris.any { it.uri == uri && it.isReadPermission && it.isWritePermission }) {
                 _currentDirectory.value = uri
                 loadDirectoryContents(uri)
-                (canNavigateUp as MutableStateFlow).value = false
+                _canNavigateUp.value = false
             } else {
                 prefs.edit().remove("root_uri").apply()
             }
@@ -85,15 +93,16 @@ class FileManagerViewModel(application: Application) : AndroidViewModel(applicat
             )
             prefs.edit().putString("root_uri", it.toString()).apply()
             directoryStack.clear()
+            directoryContentCache.clear()
             navigateToDirectory(it)
         }
     }
 
     fun navigateToDirectory(directoryUri: Uri) {
-        directoryStack.push(_currentDirectory.value)
+        _currentDirectory.value?.let { directoryStack.push(it) }
         _currentDirectory.value = directoryUri
         loadDirectoryContents(directoryUri)
-        (canNavigateUp as MutableStateFlow).value = true
+        _canNavigateUp.value = true
     }
 
     fun navigateUp() {
@@ -101,7 +110,7 @@ class FileManagerViewModel(application: Application) : AndroidViewModel(applicat
             val upUri = directoryStack.pop()
             _currentDirectory.value = upUri
             loadDirectoryContents(upUri)
-            (canNavigateUp as MutableStateFlow).value = directoryStack.isNotEmpty()
+            _canNavigateUp.value = directoryStack.isNotEmpty()
         }
     }
 
@@ -109,28 +118,54 @@ class FileManagerViewModel(application: Application) : AndroidViewModel(applicat
         _sortOrder.value = sortOrder
     }
 
+    fun refresh() {
+        viewModelScope.launch {
+            _isRefreshing.value = true
+            currentDirectory.value?.let {
+                directoryContentCache.remove(it)
+                loadDirectoryContentsInternal(it)
+            }
+            _isRefreshing.value = false
+        }
+    }
+
+    private suspend fun loadDirectoryContentsInternal(directoryUri: Uri) {
+        if (directoryContentCache.containsKey(directoryUri)) {
+            val (dirs, files) = directoryContentCache.getValue(directoryUri)
+            _directories.value = dirs
+            _files.value = files
+            return
+        }
+
+        withContext(Dispatchers.IO) {
+            val documentFile = DocumentFile.fromTreeUri(getApplication(), directoryUri)
+            if (documentFile == null || !documentFile.isDirectory) {
+                _files.value = emptyList()
+                _directories.value = emptyList()
+                return@withContext
+            }
+
+            val allDocs = documentFile.listFiles().toList()
+            val (directoryDocs, fileDocs) = allDocs.partition { it.isDirectory }
+
+            val directoryData = directoryDocs.map { DirectoryData(it.uri, it.name ?: "") }.sortedBy { it.name }
+            _directories.value = directoryData
+            _files.value = emptyList() // Clear old files and show directories immediately
+
+            val allFilesData = mutableListOf<FileData>()
+            fileDocs.chunked(30).forEach { chunk ->
+                val fileDataChunk = chunk.map { FileData(it.uri, it.name ?: "", it.length(), it.lastModified(), it.type) }
+                _files.value = _files.value + fileDataChunk
+                allFilesData.addAll(fileDataChunk)
+            }
+
+            directoryContentCache[directoryUri] = directoryData to allFilesData
+        }
+    }
+
     private fun loadDirectoryContents(directoryUri: Uri) {
         viewModelScope.launch {
-            withContext(Dispatchers.IO) {
-                val documentFile = DocumentFile.fromTreeUri(getApplication(), directoryUri)
-                if (documentFile == null || !documentFile.isDirectory) {
-                    return@withContext
-                }
-
-                val files = mutableListOf<FileData>()
-                val directories = mutableListOf<DirectoryData>()
-
-                documentFile.listFiles().forEach { file ->
-                    if (file.isDirectory) {
-                        directories.add(DirectoryData(file.uri, file.name ?: ""))
-                    } else {
-                        files.add(FileData(file.uri, file.name ?: "", file.length(), file.lastModified(), file.type))
-                    }
-                }
-
-                _files.value = files
-                _directories.value = directories.sortedBy { it.name }
-            }
+            loadDirectoryContentsInternal(directoryUri)
         }
     }
 
@@ -145,24 +180,50 @@ class FileManagerViewModel(application: Application) : AndroidViewModel(applicat
         }
     }
 
+    private fun invalidateCacheForCurrentDir() {
+        currentDirectory.value?.let { directoryContentCache.remove(it) }
+    }
+
     fun createFile(fileName: String) {
+        if (fileName.isBlank()) {
+            viewModelScope.launch { _toastMessage.emit("File name cannot be empty.") }
+            return
+        }
+
+        if (_files.value.any { it.name.equals(fileName, ignoreCase = true) } || _directories.value.any { it.name.equals(fileName, ignoreCase = true) }) {
+            viewModelScope.launch { _toastMessage.emit("A file or folder with this name already exists.") }
+            return
+        }
+
         val directoryUri = _currentDirectory.value ?: return
         viewModelScope.launch {
             withContext(Dispatchers.IO) {
                 val directory = DocumentFile.fromTreeUri(getApplication(), directoryUri)
                 directory?.createFile("text/plain", fileName)
-                loadDirectoryContents(directoryUri) // Refresh list
+                invalidateCacheForCurrentDir()
+                loadDirectoryContentsInternal(directoryUri)
             }
         }
     }
 
     fun createFolder(folderName: String) {
+        if (folderName.isBlank()) {
+            viewModelScope.launch { _toastMessage.emit("Folder name cannot be empty.") }
+            return
+        }
+
+        if (_files.value.any { it.name.equals(folderName, ignoreCase = true) } || _directories.value.any { it.name.equals(folderName, ignoreCase = true) }) {
+            viewModelScope.launch { _toastMessage.emit("A file or folder with this name already exists.") }
+            return
+        }
+
         val directoryUri = _currentDirectory.value ?: return
         viewModelScope.launch {
             withContext(Dispatchers.IO) {
                 val directory = DocumentFile.fromTreeUri(getApplication(), directoryUri)
                 directory?.createDirectory(folderName)
-                loadDirectoryContents(directoryUri) // Refresh list
+                invalidateCacheForCurrentDir()
+                loadDirectoryContentsInternal(directoryUri)
             }
         }
     }
