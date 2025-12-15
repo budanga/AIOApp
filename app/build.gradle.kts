@@ -33,8 +33,13 @@ android {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
     }
+
     kotlinOptions {
         jvmTarget = "11"
+    }
+
+    kotlin {
+        jvmToolchain(11)
     }
     buildFeatures {
         compose = true
@@ -53,8 +58,8 @@ dependencies {
     implementation(libs.androidx.core.splashscreen)
     implementation(libs.material)
     implementation(libs.androidx.navigation.compose)
+    implementation("androidx.documentfile:documentfile:1.1.0")
     implementation(libs.androidx.datastore.preferences)
-    implementation(libs.androidx.documentfile)
     implementation(libs.coil.compose)
     implementation(libs.androidx.material.icons.extended)
     testImplementation(libs.junit)
