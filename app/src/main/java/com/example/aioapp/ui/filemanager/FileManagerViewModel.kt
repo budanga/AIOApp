@@ -9,6 +9,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import java.util.Stack
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -47,6 +48,7 @@ class FileManagerViewModel(application: Application) : AndroidViewModel(applicat
     private val prefs = application.getSharedPreferences("file_manager_prefs", Context.MODE_PRIVATE)
     private val directoryStack = Stack<Uri>()
     private val directoryContentCache = mutableMapOf<Uri, Pair<List<DirectoryData>, List<FileData>>>()
+    private var directoryLoadingJob: Job? = null
 
     private val _currentDirectory = MutableStateFlow<Uri?>(null)
     val currentDirectory: StateFlow<Uri?> = _currentDirectory.asStateFlow()
@@ -119,12 +121,12 @@ class FileManagerViewModel(application: Application) : AndroidViewModel(applicat
     }
 
     fun refresh() {
-        viewModelScope.launch {
+        directoryLoadingJob?.cancel()
+        val currentUri = _currentDirectory.value ?: return
+        directoryLoadingJob = viewModelScope.launch {
             _isRefreshing.value = true
-            currentDirectory.value?.let {
-                directoryContentCache.remove(it)
-                loadDirectoryContentsInternal(it)
-            }
+            directoryContentCache.remove(currentUri)
+            loadDirectoryContentsInternal(currentUri)
             _isRefreshing.value = false
         }
     }
@@ -132,16 +134,22 @@ class FileManagerViewModel(application: Application) : AndroidViewModel(applicat
     private suspend fun loadDirectoryContentsInternal(directoryUri: Uri) {
         if (directoryContentCache.containsKey(directoryUri)) {
             val (dirs, files) = directoryContentCache.getValue(directoryUri)
-            _directories.value = dirs
-            _files.value = files
+            if (directoryUri == _currentDirectory.value) {
+                _directories.value = dirs
+                _files.value = files
+            }
             return
         }
 
         withContext(Dispatchers.IO) {
+            if (directoryUri != _currentDirectory.value) return@withContext
+
             val documentFile = DocumentFile.fromTreeUri(getApplication(), directoryUri)
             if (documentFile == null || !documentFile.isDirectory) {
-                _files.value = emptyList()
-                _directories.value = emptyList()
+                if (directoryUri == _currentDirectory.value) {
+                    _files.value = emptyList()
+                    _directories.value = emptyList()
+                }
                 return@withContext
             }
 
@@ -149,22 +157,34 @@ class FileManagerViewModel(application: Application) : AndroidViewModel(applicat
             val (directoryDocs, fileDocs) = allDocs.partition { it.isDirectory }
 
             val directoryData = directoryDocs.map { DirectoryData(it.uri, it.name ?: "") }.sortedBy { it.name }
+
+            if (directoryUri != _currentDirectory.value) return@withContext
+
             _directories.value = directoryData
-            _files.value = emptyList() // Clear old files and show directories immediately
+            _files.value = emptyList()
 
             val allFilesData = mutableListOf<FileData>()
-            fileDocs.chunked(30).forEach { chunk ->
-                val fileDataChunk = chunk.map { FileData(it.uri, it.name ?: "", it.length(), it.lastModified(), it.type) }
-                _files.value = _files.value + fileDataChunk
-                allFilesData.addAll(fileDataChunk)
+            run loop@{
+                fileDocs.chunked(30).forEach { chunk ->
+                    if (directoryUri != _currentDirectory.value) return@loop
+
+                    val fileDataChunk = chunk.map { FileData(it.uri, it.name ?: "", it.length(), it.lastModified(), it.type) }
+                    if (directoryUri == _currentDirectory.value) {
+                        _files.value = _files.value + fileDataChunk
+                    }
+                    allFilesData.addAll(fileDataChunk)
+                }
             }
 
-            directoryContentCache[directoryUri] = directoryData to allFilesData
+            if (directoryUri == _currentDirectory.value) {
+                directoryContentCache[directoryUri] = directoryData to allFilesData
+            }
         }
     }
 
     private fun loadDirectoryContents(directoryUri: Uri) {
-        viewModelScope.launch {
+        directoryLoadingJob?.cancel()
+        directoryLoadingJob = viewModelScope.launch {
             loadDirectoryContentsInternal(directoryUri)
         }
     }
@@ -196,13 +216,14 @@ class FileManagerViewModel(application: Application) : AndroidViewModel(applicat
         }
 
         val directoryUri = _currentDirectory.value ?: return
-        viewModelScope.launch {
+        directoryLoadingJob?.cancel()
+        directoryLoadingJob = viewModelScope.launch {
             withContext(Dispatchers.IO) {
                 val directory = DocumentFile.fromTreeUri(getApplication(), directoryUri)
                 directory?.createFile("text/plain", fileName)
-                invalidateCacheForCurrentDir()
-                loadDirectoryContentsInternal(directoryUri)
             }
+            invalidateCacheForCurrentDir()
+            loadDirectoryContentsInternal(directoryUri)
         }
     }
 
@@ -218,13 +239,14 @@ class FileManagerViewModel(application: Application) : AndroidViewModel(applicat
         }
 
         val directoryUri = _currentDirectory.value ?: return
-        viewModelScope.launch {
+        directoryLoadingJob?.cancel()
+        directoryLoadingJob = viewModelScope.launch {
             withContext(Dispatchers.IO) {
                 val directory = DocumentFile.fromTreeUri(getApplication(), directoryUri)
                 directory?.createDirectory(folderName)
-                invalidateCacheForCurrentDir()
-                loadDirectoryContentsInternal(directoryUri)
             }
+            invalidateCacheForCurrentDir()
+            loadDirectoryContentsInternal(directoryUri)
         }
     }
 }
