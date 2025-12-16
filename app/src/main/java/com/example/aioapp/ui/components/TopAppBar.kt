@@ -1,7 +1,7 @@
 package com.example.aioapp.ui.components
 
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.DrawerState
@@ -51,13 +51,18 @@ fun TopAppBar(currentScreen: String, navController: NavController, drawerState: 
                     )
                 )
             } else {
-                Text(text = currentScreen.replaceFirstChar { it.uppercase() })
+                val title = if (currentScreen == "filemanager") {
+                    "File Manager"
+                } else {
+                    currentScreen.replaceFirstChar { it.uppercase() }
+                }
+                Text(text = title)
             }
         },
         navigationIcon = {
             if (navController.previousBackStackEntry != null) {
                 IconButton(onClick = { navController.navigateUp() }) {
-                    Icon(Icons.Filled.ArrowBack, contentDescription = "Back")
+                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                 }
             } else {
                 IconButton(onClick = { scope.launch { drawerState.open() } }) {

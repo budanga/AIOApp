@@ -6,9 +6,10 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import com.example.aioapp.MainViewModel
-import com.example.aioapp.ui.home.HomeScreen
-import com.example.aioapp.ui.settings.SettingsScreen
 import com.example.aioapp.ui.filemanager.FileManagerScreen
+import com.example.aioapp.ui.home.HomeScreen
+import com.example.aioapp.ui.notes.NotesScreen
+import com.example.aioapp.ui.settings.SettingsScreen
 
 @Composable
 fun AppNavHost(navController: NavHostController, viewModel: MainViewModel, padding: PaddingValues) {
@@ -17,11 +18,15 @@ fun AppNavHost(navController: NavHostController, viewModel: MainViewModel, paddi
         startDestination = "home"
     ) {
         composable("home") {
-            HomeScreen(padding = padding)
+            HomeScreen(padding = padding, navController = navController)
         }
 
         composable("filemanager") {
             FileManagerScreen()
+        }
+
+        composable("notes") {
+            NotesScreen()
         }
 
         composable("settings") {
