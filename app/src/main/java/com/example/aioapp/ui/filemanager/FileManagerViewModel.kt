@@ -1,19 +1,18 @@
 package com.example.aioapp.ui.filemanager
 
 import android.app.Application
-import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.provider.DocumentsContract
 import androidx.documentfile.provider.DocumentFile
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import java.util.Stack
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -53,8 +52,7 @@ enum class SortOrder {
 
 class FileManagerViewModel(application: Application) : AndroidViewModel(application) {
 
-    private val prefs = application.getSharedPreferences("file_manager_prefs", Context.MODE_PRIVATE)
-    private val directoryStack = Stack<Uri>()
+    private val _directoryStack = MutableStateFlow<List<Uri>>(emptyList())
     private val directoryContentCache = mutableMapOf<Uri, Pair<List<DirectoryData>, List<FileData>>>()
     private var directoryLoadingJob: Job? = null
 
@@ -66,70 +64,74 @@ class FileManagerViewModel(application: Application) : AndroidViewModel(applicat
     private val _sortOrder = MutableStateFlow(SortOrder.NAME_AZ)
     private val _toastMessage = MutableSharedFlow<String>()
     private val _isRefreshing = MutableStateFlow(false)
-    private val _canNavigateUp = MutableStateFlow(false)
 
     private val _clipboardItem = MutableStateFlow<ClipboardItem?>(null)
     val clipboardItem: StateFlow<ClipboardItem?> = _clipboardItem.asStateFlow()
 
     val isRefreshing: StateFlow<Boolean> = _isRefreshing.asStateFlow()
     val toastMessage: SharedFlow<String> = _toastMessage.asSharedFlow()
-    val sortOrder: StateFlow<SortOrder> = _sortOrder.asStateFlow()
-    val directories: StateFlow<List<DirectoryData>> = _directories.asStateFlow()
-    val canNavigateUp: StateFlow<Boolean> = _canNavigateUp.asStateFlow()
+
+    val canNavigateUp: StateFlow<Boolean> = _directoryStack.map { it.isNotEmpty() }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
 
     val cutItemUri: StateFlow<Uri?> = clipboardItem.map {
         if (it?.action == ClipboardAction.CUT) it.uri else null
-    }.stateIn(viewModelScope, kotlinx.coroutines.flow.SharingStarted.WhileSubscribed(5000), null)
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
 
     val sortedFiles: StateFlow<List<FileData>> = combine(_files, _sortOrder) { files, sortOrder ->
         sortFiles(files, sortOrder)
-    }.stateIn(viewModelScope, kotlinx.coroutines.flow.SharingStarted.WhileSubscribed(5000), emptyList())
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    val sortedDirectories: StateFlow<List<DirectoryData>> = combine(_directories, _sortOrder) { dirs, order ->
+        sortDirectories(dirs, order)
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     init {
-        val uriString = prefs.getString("root_uri", null)
-        if (uriString != null) {
-            val uri = Uri.parse(uriString)
-            val contentResolver = getApplication<Application>().contentResolver
-            val persistedUris = contentResolver.persistedUriPermissions
-            if (persistedUris.any { it.uri == uri && it.isReadPermission && it.isWritePermission }) {
-                _currentDirectory.value = uri
-                loadDirectoryContents(uri)
-                _canNavigateUp.value = false
-            } else {
-                prefs.edit().remove("root_uri").apply()
-            }
+        checkPermissionsAndLoad()
+    }
+
+    private fun checkPermissionsAndLoad() {
+        val contentResolver = getApplication<Application>().contentResolver
+        val persistedUris = contentResolver.persistedUriPermissions
+        persistedUris.lastOrNull()?.uri?.let {
+            _currentDirectory.value = it
+            loadDirectoryContents(it)
+        } ?: run {
+            _currentDirectory.value = null
         }
     }
 
-    fun onDirectorySelected(uri: Uri?) {
-        uri?.let {
-            val contentResolver = getApplication<Application>().contentResolver
-            contentResolver.takePersistableUriPermission(
-                it,
-                Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
-            )
-            prefs.edit().putString("root_uri", it.toString()).apply()
-            directoryStack.clear()
-            directoryContentCache.clear()
-            _currentDirectory.value = it
-            loadDirectoryContents(it)
-            _canNavigateUp.value = false
+    fun onRootDirectorySelected(uri: Uri?) {
+        val context = getApplication<Application>()
+        val contentResolver = context.contentResolver
+
+        if (uri != null) {
+            val takeFlags: Int = Intent.FLAG_GRANT_READ_URI_PERMISSION or
+                    Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+            contentResolver.takePersistableUriPermission(uri, takeFlags)
+            _currentDirectory.value = uri
+            loadDirectoryContents(uri)
+        } else {
+            viewModelScope.launch {
+                _toastMessage.emit("Permission to access storage was not granted.")
+            }
+            _currentDirectory.value = null
         }
     }
 
     fun navigateToDirectory(directoryUri: Uri) {
-        _currentDirectory.value?.let { directoryStack.push(it) }
+        _currentDirectory.value?.let { _directoryStack.value = _directoryStack.value + it }
         _currentDirectory.value = directoryUri
         loadDirectoryContents(directoryUri)
-        _canNavigateUp.value = true
     }
 
     fun navigateUp() {
-        if (directoryStack.isNotEmpty()) {
-            val upUri = directoryStack.pop()
+        if (_directoryStack.value.isNotEmpty()) {
+            val stack = _directoryStack.value
+            val upUri = stack.last()
+            _directoryStack.value = stack.dropLast(1)
             _currentDirectory.value = upUri
             loadDirectoryContents(upUri)
-            _canNavigateUp.value = directoryStack.isNotEmpty()
         }
     }
 
@@ -217,6 +219,14 @@ class FileManagerViewModel(application: Application) : AndroidViewModel(applicat
         }
     }
 
+    private fun sortDirectories(directories: List<DirectoryData>, sortOrder: SortOrder): List<DirectoryData> {
+        return when (sortOrder) {
+            SortOrder.NAME_AZ -> directories.sortedBy { it.name }
+            SortOrder.NAME_ZA -> directories.sortedByDescending { it.name }
+            else -> directories // For size/date, keep current order (which is name ascending)
+        }
+    }
+
     private fun invalidateCacheForCurrentDir() {
         currentDirectory.value?.let { directoryContentCache.remove(it) }
     }
@@ -279,21 +289,24 @@ class FileManagerViewModel(application: Application) : AndroidViewModel(applicat
 
     fun delete(uri: Uri) {
         viewModelScope.launch {
+            var success = false
+            var message = "Failed to delete file."
             withContext(Dispatchers.IO) {
                 val context = getApplication<Application>().applicationContext
-                val contentResolver = context.contentResolver
                 try {
-                    if (DocumentsContract.deleteDocument(contentResolver, uri)) {
-                        _toastMessage.emit("File deleted successfully.")
-                        invalidateCacheForCurrentDir()
-                        loadDirectoryContentsInternal(_currentDirectory.value!!)
-                    } else {
-                        _toastMessage.emit("Failed to delete file.")
+                    if (DocumentsContract.deleteDocument(context.contentResolver, uri)) {
+                        message = "File deleted successfully."
+                        success = true
                     }
                 } catch (e: Exception) {
                     e.printStackTrace()
-                    _toastMessage.emit("Failed to delete file: ${e.message}")
+                    message = "Failed to delete file: ${e.message}"
                 }
+            }
+            _toastMessage.emit(message)
+            if (success) {
+                invalidateCacheForCurrentDir()
+                loadDirectoryContentsInternal(_currentDirectory.value!!)
             }
         }
     }
@@ -305,16 +318,15 @@ class FileManagerViewModel(application: Application) : AndroidViewModel(applicat
         viewModelScope.launch {
             withContext(Dispatchers.IO) {
                 val context = getApplication<Application>().applicationContext
-                val contentResolver = context.contentResolver
-                val sourceFile = DocumentFile.fromTreeUri(context, itemToPaste.uri)
+                val sourceFile = DocumentFile.fromSingleUri(context, itemToPaste.uri)
 
-                if (sourceFile == null) {
+                if (sourceFile == null || !sourceFile.exists()) {
                     _toastMessage.emit("Error accessing source file.")
                     return@withContext
                 }
 
                 if (destinationDirUri == sourceFile.uri) {
-                    _toastMessage.emit("Cannot paste into the same directory.")
+                    _toastMessage.emit("Source and destination cannot be the same.")
                     return@withContext
                 }
 
@@ -336,70 +348,77 @@ class FileManagerViewModel(application: Application) : AndroidViewModel(applicat
                 }
 
                 val existingFile = destinationDir.findFile(sourceFile.name ?: "")
-                if (existingFile != null) {
+                if (existingFile != null && existingFile.exists()) {
                     _toastMessage.emit("A file with the same name already exists.")
                     return@withContext
                 }
 
+                var success = false
+                var message = ""
+
                 try {
                     when (itemToPaste.action) {
                         ClipboardAction.COPY -> {
-                            try {
-                                DocumentsContract.copyDocument(contentResolver, sourceFile.uri, destinationDir.uri)
-                                _toastMessage.emit("File copied successfully.")
-                            } catch (e: Exception) {
-                                if (copyFileManually(sourceFile, destinationDir)) {
-                                    _toastMessage.emit("File copied successfully.")
-                                } else {
-                                    _toastMessage.emit("File copy failed.")
-                                }
-                            }
+                            val newFileUri = DocumentsContract.copyDocument(context.contentResolver, sourceFile.uri, destinationDir.uri)
+                            success = newFileUri != null
+                            message = if (success) "File copied successfully." else "File copy failed."
                         }
                         ClipboardAction.CUT -> {
-                            try {
-                                val sourceParentUri = sourceFile.parentFile?.uri
-                                if (sourceParentUri == null) {
-                                    _toastMessage.emit("Cannot move this file or directory.")
-                                    return@withContext
-                                }
+                             val sourceParentUri = sourceFile.parentFile?.uri ?: run {
+                                _toastMessage.emit("Cannot move this file or directory.")
+                                return@withContext
+                            }
+                            val movedFileUri = DocumentsContract.moveDocument(context.contentResolver, sourceFile.uri, sourceParentUri, destinationDir.uri)
+                            success = movedFileUri != null
+                             message = if (success) "File moved successfully." else "File move failed."
 
-                                DocumentsContract.moveDocument(contentResolver, sourceFile.uri, sourceParentUri, destinationDir.uri)
-                                _toastMessage.emit("File moved successfully.")
-                            } catch (e: Exception) {
-                                if (copyFileManually(sourceFile, destinationDir)) {
-                                    if (DocumentsContract.deleteDocument(contentResolver, sourceFile.uri)) {
-                                        _toastMessage.emit("File moved successfully.")
-                                    } else {
-                                        _toastMessage.emit("Copied, but failed to delete original file.")
-                                    }
-                                } else {
-                                    _toastMessage.emit("File move failed.")
-                                }
+                            if(success) {
+                                directoryContentCache.remove(sourceParentUri)
                             }
                         }
                     }
-                    _clipboardItem.value = null
-                    invalidateCacheForCurrentDir()
-                    if (itemToPaste.action == ClipboardAction.CUT) {
-                        sourceFile.parentFile?.uri?.let { directoryContentCache.remove(it) }
-                    }
-                    loadDirectoryContentsInternal(destinationDirUri)
                 } catch (e: Exception) {
-                    e.printStackTrace()
-                    _toastMessage.emit("Failed to paste: ${e.message}")
+                    // Fallback for copy
+                    if(itemToPaste.action == ClipboardAction.COPY) {
+                        success = copyFileManually(sourceFile, destinationDir)
+                        message = if (success) "File copied successfully." else "File copy failed."
+                    }
+                    // Fallback for cut (copy then delete)
+                    else if (itemToPaste.action == ClipboardAction.CUT) {
+                        success = copyFileManually(sourceFile, destinationDir)
+                        if (success) {
+                             if (DocumentsContract.deleteDocument(context.contentResolver, sourceFile.uri)) {
+                                 message = "File moved successfully."
+                                 sourceFile.parentFile?.uri?.let { directoryContentCache.remove(it) }
+                             } else {
+                                 message = "Copied, but failed to delete original file."
+                             }
+                        } else {
+                            message = "File move failed."
+                        }
+                    }
+                }
+
+                _toastMessage.emit(message)
+
+                if (success) {
+                    if (itemToPaste.action == ClipboardAction.CUT) {
+                        _clipboardItem.value = null
+                    }
+                    invalidateCacheForCurrentDir()
+                    loadDirectoryContentsInternal(destinationDirUri)
                 }
             }
         }
     }
 
-    private suspend fun copyFileManually(source: DocumentFile, destinationDir: DocumentFile): Boolean {
+    private fun copyFileManually(source: DocumentFile, destinationDir: DocumentFile): Boolean {
         val context = getApplication<Application>().applicationContext
         val contentResolver = context.contentResolver
 
         if (source.isDirectory) {
             val newDir = destinationDir.createDirectory(source.name ?: "New Folder")
             if (newDir == null) {
-                _toastMessage.emit("Failed to create directory: ${source.name}")
                 return false
             }
             return source.listFiles().all { fileInDir ->
@@ -408,7 +427,6 @@ class FileManagerViewModel(application: Application) : AndroidViewModel(applicat
         } else {
             val newFile = destinationDir.createFile(source.type ?: "application/octet-stream", source.name ?: "new_file")
             if (newFile == null) {
-                _toastMessage.emit("Failed to create file: ${source.name}")
                 return false
             }
             return try {
@@ -419,7 +437,6 @@ class FileManagerViewModel(application: Application) : AndroidViewModel(applicat
                 }
                 true
             } catch (e: Exception) {
-                _toastMessage.emit("Error copying file: ${source.name}")
                 newFile.delete()
                 false
             }
@@ -441,5 +458,17 @@ class FileManagerViewModel(application: Application) : AndroidViewModel(applicat
                 _toastMessage.emit("No app found to open this file type.")
             }
         }
+    }
+
+    fun changeRootDirectory() {
+        val contentResolver = getApplication<Application>().contentResolver
+        contentResolver.persistedUriPermissions.forEach {
+            contentResolver.releasePersistableUriPermission(it.uri, Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
+        }
+        _currentDirectory.value = null
+        _directoryStack.value = emptyList()
+        _files.value = emptyList()
+        _directories.value = emptyList()
+        directoryContentCache.clear()
     }
 }
