@@ -111,7 +111,9 @@ class FileManagerViewModel(application: Application) : AndroidViewModel(applicat
             prefs.edit().putString("root_uri", it.toString()).apply()
             directoryStack.clear()
             directoryContentCache.clear()
-            navigateToDirectory(it)
+            _currentDirectory.value = it
+            loadDirectoryContents(it)
+            _canNavigateUp.value = false
         }
     }
 
@@ -436,7 +438,7 @@ class FileManagerViewModel(application: Application) : AndroidViewModel(applicat
             context.startActivity(intent)
         } catch (e: android.content.ActivityNotFoundException) {
             viewModelScope.launch {
-                _toastMessage.emit("No application found to open this file.")
+                _toastMessage.emit("No app found to open this file type.")
             }
         }
     }
