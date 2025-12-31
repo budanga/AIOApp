@@ -22,7 +22,7 @@ fun AppNavHost(navController: NavHostController, viewModel: MainViewModel, paddi
         }
 
         composable("filemanager") {
-            FileManagerScreen()
+            FileManagerScreen(navController = navController)
         }
 
         composable("notes") {

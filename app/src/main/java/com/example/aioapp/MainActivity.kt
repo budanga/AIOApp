@@ -44,7 +44,11 @@ class MainActivity : ComponentActivity() {
                     drawerContent = { AppDrawer(navController = navController, drawerState = drawerState, scope = scope) }
                 ) {
                     Scaffold(
-                        topBar = { TopAppBar(currentScreen = currentScreen, navController = navController, drawerState = drawerState, scope = scope) }
+                        topBar = {
+                            if (currentScreen != "filemanager") {
+                                TopAppBar(currentScreen = currentScreen, navController = navController, drawerState = drawerState, scope = scope)
+                            }
+                        }
                     ) { padding ->
                         AppNavHost(navController = navController, viewModel = viewModel, padding = padding)
                     }

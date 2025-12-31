@@ -20,6 +20,9 @@ fun SettingsScreen(viewModel: MainViewModel, padding: PaddingValues) {
     val currentTheme = viewModel.theme.collectAsState(initial = "System").value
 
     Column(modifier = Modifier.padding(padding)) {
+        ThemeOption(label = "System", isSelected = currentTheme == "System") {
+            viewModel.setTheme("System")
+        }
         ThemeOption(label = "Dark mode", isSelected = currentTheme == "Dark") {
             viewModel.setTheme("Dark")
         }

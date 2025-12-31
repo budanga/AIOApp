@@ -58,7 +58,10 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.documentfile.provider.DocumentFile
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavController
+import androidx.navigation.NavOptions
 import kotlinx.coroutines.flow.collectLatest
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -67,6 +70,7 @@ import java.util.Locale
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FileManagerScreen(
+    navController: NavController,
     viewModel: FileManagerViewModel = viewModel()
 ) {
     val currentDirectory by viewModel.currentDirectory.collectAsState()
@@ -98,15 +102,34 @@ fun FileManagerScreen(
 
     Scaffold(
         topBar = {
-            if (currentDirectory != null) {
+            currentDirectory?.let { directory ->
                 FileManagerTopAppBar(
+                    currentDirectory = directory,
                     canNavigateUp = canNavigateUp,
-                    onNavigateUp = viewModel::navigateUp,
+                    onNavigateUp = {
+                        if (canNavigateUp) {
+                            viewModel.navigateUp()
+                        } else {
+                            navController.navigate("home") {
+                                popUpTo("home") { inclusive = false }
+                                launchSingleTop = true
+                                anim {
+                                    enter = 0
+                                    exit = 0
+                                    popEnter = 0
+                                    popExit = 0
+                                }
+                            }
+                        }
+                    },
                     onSetSortOrder = viewModel::setSortOrder,
                     onShowCreateFolderDialog = { showCreateFolderDialog = true },
                     isClipboardEmpty = clipboardItem == null,
                     onPaste = viewModel::paste,
-                    onChangeRoot = viewModel::changeRootDirectory
+                    onChangeRoot = {
+                        viewModel.changeRootDirectory()
+                        launcher.launch(null)
+                    }
                 )
             }
         },
@@ -289,6 +312,7 @@ fun FileItem(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FileManagerTopAppBar(
+    currentDirectory: Uri,
     canNavigateUp: Boolean,
     onNavigateUp: () -> Unit,
     onSetSortOrder: (SortOrder) -> Unit,
@@ -297,23 +321,29 @@ fun FileManagerTopAppBar(
     onPaste: () -> Unit,
     onChangeRoot: () -> Unit
 ) {
+    val context = LocalContext.current
+    val directoryName = remember(currentDirectory) {
+        try {
+            DocumentFile.fromTreeUri(context, currentDirectory)?.name ?: "File Manager"
+        } catch (e: Exception) {
+            "File Manager"
+        }
+    }
     var showSortMenu by remember { mutableStateOf(false) }
     var showMoreMenu by remember { mutableStateOf(false) }
     TopAppBar(
-        title = { Text("File Manager") },
+        title = { Text(directoryName, maxLines = 1, overflow = TextOverflow.Ellipsis) },
         navigationIcon = {
-            if (canNavigateUp) {
-                IconButton(onClick = onNavigateUp) {
-                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Navigate up")
-                }
+            IconButton(onClick = onNavigateUp) {
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Navigate up")
             }
         },
         actions = {
-            IconButton(onClick = onShowCreateFolderDialog) {
-                Icon(Icons.Default.CreateNewFolder, contentDescription = "Create folder")
-            }
             IconButton(onClick = onPaste, enabled = !isClipboardEmpty) {
                 Icon(Icons.Default.ContentPaste, contentDescription = "Paste")
+            }
+            IconButton(onClick = onShowCreateFolderDialog) {
+                Icon(Icons.Default.CreateNewFolder, contentDescription = "Create folder")
             }
             Box {
                 IconButton(onClick = { showSortMenu = true }) {
