@@ -1,6 +1,10 @@
 package com.example.aioapp.ui.filemanager
 
+import android.content.Intent
 import android.net.Uri
+import android.os.Build
+import android.os.Environment
+import android.provider.Settings
 import android.text.format.Formatter
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
@@ -42,6 +46,7 @@ import androidx.compose.material3.TextField
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -55,13 +60,15 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.documentfile.provider.DocumentFile
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
-import androidx.navigation.NavOptions
 import kotlinx.coroutines.flow.collectLatest
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -83,10 +90,23 @@ fun FileManagerScreen(
     val cutItemUri by viewModel.cutItemUri.collectAsState()
     var showDeleteConfirmationDialog by remember { mutableStateOf<Uri?>(null) }
 
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                viewModel.checkPermissionsAndLoad()
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
+
     val launcher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.OpenDocumentTree(),
-        onResult = { uri: Uri? ->
-            viewModel.onRootDirectorySelected(uri)
+        contract = ActivityResultContracts.StartActivityForResult(),
+        onResult = { _ ->
+            viewModel.checkPermissionsAndLoad()
         }
     )
 
@@ -127,8 +147,16 @@ fun FileManagerScreen(
                     isClipboardEmpty = clipboardItem == null,
                     onPaste = viewModel::paste,
                     onChangeRoot = {
-                        viewModel.changeRootDirectory()
-                        launcher.launch(null)
+                        val intent = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                            Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION).apply {
+                                data = Uri.parse("package:${context.packageName}")
+                            }
+                        } else {
+                            null
+                        }
+                        if (intent != null) {
+                            launcher.launch(intent)
+                        }
                     }
                 )
             }
@@ -153,7 +181,17 @@ fun FileManagerScreen(
                     )
                 }
             } else {
-                PermissionRequestScreen { launcher.launch(null) }
+                PermissionRequestScreen {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                        val intent = Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION).apply {
+                            data = Uri.parse("package:${context.packageName}")
+                        }
+                        launcher.launch(intent)
+                    } else {
+                        // Fallback or legacy permission request could be added here
+                        Toast.makeText(context, "All files access is required.", Toast.LENGTH_LONG).show()
+                    }
+                }
             }
         }
     }
@@ -189,7 +227,7 @@ fun PermissionRequestScreen(onGrantAccess: () -> Unit) {
         Text("Permission Required", textAlign = TextAlign.Center)
         Spacer(modifier = Modifier.height(16.dp))
         Text(
-            "To manage your files, please grant access to a folder. You can select any folder you want, but for full functionality, we recommend selecting the root directory of your device's storage.",
+            "To manage your files, please grant 'All files access' permission in settings. This allows the app to show and manage all folders and files on your device storage.",
             textAlign = TextAlign.Center
         )
         Spacer(modifier = Modifier.height(16.dp))
@@ -324,7 +362,11 @@ fun FileManagerTopAppBar(
     val context = LocalContext.current
     val directoryName = remember(currentDirectory) {
         try {
-            DocumentFile.fromTreeUri(context, currentDirectory)?.name ?: "File Manager"
+            if (currentDirectory.scheme == "file") {
+                currentDirectory.lastPathSegment ?: "Internal Storage"
+            } else {
+                DocumentFile.fromTreeUri(context, currentDirectory)?.name ?: "File Manager"
+            }
         } catch (e: Exception) {
             "File Manager"
         }
@@ -363,7 +405,7 @@ fun FileManagerTopAppBar(
                     Icon(Icons.Default.MoreVert, contentDescription = "More options")
                 }
                 DropdownMenu(expanded = showMoreMenu, onDismissRequest = { showMoreMenu = false }) {
-                    DropdownMenuItem(text = { Text("Change root directory") }, onClick = {
+                    DropdownMenuItem(text = { Text("Change permission settings") }, onClick = {
                         onChangeRoot()
                         showMoreMenu = false
                     })

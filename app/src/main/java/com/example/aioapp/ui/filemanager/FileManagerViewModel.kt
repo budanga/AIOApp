@@ -3,7 +3,10 @@ package com.example.aioapp.ui.filemanager
 import android.app.Application
 import android.content.Intent
 import android.net.Uri
+import android.os.Build
+import android.os.Environment
 import android.provider.DocumentsContract
+import androidx.core.content.FileProvider
 import androidx.documentfile.provider.DocumentFile
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
@@ -21,6 +24,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.io.File
 
 data class FileData(
     val uri: Uri,
@@ -90,33 +94,26 @@ class FileManagerViewModel(application: Application) : AndroidViewModel(applicat
         checkPermissionsAndLoad()
     }
 
-    private fun checkPermissionsAndLoad() {
-        val contentResolver = getApplication<Application>().contentResolver
-        val persistedUris = contentResolver.persistedUriPermissions
-        persistedUris.lastOrNull()?.uri?.let {
-            _currentDirectory.value = it
-            loadDirectoryContents(it)
-        } ?: run {
+    fun checkPermissionsAndLoad() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            if (Environment.isExternalStorageManager()) {
+                val rootFile = Environment.getExternalStorageDirectory()
+                val rootUri = Uri.fromFile(rootFile)
+                if (_currentDirectory.value == null) {
+                    _currentDirectory.value = rootUri
+                    loadDirectoryContents(rootUri)
+                }
+            } else {
+                _currentDirectory.value = null
+            }
+        } else {
+            // For older versions, you'd check standard storage permissions
             _currentDirectory.value = null
         }
     }
 
     fun onRootDirectorySelected(uri: Uri?) {
-        val context = getApplication<Application>()
-        val contentResolver = context.contentResolver
-
-        if (uri != null) {
-            val takeFlags: Int = Intent.FLAG_GRANT_READ_URI_PERMISSION or
-                    Intent.FLAG_GRANT_WRITE_URI_PERMISSION
-            contentResolver.takePersistableUriPermission(uri, takeFlags)
-            _currentDirectory.value = uri
-            loadDirectoryContents(uri)
-        } else {
-            viewModelScope.launch {
-                _toastMessage.emit("Permission to access storage was not granted.")
-            }
-            _currentDirectory.value = null
-        }
+        checkPermissionsAndLoad()
     }
 
     fun navigateToDirectory(directoryUri: Uri) {
@@ -163,42 +160,61 @@ class FileManagerViewModel(application: Application) : AndroidViewModel(applicat
         withContext(Dispatchers.IO) {
             if (directoryUri != _currentDirectory.value) return@withContext
 
-            val documentFile = DocumentFile.fromTreeUri(getApplication(), directoryUri)
-            if (documentFile == null || !documentFile.isDirectory) {
-                if (directoryUri == _currentDirectory.value) {
-                    _files.value = emptyList()
-                    _directories.value = emptyList()
-                }
-                return@withContext
+            val file = if (directoryUri.scheme == "file") {
+                File(directoryUri.path ?: "")
+            } else {
+                null
             }
 
-            val allDocs = documentFile.listFiles().toList()
-            val (directoryDocs, fileDocs) = allDocs.partition { it.isDirectory }
+            if (file != null && file.exists() && file.isDirectory) {
+                val allDocs = file.listFiles()?.toList() ?: emptyList()
+                val (directoryDocs, fileDocs) = allDocs.partition { it.isDirectory }
 
-            val directoryData = directoryDocs.map { DirectoryData(it.uri, it.name ?: "") }.sortedBy { it.name }
+                val directoryData = directoryDocs.map { DirectoryData(Uri.fromFile(it), it.name) }.sortedBy { it.name }
+                val fileData = fileDocs.map { FileData(Uri.fromFile(it), it.name, it.length(), it.lastModified(), getMimeType(it)) }
 
-            if (directoryUri != _currentDirectory.value) return@withContext
+                if (directoryUri == _currentDirectory.value) {
+                    _directories.value = directoryData
+                    _files.value = fileData
+                    directoryContentCache[directoryUri] = directoryData to fileData
+                }
+            } else {
+                // Fallback to DocumentFile for non-file URIs if any
+                val documentFile = DocumentFile.fromTreeUri(getApplication(), directoryUri)
+                if (documentFile == null || !documentFile.isDirectory) {
+                    if (directoryUri == _currentDirectory.value) {
+                        _files.value = emptyList()
+                        _directories.value = emptyList()
+                    }
+                    return@withContext
+                }
 
-            _directories.value = directoryData
-            _files.value = emptyList()
+                val allDocs = documentFile.listFiles().toList()
+                val (directoryDocs, fileDocs) = allDocs.partition { it.isDirectory }
 
-            val allFilesData = mutableListOf<FileData>()
-            run loop@{
+                val directoryData = directoryDocs.map { DirectoryData(it.uri, it.name ?: "") }.sortedBy { it.name }
+                _directories.value = directoryData
+                _files.value = emptyList()
+
+                val allFilesData = mutableListOf<FileData>()
                 fileDocs.chunked(30).forEach { chunk ->
-                    if (directoryUri != _currentDirectory.value) return@loop
-
+                    if (directoryUri != _currentDirectory.value) return@forEach
                     val fileDataChunk = chunk.map { FileData(it.uri, it.name ?: "", it.length(), it.lastModified(), it.type) }
                     if (directoryUri == _currentDirectory.value) {
                         _files.value = _files.value + fileDataChunk
                     }
                     allFilesData.addAll(fileDataChunk)
                 }
-            }
-
-            if (directoryUri == _currentDirectory.value) {
-                directoryContentCache[directoryUri] = directoryData to allFilesData
+                if (directoryUri == _currentDirectory.value) {
+                    directoryContentCache[directoryUri] = directoryData to allFilesData
+                }
             }
         }
+    }
+
+    private fun getMimeType(file: File): String? {
+        val extension = file.extension
+        return android.webkit.MimeTypeMap.getSingleton().getMimeTypeFromExtension(extension)
     }
 
     private fun loadDirectoryContents(directoryUri: Uri) {
@@ -223,7 +239,7 @@ class FileManagerViewModel(application: Application) : AndroidViewModel(applicat
         return when (sortOrder) {
             SortOrder.NAME_AZ -> directories.sortedBy { it.name }
             SortOrder.NAME_ZA -> directories.sortedByDescending { it.name }
-            else -> directories // For size/date, keep current order (which is name ascending)
+            else -> directories
         }
     }
 
@@ -237,17 +253,19 @@ class FileManagerViewModel(application: Application) : AndroidViewModel(applicat
             return
         }
 
-        if (_files.value.any { it.name.equals(fileName, ignoreCase = true) } || _directories.value.any { it.name.equals(fileName, ignoreCase = true) }) {
-            viewModelScope.launch { _toastMessage.emit("A file or folder with this name already exists.") }
-            return
-        }
-
         val directoryUri = _currentDirectory.value ?: return
         directoryLoadingJob?.cancel()
         directoryLoadingJob = viewModelScope.launch {
             withContext(Dispatchers.IO) {
-                val directory = DocumentFile.fromTreeUri(getApplication(), directoryUri)
-                directory?.createFile("text/plain", fileName)
+                if (directoryUri.scheme == "file") {
+                    val file = File(directoryUri.path, fileName)
+                    if (!file.exists()) {
+                        file.createNewFile()
+                    }
+                } else {
+                    val directory = DocumentFile.fromTreeUri(getApplication(), directoryUri)
+                    directory?.createFile("text/plain", fileName)
+                }
             }
             invalidateCacheForCurrentDir()
             loadDirectoryContentsInternal(directoryUri)
@@ -260,17 +278,19 @@ class FileManagerViewModel(application: Application) : AndroidViewModel(applicat
             return
         }
 
-        if (_files.value.any { it.name.equals(folderName, ignoreCase = true) } || _directories.value.any { it.name.equals(folderName, ignoreCase = true) }) {
-            viewModelScope.launch { _toastMessage.emit("A file or folder with this name already exists.") }
-            return
-        }
-
         val directoryUri = _currentDirectory.value ?: return
         directoryLoadingJob?.cancel()
         directoryLoadingJob = viewModelScope.launch {
             withContext(Dispatchers.IO) {
-                val directory = DocumentFile.fromTreeUri(getApplication(), directoryUri)
-                directory?.createDirectory(folderName)
+                if (directoryUri.scheme == "file") {
+                    val dir = File(directoryUri.path, folderName)
+                    if (!dir.exists()) {
+                        dir.mkdirs()
+                    }
+                } else {
+                    val directory = DocumentFile.fromTreeUri(getApplication(), directoryUri)
+                    directory?.createDirectory(folderName)
+                }
             }
             invalidateCacheForCurrentDir()
             loadDirectoryContentsInternal(directoryUri)
@@ -290,17 +310,25 @@ class FileManagerViewModel(application: Application) : AndroidViewModel(applicat
     fun delete(uri: Uri) {
         viewModelScope.launch {
             var success = false
-            var message = "Failed to delete file."
+            var message = "Failed to delete item."
             withContext(Dispatchers.IO) {
-                val context = getApplication<Application>().applicationContext
                 try {
-                    if (DocumentsContract.deleteDocument(context.contentResolver, uri)) {
-                        message = "File deleted successfully."
-                        success = true
+                    if (uri.scheme == "file") {
+                        val file = File(uri.path ?: "")
+                        if (file.isDirectory) {
+                            success = file.deleteRecursively()
+                        } else {
+                            success = file.delete()
+                        }
+                        if (success) message = "Deleted successfully."
+                    } else {
+                        if (DocumentsContract.deleteDocument(getApplication<Application>().contentResolver, uri)) {
+                            message = "Deleted successfully."
+                            success = true
+                        }
                     }
                 } catch (e: Exception) {
-                    e.printStackTrace()
-                    message = "Failed to delete file: ${e.message}"
+                    message = "Error: ${e.message}"
                 }
             }
             _toastMessage.emit(message)
@@ -317,94 +345,35 @@ class FileManagerViewModel(application: Application) : AndroidViewModel(applicat
 
         viewModelScope.launch {
             withContext(Dispatchers.IO) {
-                val context = getApplication<Application>().applicationContext
-                val sourceFile = DocumentFile.fromSingleUri(context, itemToPaste.uri)
-
-                if (sourceFile == null || !sourceFile.exists()) {
-                    _toastMessage.emit("Error accessing source file.")
-                    return@withContext
-                }
-
-                if (destinationDirUri == sourceFile.uri) {
-                    _toastMessage.emit("Source and destination cannot be the same.")
-                    return@withContext
-                }
-
-                if (sourceFile.isDirectory) {
-                    var parent = DocumentFile.fromTreeUri(context, destinationDirUri)
-                    while (parent != null) {
-                        if (parent.uri == sourceFile.uri) {
-                            _toastMessage.emit("Cannot paste a directory into its own subdirectory.")
-                            return@withContext
-                        }
-                        parent = parent.parentFile
-                    }
-                }
-
-                val destinationDir = DocumentFile.fromTreeUri(context, destinationDirUri)
-                if (destinationDir == null || !destinationDir.isDirectory) {
-                    _toastMessage.emit("Invalid destination directory.")
-                    return@withContext
-                }
-
-                val existingFile = destinationDir.findFile(sourceFile.name ?: "")
-                if (existingFile != null && existingFile.exists()) {
-                    _toastMessage.emit("A file with the same name already exists.")
-                    return@withContext
-                }
-
                 var success = false
                 var message = ""
-
                 try {
-                    when (itemToPaste.action) {
-                        ClipboardAction.COPY -> {
-                            val newFileUri = DocumentsContract.copyDocument(context.contentResolver, sourceFile.uri, destinationDir.uri)
-                            success = newFileUri != null
-                            message = if (success) "File copied successfully." else "File copy failed."
-                        }
-                        ClipboardAction.CUT -> {
-                             val sourceParentUri = sourceFile.parentFile?.uri ?: run {
-                                _toastMessage.emit("Cannot move this file or directory.")
-                                return@withContext
-                            }
-                            val movedFileUri = DocumentsContract.moveDocument(context.contentResolver, sourceFile.uri, sourceParentUri, destinationDir.uri)
-                            success = movedFileUri != null
-                             message = if (success) "File moved successfully." else "File move failed."
+                    if (itemToPaste.uri.scheme == "file" && destinationDirUri.scheme == "file") {
+                        val sourceFile = File(itemToPaste.uri.path ?: "")
+                        val destDir = File(destinationDirUri.path ?: "")
+                        val destFile = File(destDir, sourceFile.name)
 
-                            if(success) {
-                                directoryContentCache.remove(sourceParentUri)
+                        if (itemToPaste.action == ClipboardAction.COPY) {
+                            if (sourceFile.isDirectory) {
+                                success = sourceFile.copyRecursively(destFile, overwrite = false)
+                            } else {
+                                sourceFile.copyTo(destFile, overwrite = false)
+                                success = true
                             }
+                        } else {
+                            success = sourceFile.renameTo(destFile)
                         }
+                        message = if (success) "Pasted successfully." else "Paste failed (file might already exist)."
+                    } else {
+                        message = "Pasting across different storage types not fully supported."
                     }
                 } catch (e: Exception) {
-                    // Fallback for copy
-                    if(itemToPaste.action == ClipboardAction.COPY) {
-                        success = copyFileManually(sourceFile, destinationDir)
-                        message = if (success) "File copied successfully." else "File copy failed."
-                    }
-                    // Fallback for cut (copy then delete)
-                    else if (itemToPaste.action == ClipboardAction.CUT) {
-                        success = copyFileManually(sourceFile, destinationDir)
-                        if (success) {
-                             if (DocumentsContract.deleteDocument(context.contentResolver, sourceFile.uri)) {
-                                 message = "File moved successfully."
-                                 sourceFile.parentFile?.uri?.let { directoryContentCache.remove(it) }
-                             } else {
-                                 message = "Copied, but failed to delete original file."
-                             }
-                        } else {
-                            message = "File move failed."
-                        }
-                    }
+                    message = "Error: ${e.message}"
                 }
 
                 _toastMessage.emit(message)
-
                 if (success) {
-                    if (itemToPaste.action == ClipboardAction.CUT) {
-                        _clipboardItem.value = null
-                    }
+                    if (itemToPaste.action == ClipboardAction.CUT) _clipboardItem.value = null
                     invalidateCacheForCurrentDir()
                     loadDirectoryContentsInternal(destinationDirUri)
                 }
@@ -412,63 +381,28 @@ class FileManagerViewModel(application: Application) : AndroidViewModel(applicat
         }
     }
 
-    private fun copyFileManually(source: DocumentFile, destinationDir: DocumentFile): Boolean {
-        val context = getApplication<Application>().applicationContext
-        val contentResolver = context.contentResolver
-
-        if (source.isDirectory) {
-            val newDir = destinationDir.createDirectory(source.name ?: "New Folder")
-            if (newDir == null) {
-                return false
-            }
-            return source.listFiles().all { fileInDir ->
-                copyFileManually(fileInDir, newDir)
-            }
-        } else {
-            val newFile = destinationDir.createFile(source.type ?: "application/octet-stream", source.name ?: "new_file")
-            if (newFile == null) {
-                return false
-            }
-            return try {
-                contentResolver.openInputStream(source.uri)?.use { inputStream ->
-                    contentResolver.openOutputStream(newFile.uri)?.use { outputStream ->
-                        inputStream.copyTo(outputStream)
-                    }
-                }
-                true
-            } catch (e: Exception) {
-                newFile.delete()
-                false
-            }
-        }
-    }
-
     fun openFile(uri: Uri, mimeType: String?) {
         val context = getApplication<Application>().applicationContext
         val intent = Intent(Intent.ACTION_VIEW).apply {
-            setDataAndType(uri, mimeType ?: "*/*")
+            val contentUri = if (uri.scheme == "file") {
+                val file = File(uri.path ?: "")
+                FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
+            } else {
+                uri
+            }
+            setDataAndType(contentUri, mimeType ?: "*/*")
             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         }
 
         try {
             context.startActivity(intent)
-        } catch (e: android.content.ActivityNotFoundException) {
-            viewModelScope.launch {
-                _toastMessage.emit("No app found to open this file type.")
-            }
+        } catch (e: Exception) {
+            viewModelScope.launch { _toastMessage.emit("No app found to open this file.") }
         }
     }
 
     fun changeRootDirectory() {
-        val contentResolver = getApplication<Application>().contentResolver
-        contentResolver.persistedUriPermissions.forEach {
-            contentResolver.releasePersistableUriPermission(it.uri, Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
-        }
-        _currentDirectory.value = null
-        _directoryStack.value = emptyList()
-        _files.value = emptyList()
-        _directories.value = emptyList()
-        directoryContentCache.clear()
+        // Now handled by jumping to settings in Screen
     }
 }
