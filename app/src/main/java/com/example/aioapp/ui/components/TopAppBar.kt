@@ -49,7 +49,7 @@ fun TopAppBar(
                             )
                         ),
                         fontFamily = FontFamily(Font(R.font.bbhbogle_regular)),
-                        fontSize = 32.sp
+                        fontSize = 40.sp
                     )
                 )
             } else {

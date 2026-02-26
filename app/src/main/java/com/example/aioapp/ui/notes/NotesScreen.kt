@@ -1,19 +1,720 @@
 package com.example.aioapp.ui.notes
 
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
+import androidx.activity.compose.BackHandler
+import androidx.compose.animation.*
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.*
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.LocalIndication
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.Sort
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.font.Font
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.navigation.NavController
+import com.example.aioapp.R
+import com.example.aioapp.core.model.Note
+import com.example.aioapp.core.model.NoteSortOrder
+import com.example.aioapp.ui.theme.*
+import kotlinx.coroutines.launch
+import java.text.SimpleDateFormat
+import java.util.*
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun NotesScreen() {
-    Box(
-        modifier = Modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center
-    ) {
-        Text("Notes Screen")
+fun NotesScreen(
+    viewModel: NotesViewModel,
+    padding: PaddingValues,
+    navController: NavController,
+    drawerState: DrawerState
+) {
+    val notes by viewModel.notes.collectAsState()
+    var showAddDialog by remember { mutableStateOf(false) }
+    var showSortMenu by remember { mutableStateOf(false) }
+    var selectedNoteIds by remember { mutableStateOf(setOf<String>()) }
+    var viewingNoteId by remember { mutableStateOf<String?>(null) }
+    val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
+
+    val isSelectionMode = selectedNoteIds.isNotEmpty()
+
+    // Handle system back button
+    BackHandler(enabled = isSelectionMode || viewingNoteId != null) {
+        if (isSelectionMode) {
+            selectedNoteIds = emptySet()
+        } else {
+            viewingNoteId = null
+        }
+    }
+
+    val HomemadeApple = FontFamily(Font(R.font.homemade_apple))
+
+    val complementaryGradient = Brush.horizontalGradient(
+        colors = listOf(GradientStart, GradientMid1, GradientMid2, GradientMid3, GradientEnd).map { color ->
+            Color(1f - color.red, 1f - color.green, 1f - color.blue, color.alpha)
+        }
+    )
+
+    Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
+        topBar = {
+            if (viewingNoteId == null) {
+                Column {
+                    TopAppBar(
+                        title = {
+                            Text(if (isSelectionMode) "${selectedNoteIds.size} Selected" else "Notes")
+                        },
+                        navigationIcon = {
+                            if (isSelectionMode) {
+                                IconButton(onClick = { selectedNoteIds = emptySet() }) {
+                                    Icon(Icons.Default.Close, contentDescription = "Clear Selection")
+                                }
+                            } else if (navController.previousBackStackEntry != null) {
+                                IconButton(onClick = { navController.navigateUp() }) {
+                                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                                }
+                            } else {
+                                IconButton(onClick = { scope.launch { drawerState.open() } }) {
+                                    Icon(Icons.Filled.Menu, contentDescription = "Menu")
+                                }
+                            }
+                        },
+                        actions = {
+                            if (isSelectionMode) {
+                                IconButton(onClick = {
+                                    viewModel.deleteNotes(selectedNoteIds)
+                                    selectedNoteIds = emptySet()
+                                }) {
+                                    Icon(Icons.Default.Delete, contentDescription = "Delete", tint = Color.Red)
+                                }
+                            }
+                            Box {
+                                IconButton(onClick = { showSortMenu = true }) {
+                                    Icon(Icons.AutoMirrored.Filled.Sort, contentDescription = "Sort")
+                                }
+                                DropdownMenu(
+                                    expanded = showSortMenu,
+                                    onDismissRequest = { showSortMenu = false }
+                                ) {
+                                    NoteSortOrder.entries.forEach { order ->
+                                        DropdownMenuItem(
+                                            text = { Text(if (order == NoteSortOrder.ALPHABETICAL) "Name" else order.name.replace("_", " ").lowercase().replaceFirstChar { it.uppercase() }) },
+                                            onClick = {
+                                                viewModel.setSortOrder(order)
+                                                showSortMenu = false
+                                            }
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    )
+                    HorizontalDivider(
+                        modifier = Modifier.fillMaxWidth(),
+                        thickness = 0.5.dp,
+                        color = MaterialTheme.colorScheme.outlineVariant
+                    )
+                }
+            }
+        },
+        floatingActionButton = {
+            AnimatedVisibility(
+                visible = !isSelectionMode && viewingNoteId == null,
+                enter = fadeIn(tween(200)) + scaleIn(animationSpec = tween(200)),
+                exit = fadeOut(tween(200)) + scaleOut(animationSpec = tween(200))
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    if (notes.isEmpty()) {
+                        Text(
+                            text = buildAnnotatedString {
+                                withStyle(style = SpanStyle(fontFamily = HomemadeApple, fontSize = 20.sp)) { append("Write ") }
+                                withStyle(style = SpanStyle(fontSize = 20.sp)) { append("your first note!") }
+                            },
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+
+                    val interactionSource = remember { MutableInteractionSource() }
+                    val isPressed by interactionSource.collectIsPressedAsState()
+                    val scale by animateFloatAsState(
+                        targetValue = if (isPressed) 0.88f else 1f,
+                        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow),
+                        label = "fabScale"
+                    )
+
+                    val infiniteTransition = rememberInfiniteTransition(label = "pulse")
+                    val pulseScale by infiniteTransition.animateFloat(
+                        initialValue = 1f,
+                        targetValue = if (notes.isEmpty()) 1.1f else 1f,
+                        animationSpec = infiniteRepeatable(
+                            animation = tween(1000, easing = FastOutSlowInEasing),
+                            repeatMode = RepeatMode.Reverse
+                        ),
+                        label = "pulse"
+                    )
+
+                    Box(
+                        modifier = Modifier
+                            .size(56.dp)
+                            .graphicsLayer(scaleX = scale * pulseScale, scaleY = scale * pulseScale)
+                            .shadow(if (isPressed) 4.dp else 12.dp, CircleShape)
+                            .clip(CircleShape)
+                            .background(complementaryGradient)
+                            .border(1.dp, Color.White.copy(alpha = 0.2f), CircleShape)
+                            .clickable(
+                                interactionSource = interactionSource,
+                                indication = LocalIndication.current
+                            ) { showAddDialog = true },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            Icons.Filled.Add, 
+                            contentDescription = "Add Note", 
+                            tint = Color.White,
+                            modifier = Modifier.size(28.dp)
+                        )
+                    }
+                }
+            }
+        }
+    ) { innerPadding ->
+        AnimatedContent(
+            targetState = viewingNoteId,
+            transitionSpec = {
+                (fadeIn(animationSpec = tween(220)) + scaleIn(initialScale = 0.95f, animationSpec = tween(220)))
+                    .togetherWith(fadeOut(animationSpec = tween(160)))
+            },
+            label = "ScreenTransition"
+        ) { targetViewingNoteId ->
+            if (targetViewingNoteId == null) {
+                Box(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
+                    if (notes.isNotEmpty()) {
+                        LazyColumn(
+                            modifier = Modifier.fillMaxSize(),
+                            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            items(notes, key = { it.id }) { note ->
+                                NoteItem(
+                                    note = note,
+                                    isSelected = selectedNoteIds.contains(note.id),
+                                    onLongClick = {
+                                        if (!isSelectionMode) selectedNoteIds = setOf(note.id)
+                                    },
+                                    onClick = {
+                                        if (isSelectionMode) {
+                                            selectedNoteIds = if (selectedNoteIds.contains(note.id)) {
+                                                selectedNoteIds - note.id
+                                            } else {
+                                                selectedNoteIds + note.id
+                                            }
+                                        } else {
+                                            viewingNoteId = note.id
+                                        }
+                                    }
+                                )
+                            }
+                        }
+                    } else {
+                        Column(
+                            modifier = Modifier.fillMaxSize().padding(32.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Center
+                        ) {
+                            Text(
+                                text = "No notes yet",
+                                style = MaterialTheme.typography.displaySmall,
+                                fontWeight = FontWeight.Normal,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                        }
+                    }
+                }
+            } else {
+                val note = notes.find { it.id == targetViewingNoteId }
+                if (note != null) {
+                    ViewEditNoteScreen(
+                        note = note,
+                        viewModel = viewModel,
+                        onDismiss = { viewingNoteId = null },
+                        complementaryGradient = complementaryGradient,
+                        onUniqueError = { scope.launch { snackbarHostState.showSnackbar("Note title must be unique") } }
+                    )
+                } else {
+                    viewingNoteId = null
+                }
+            }
+        }
+
+        if (showAddDialog) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black.copy(alpha = 0.6f))
+                    .clickable(enabled = false) {}
+            )
+
+            AddNoteDialog(
+                viewModel = viewModel,
+                onDismiss = { showAddDialog = false },
+                onConfirm = { title, content, color ->
+                    if (viewModel.addNote(title, content, color)) {
+                        showAddDialog = false
+                    } else {
+                        scope.launch { snackbarHostState.showSnackbar("Note title must be unique") }
+                    }
+                },
+                complementaryGradient = complementaryGradient
+            )
+        }
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+fun NoteItem(
+    note: Note,
+    isSelected: Boolean,
+    onClick: () -> Unit,
+    onLongClick: () -> Unit
+) {
+    val dateFormat = remember { SimpleDateFormat("MMM d, yyyy", Locale.getDefault()) }
+    val dateString = dateFormat.format(Date(note.createdAt))
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .combinedClickable(onClick = onClick, onLongClick = onLongClick)
+            .then(if (isSelected) Modifier.border(2.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(12.dp)) else Modifier),
+        colors = CardDefaults.cardColors(containerColor = Color(note.color).copy(alpha = if (isSelected) 0.7f else 1f)),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                if (note.title.isNotBlank()) {
+                    Text(
+                        text = note.title,
+                        fontWeight = FontWeight.Bold,
+                        style = MaterialTheme.typography.titleMedium,
+                        modifier = Modifier.weight(1f),
+                        color = Color.Black
+                    )
+                }
+                Text(
+                    text = dateString,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = Color.Black.copy(alpha = 0.6f)
+                )
+            }
+            if (note.content.isNotBlank()) {
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = note.content,
+                    style = MaterialTheme.typography.bodyMedium,
+                    maxLines = 3,
+                    color = Color.Black.copy(alpha = 0.8f)
+                )
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun ViewEditNoteScreen(
+    note: Note,
+    viewModel: NotesViewModel,
+    onDismiss: () -> Unit,
+    complementaryGradient: Brush,
+    onUniqueError: () -> Unit
+) {
+    var isEditing by remember { mutableStateOf(false) }
+    var title by remember { mutableStateOf(note.title) }
+    var content by remember { mutableStateOf(note.content) }
+    val dateFormat = remember { SimpleDateFormat("MMM d, yyyy", Locale.getDefault()) }
+    val dateString = dateFormat.format(Date(note.createdAt))
+
+    val isDark = isSystemInDarkTheme()
+    val baseColor = Color(note.color)
+    val noteGradient = remember(baseColor, isDark) {
+        val shift = 0.35f
+        val bottomColor = if (isDark) {
+            lerp(baseColor, Color.Black, shift)
+        } else {
+            lerp(baseColor, Color.White, shift)
+        }
+        Brush.verticalGradient(
+            colors = listOf(baseColor, bottomColor)
+        )
+    }
+
+    Scaffold(
+        modifier = Modifier.background(noteGradient),
+        topBar = {
+            Column {
+                TopAppBar(
+                    title = { },
+                    navigationIcon = {
+                        IconButton(onClick = onDismiss) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = Color.Transparent,
+                        titleContentColor = Color.Black,
+                        navigationIconContentColor = Color.Black
+                    )
+                )
+                HorizontalDivider(
+                    modifier = Modifier.fillMaxWidth(),
+                    thickness = 0.5.dp,
+                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                )
+            }
+        },
+        floatingActionButton = {
+            val interactionSource = remember { MutableInteractionSource() }
+            val isPressed by interactionSource.collectIsPressedAsState()
+            val scale by animateFloatAsState(
+                targetValue = if (isPressed) 0.88f else 1f,
+                animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow),
+                label = "fabScale"
+            )
+            val rotation by animateFloatAsState(
+                targetValue = if (isEditing) 360f else 0f,
+                animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow),
+                label = "iconRotation"
+            )
+
+            Box(
+                modifier = Modifier
+                    .size(56.dp)
+                    .graphicsLayer(scaleX = scale, scaleY = scale)
+                    .shadow(if (isPressed) 4.dp else 12.dp, CircleShape)
+                    .clip(CircleShape)
+                    .background(complementaryGradient)
+                    .border(1.dp, Color.White.copy(alpha = 0.2f), CircleShape)
+                    .clickable(
+                        interactionSource = interactionSource,
+                        indication = LocalIndication.current
+                    ) {
+                        if (isEditing) {
+                            if (viewModel.updateNote(note.id, title, content)) {
+                                isEditing = false
+                            } else {
+                                onUniqueError()
+                            }
+                        } else {
+                            isEditing = true
+                        }
+                    },
+                contentAlignment = Alignment.Center
+            ) {
+                AnimatedContent(
+                    targetState = isEditing,
+                    transitionSpec = {
+                        (fadeIn() + scaleIn()).togetherWith(fadeOut() + scaleOut())
+                    },
+                    label = "IconChange"
+                ) { editing ->
+                    Icon(
+                        if (editing) Icons.Default.Check else Icons.Default.Edit,
+                        contentDescription = if (editing) "Save" else "Edit",
+                        tint = Color.White,
+                        modifier = Modifier
+                            .size(28.dp)
+                            .graphicsLayer(rotationZ = rotation)
+                    )
+                }
+            }
+        },
+        containerColor = Color.Transparent
+    ) { innerPadding ->
+        Box(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
+            AnimatedContent(
+                targetState = isEditing,
+                transitionSpec = {
+                    (fadeIn(animationSpec = tween(180)) + scaleIn(initialScale = 0.98f, animationSpec = tween(180)))
+                        .togetherWith(fadeOut(animationSpec = tween(120)))
+                },
+                label = "EditTransition"
+            ) { editing ->
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(16.dp)
+                ) {
+                    if (editing) {
+                        val bentoContainerColor = if (isDark) Color.White.copy(alpha = 0.15f) else Color.Black.copy(alpha = 0.05f)
+                        val bentoBorderColor = if (isDark) Color.White.copy(alpha = 0.2f) else Color.Black.copy(alpha = 0.1f)
+
+                        Card(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .border(0.5.dp, bentoBorderColor, RoundedCornerShape(16.dp)),
+                            shape = RoundedCornerShape(16.dp),
+                            colors = CardDefaults.cardColors(containerColor = bentoContainerColor)
+                        ) {
+                            TextField(
+                                value = title,
+                                onValueChange = { title = it },
+                                modifier = Modifier.fillMaxWidth(),
+                                textStyle = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+                                placeholder = { Text("Title") },
+                                colors = TextFieldDefaults.colors(
+                                    focusedContainerColor = Color.Transparent,
+                                    unfocusedContainerColor = Color.Transparent,
+                                    focusedIndicatorColor = Color.Transparent,
+                                    unfocusedIndicatorColor = Color.Transparent,
+                                    focusedTextColor = Color.Black,
+                                    unfocusedTextColor = Color.Black
+                                )
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Card(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .weight(1f)
+                                .border(0.5.dp, bentoBorderColor, RoundedCornerShape(16.dp)),
+                            shape = RoundedCornerShape(16.dp),
+                            colors = CardDefaults.cardColors(containerColor = bentoContainerColor.copy(alpha = bentoContainerColor.alpha * 0.8f))
+                        ) {
+                            TextField(
+                                value = content,
+                                onValueChange = { content = it },
+                                modifier = Modifier.fillMaxSize(),
+                                textStyle = MaterialTheme.typography.bodyLarge,
+                                placeholder = { Text("Start typing...") },
+                                colors = TextFieldDefaults.colors(
+                                    focusedContainerColor = Color.Transparent,
+                                    unfocusedContainerColor = Color.Transparent,
+                                    focusedIndicatorColor = Color.Transparent,
+                                    unfocusedIndicatorColor = Color.Transparent,
+                                    focusedTextColor = Color.Black,
+                                    unfocusedTextColor = Color.Black
+                                )
+                            )
+                        }
+                    } else {
+                        Text(
+                            text = title,
+                            style = MaterialTheme.typography.headlineMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.Black
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Text(
+                            text = content,
+                            style = MaterialTheme.typography.bodyLarge,
+                            modifier = Modifier.weight(1f),
+                            color = Color.Black
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(48.dp))
+                }
+            }
+
+            Text(
+                text = dateString,
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .padding(16.dp),
+                style = MaterialTheme.typography.labelMedium,
+                color = Color.Black.copy(alpha = 0.6f)
+            )
+        }
+    }
+}
+
+@Composable
+fun AddNoteDialog(
+    viewModel: NotesViewModel,
+    onDismiss: () -> Unit,
+    onConfirm: (String, String, Int) -> Unit,
+    complementaryGradient: Brush
+) {
+    var title by remember { mutableStateOf("") }
+    var content by remember { mutableStateOf("") }
+    val colors = listOf(Color.White, Color(0xFFFFF9C4), Color(0xFFFFCCBC), Color(0xFFC8E6C9), Color(0xFFBBDEFB), Color(0xFFF8BBD0))
+    var selectedColor by remember { mutableStateOf(colors[0]) }
+    val focusRequester = remember { FocusRequester() }
+
+    val isFormComplete = title.isNotBlank() && content.isNotBlank()
+
+    val appGradient = Brush.horizontalGradient(
+        colors = listOf(GradientStart, GradientMid1, GradientMid2, GradientMid3, GradientEnd)
+    )
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = MaterialTheme.colorScheme.background,
+        title = { Text("New Note") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .border(1.5.dp, appGradient, RoundedCornerShape(8.dp))
+                        .padding(2.dp)
+                ) {
+                    TextField(
+                        value = title,
+                        onValueChange = { title = it },
+                        placeholder = { Text("Title") },
+                        modifier = Modifier.fillMaxWidth().focusRequester(focusRequester),
+                        colors = TextFieldDefaults.colors(
+                            focusedContainerColor = Color.Transparent,
+                            unfocusedContainerColor = Color.Transparent,
+                            focusedIndicatorColor = Color.Transparent,
+                            unfocusedIndicatorColor = Color.Transparent
+                        )
+                    )
+                }
+                LaunchedEffect(Unit) { focusRequester.requestFocus() }
+
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .border(1.5.dp, appGradient, RoundedCornerShape(8.dp))
+                        .padding(2.dp)
+                ) {
+                    TextField(
+                        value = content,
+                        onValueChange = { content = it },
+                        placeholder = { Text("Note") },
+                        modifier = Modifier.fillMaxWidth().heightIn(min = 100.dp),
+                        colors = TextFieldDefaults.colors(
+                            focusedContainerColor = Color.Transparent,
+                            unfocusedContainerColor = Color.Transparent,
+                            focusedIndicatorColor = Color.Transparent,
+                            unfocusedIndicatorColor = Color.Transparent
+                        )
+                    )
+                }
+
+                Column {
+                    Text("Background Color:", style = MaterialTheme.typography.labelMedium)
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        colors.forEach { color ->
+                            Box(
+                                modifier = Modifier
+                                    .size(36.dp)
+                                    .background(color, CircleShape)
+                                    .clickable { selectedColor = color }
+                                    .border(if (selectedColor == color) 2.dp else 0.dp, Color.Black, CircleShape)
+                            )
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            val alpha by animateFloatAsState(
+                targetValue = if (isFormComplete) 1f else 0f,
+                animationSpec = tween(durationMillis = 300),
+                label = "alpha"
+            )
+            val textColor by animateColorAsState(
+                targetValue = if (isFormComplete) Color.White else Color.DarkGray,
+                animationSpec = tween(durationMillis = 300),
+                label = "textColor"
+            )
+
+            val interactionSource = remember { MutableInteractionSource() }
+            val isPressed by interactionSource.collectIsPressedAsState()
+            val scale by animateFloatAsState(
+                targetValue = if (isPressed) 0.95f else 1f,
+                animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium),
+                label = "scale"
+            )
+
+            Box(
+                modifier = Modifier
+                    .height(44.dp)
+                    .width(100.dp)
+                    .graphicsLayer(scaleX = scale, scaleY = scale)
+                    .shadow(if (isPressed) 2.dp else 6.dp, RoundedCornerShape(12.dp))
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(Color(0xFFE0E0E0))
+                    .clickable(
+                        enabled = isFormComplete,
+                        interactionSource = interactionSource,
+                        indication = LocalIndication.current
+                    ) { onConfirm(title, content, selectedColor.toArgb()) },
+                contentAlignment = Alignment.Center
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .alpha(alpha)
+                        .background(complementaryGradient)
+                )
+                Text(
+                    "Add",
+                    color = textColor,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        },
+        dismissButton = {
+            Box(
+                modifier = Modifier
+                    .height(44.dp)
+                    .width(100.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(MaterialTheme.colorScheme.background)
+                    .border(0.5.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(12.dp))
+                    .clickable { onDismiss() },
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    "Cancel",
+                    color = MaterialTheme.colorScheme.onSurface,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        }
+    )
+}
