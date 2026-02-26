@@ -59,6 +59,9 @@ class FileManagerViewModel(application: Application) : AndroidViewModel(applicat
     private val _currentDirectory = MutableStateFlow<Uri?>(null)
     val currentDirectory: StateFlow<Uri?> = _currentDirectory.asStateFlow()
 
+    private val _currentDirectoryName = MutableStateFlow<String>("")
+    val currentDirectoryName: StateFlow<String> = _currentDirectoryName.asStateFlow()
+
     private val _files = MutableStateFlow<List<FileData>>(emptyList())
     private val _directories = MutableStateFlow<List<DirectoryData>>(emptyList())
     private val _sortOrder = MutableStateFlow(SortOrder.NAME_AZ)
@@ -95,9 +98,11 @@ class FileManagerViewModel(application: Application) : AndroidViewModel(applicat
         val persistedUris = contentResolver.persistedUriPermissions
         persistedUris.lastOrNull()?.uri?.let {
             _currentDirectory.value = it
+            updateCurrentDirectoryName(it)
             loadDirectoryContents(it)
         } ?: run {
             _currentDirectory.value = null
+            _currentDirectoryName.value = ""
         }
     }
 
@@ -110,18 +115,21 @@ class FileManagerViewModel(application: Application) : AndroidViewModel(applicat
                     Intent.FLAG_GRANT_WRITE_URI_PERMISSION
             contentResolver.takePersistableUriPermission(uri, takeFlags)
             _currentDirectory.value = uri
+            updateCurrentDirectoryName(uri)
             loadDirectoryContents(uri)
         } else {
             viewModelScope.launch {
                 _toastMessage.emit("Permission to access storage was not granted.")
             }
             _currentDirectory.value = null
+            _currentDirectoryName.value = ""
         }
     }
 
     fun navigateToDirectory(directoryUri: Uri) {
         _currentDirectory.value?.let { _directoryStack.value = _directoryStack.value + it }
         _currentDirectory.value = directoryUri
+        updateCurrentDirectoryName(directoryUri)
         loadDirectoryContents(directoryUri)
     }
 
@@ -131,6 +139,7 @@ class FileManagerViewModel(application: Application) : AndroidViewModel(applicat
             val upUri = stack.last()
             _directoryStack.value = stack.dropLast(1)
             _currentDirectory.value = upUri
+            updateCurrentDirectoryName(upUri)
             loadDirectoryContents(upUri)
         }
     }
@@ -466,9 +475,19 @@ class FileManagerViewModel(application: Application) : AndroidViewModel(applicat
             contentResolver.releasePersistableUriPermission(it.uri, Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
         }
         _currentDirectory.value = null
+        _currentDirectoryName.value = ""
         _directoryStack.value = emptyList()
         _files.value = emptyList()
         _directories.value = emptyList()
         directoryContentCache.clear()
+    }
+
+    private fun updateCurrentDirectoryName(uri: Uri) {
+        viewModelScope.launch {
+            withContext(Dispatchers.IO) {
+                val documentFile = DocumentFile.fromTreeUri(getApplication(), uri)
+                _currentDirectoryName.value = documentFile?.name ?: "Unknown"
+            }
+        }
     }
 }

@@ -70,6 +70,7 @@ fun FileManagerScreen(
     viewModel: FileManagerViewModel = viewModel()
 ) {
     val currentDirectory by viewModel.currentDirectory.collectAsState()
+    val currentDirectoryName by viewModel.currentDirectoryName.collectAsState()
     val canNavigateUp by viewModel.canNavigateUp.collectAsState()
     val isRefreshing by viewModel.isRefreshing.collectAsState()
     var showCreateFileDialog by remember { mutableStateOf(false) }
@@ -100,6 +101,7 @@ fun FileManagerScreen(
         topBar = {
             if (currentDirectory != null) {
                 FileManagerTopAppBar(
+                    currentDirectoryName = currentDirectoryName,
                     canNavigateUp = canNavigateUp,
                     onNavigateUp = viewModel::navigateUp,
                     onSetSortOrder = viewModel::setSortOrder,
@@ -289,6 +291,7 @@ fun FileItem(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FileManagerTopAppBar(
+    currentDirectoryName: String,
     canNavigateUp: Boolean,
     onNavigateUp: () -> Unit,
     onSetSortOrder: (SortOrder) -> Unit,
@@ -300,7 +303,7 @@ fun FileManagerTopAppBar(
     var showSortMenu by remember { mutableStateOf(false) }
     var showMoreMenu by remember { mutableStateOf(false) }
     TopAppBar(
-        title = { Text("File Manager") },
+        title = { Text(currentDirectoryName.ifEmpty { "File Manager" }, maxLines = 1, overflow = TextOverflow.Ellipsis) },
         navigationIcon = {
             if (canNavigateUp) {
                 IconButton(onClick = onNavigateUp) {
