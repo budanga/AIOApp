@@ -180,18 +180,6 @@ fun FileManagerScreen(
                         onShowCreateFolderDialog = { showCreateFolderDialog = true },
                         isClipboardEmpty = clipboardItem == null,
                         onPaste = viewModel::paste,
-                        onChangeRoot = {
-                            val intent = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                                Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION).apply {
-                                    data = Uri.parse("package:${context.packageName}")
-                                }
-                            } else {
-                                null
-                            }
-                            if (intent != null) {
-                                launcher.launch(intent)
-                            }
-                        },
                         onTitleClick = { showFullPath = true }
                     )
                 }
@@ -426,7 +414,6 @@ fun FileManagerTopAppBar(
     onShowCreateFolderDialog: () -> Unit,
     isClipboardEmpty: Boolean,
     onPaste: () -> Unit,
-    onChangeRoot: () -> Unit,
     onTitleClick: () -> Unit
 ) {
     val context = LocalContext.current
@@ -442,7 +429,6 @@ fun FileManagerTopAppBar(
         }
     }
     var showSortMenu by remember { mutableStateOf(false) }
-    var showMoreMenu by remember { mutableStateOf(false) }
     TopAppBar(
         title = {
             Text(
@@ -478,17 +464,6 @@ fun FileManagerTopAppBar(
                     DropdownMenuItem(text = { Text("Size (Larger)") }, onClick = { onSetSortOrder(SortOrder.SIZE_LARGER); showSortMenu = false })
                     DropdownMenuItem(text = { Text("Date (Recent)") }, onClick = { onSetSortOrder(SortOrder.DATE_RECENT); showSortMenu = false })
                     DropdownMenuItem(text = { Text("Date (Older)") }, onClick = { onSetSortOrder(SortOrder.DATE_OLDER); showSortMenu = false })
-                }
-            }
-            Box {
-                IconButton(onClick = { showMoreMenu = true }) {
-                    Icon(Icons.Default.MoreVert, contentDescription = "More options")
-                }
-                DropdownMenu(expanded = showMoreMenu, onDismissRequest = { showMoreMenu = false }) {
-                    DropdownMenuItem(text = { Text("Change permission settings") }, onClick = {
-                        onChangeRoot()
-                        showMoreMenu = false
-                    })
                 }
             }
         }
