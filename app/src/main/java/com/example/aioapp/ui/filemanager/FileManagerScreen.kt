@@ -9,8 +9,14 @@ import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -20,6 +26,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Article
@@ -38,7 +45,9 @@ import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
@@ -58,8 +67,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -88,6 +99,25 @@ fun FileManagerScreen(
     val clipboardItem by viewModel.clipboardItem.collectAsState()
     val cutItemUri by viewModel.cutItemUri.collectAsState()
     var showDeleteConfirmationDialog by remember { mutableStateOf<Uri?>(null) }
+    var showFullPath by remember { mutableStateOf(false) }
+
+    val fullPath = remember(currentDirectory) {
+        currentDirectory?.let { uri ->
+            when (uri.scheme) {
+                "file" -> uri.path ?: ""
+                "content" -> {
+                    val decoded = Uri.decode(uri.toString())
+                    if (decoded.contains("primary:")) {
+                        val path = decoded.substringAfterLast("primary:")
+                        if (path.isEmpty()) "Internal Storage" else "Internal Storage/$path"
+                    } else {
+                        decoded
+                    }
+                }
+                else -> uri.toString()
+            }
+        } ?: ""
+    }
 
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner) {
@@ -115,81 +145,121 @@ fun FileManagerScreen(
         }
     }
 
-    BackHandler(enabled = canNavigateUp) {
-        viewModel.navigateUp()
+    BackHandler(enabled = canNavigateUp || showFullPath) {
+        if (showFullPath) {
+            showFullPath = false
+        } else {
+            viewModel.navigateUp()
+        }
     }
 
-    Scaffold(
-        topBar = {
-            currentDirectory?.let { directory ->
-                FileManagerTopAppBar(
-                    currentDirectory = directory,
-                    canNavigateUp = canNavigateUp,
-                    onNavigateUp = {
-                        if (canNavigateUp) {
-                            viewModel.navigateUp()
-                        } else {
-                            navController.navigate("home") {
-                                popUpTo("home") { inclusive = false }
-                                launchSingleTop = true
-                                anim {
-                                    enter = 0
-                                    exit = 0
-                                    popEnter = 0
-                                    popExit = 0
+    Box(modifier = Modifier.fillMaxSize()) {
+        Scaffold(
+            topBar = {
+                currentDirectory?.let { directory ->
+                    FileManagerTopAppBar(
+                        currentDirectory = directory,
+                        canNavigateUp = canNavigateUp,
+                        onNavigateUp = {
+                            if (canNavigateUp) {
+                                viewModel.navigateUp()
+                            } else {
+                                navController.navigate("home") {
+                                    popUpTo("home") { inclusive = false }
+                                    launchSingleTop = true
+                                    anim {
+                                        enter = 0
+                                        exit = 0
+                                        popEnter = 0
+                                        popExit = 0
+                                    }
                                 }
                             }
-                        }
-                    },
-                    onSetSortOrder = viewModel::setSortOrder,
-                    onShowCreateFolderDialog = { showCreateFolderDialog = true },
-                    isClipboardEmpty = clipboardItem == null,
-                    onPaste = viewModel::paste,
-                    onChangeRoot = {
-                        val intent = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                            Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION).apply {
+                        },
+                        onSetSortOrder = viewModel::setSortOrder,
+                        onShowCreateFolderDialog = { showCreateFolderDialog = true },
+                        isClipboardEmpty = clipboardItem == null,
+                        onPaste = viewModel::paste,
+                        onChangeRoot = {
+                            val intent = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                                Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION).apply {
+                                    data = Uri.parse("package:${context.packageName}")
+                                }
+                            } else {
+                                null
+                            }
+                            if (intent != null) {
+                                launcher.launch(intent)
+                            }
+                        },
+                        onTitleClick = { showFullPath = true }
+                    )
+                }
+            },
+            floatingActionButton = {
+                if (currentDirectory != null) {
+                    FloatingActionButton(onClick = { showCreateFileDialog = true }) {
+                        Icon(Icons.Default.Add, contentDescription = "Create file")
+                    }
+                }
+            }
+        ) { padding ->
+            Box(modifier = Modifier.padding(padding)) {
+                if (currentDirectory != null) {
+                    PullToRefreshBox(isRefreshing = isRefreshing, onRefresh = { viewModel.refresh() }) {
+                        DirectoryContent(
+                            viewModel = viewModel,
+                            cutItemUri = cutItemUri,
+                            onCopy = viewModel::copy,
+                            onCut = viewModel::cut,
+                            onDelete = { showDeleteConfirmationDialog = it }
+                        )
+                    }
+                } else {
+                    PermissionRequestScreen {
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                            val intent = Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION).apply {
                                 data = Uri.parse("package:${context.packageName}")
                             }
-                        } else {
-                            null
-                        }
-                        if (intent != null) {
                             launcher.launch(intent)
+                        } else {
+                            // Fallback or legacy permission request could be added here
+                            Toast.makeText(context, "All files access is required.", Toast.LENGTH_LONG).show()
                         }
                     }
-                )
-            }
-        },
-        floatingActionButton = {
-            if (currentDirectory != null) {
-                FloatingActionButton(onClick = { showCreateFileDialog = true }) {
-                    Icon(Icons.Default.Add, contentDescription = "Create file")
                 }
             }
         }
-    ) { padding ->
-        Box(modifier = Modifier.padding(padding)) {
-            if (currentDirectory != null) {
-                PullToRefreshBox(isRefreshing = isRefreshing, onRefresh = { viewModel.refresh() }) {
-                    DirectoryContent(
-                        viewModel = viewModel,
-                        cutItemUri = cutItemUri,
-                        onCopy = viewModel::copy,
-                        onCut = viewModel::cut,
-                        onDelete = { showDeleteConfirmationDialog = it }
+
+        AnimatedVisibility(
+            visible = showFullPath,
+            enter = fadeIn(),
+            exit = fadeOut()
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black.copy(alpha = 0.4f))
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null
+                    ) { showFullPath = false },
+                contentAlignment = Alignment.TopStart
+            ) {
+                Surface(
+                    color = MaterialTheme.colorScheme.primaryContainer,
+                    shape = RoundedCornerShape(8.dp),
+                    tonalElevation = 4.dp,
+                    shadowElevation = 8.dp,
+                    modifier = Modifier
+                        .padding(top = 48.dp, start = 56.dp, end = 16.dp)
+                ) {
+                    Text(
+                        text = fullPath,
+                        modifier = Modifier.padding(12.dp),
+                        style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
+                        color = MaterialTheme.colorScheme.onPrimaryContainer
                     )
-                }
-            } else {
-                PermissionRequestScreen {
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                        val intent = Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION).apply {
-                            data = Uri.parse("package:${context.packageName}")
-                        }
-                        launcher.launch(intent)
-                    } else {
-                        // Fallback or legacy permission request could be added here
-                        Toast.makeText(context, "All files access is required.", Toast.LENGTH_LONG).show()
-                    }
                 }
             }
         }
@@ -356,7 +426,8 @@ fun FileManagerTopAppBar(
     onShowCreateFolderDialog: () -> Unit,
     isClipboardEmpty: Boolean,
     onPaste: () -> Unit,
-    onChangeRoot: () -> Unit
+    onChangeRoot: () -> Unit,
+    onTitleClick: () -> Unit
 ) {
     val context = LocalContext.current
     val directoryName = remember(currentDirectory) {
@@ -373,7 +444,17 @@ fun FileManagerTopAppBar(
     var showSortMenu by remember { mutableStateOf(false) }
     var showMoreMenu by remember { mutableStateOf(false) }
     TopAppBar(
-        title = { Text(directoryName, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+        title = {
+            Text(
+                text = directoryName,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null
+                ) { onTitleClick() }
+            )
+        },
         navigationIcon = {
             IconButton(onClick = onNavigateUp) {
                 Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Navigate up")
