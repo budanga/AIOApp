@@ -8,15 +8,15 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.io.IOException
-import kotlinx.coroutines.flow.SharingStarted
 
-private val THEME_KEY = stringPreferencesKey("theme")
 private val Context.dataStore by preferencesDataStore("settings")
+private val THEME_KEY = stringPreferencesKey("theme")
 
 class MainViewModel(application: Application) : AndroidViewModel(application) {
 
@@ -39,8 +39,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun setTheme(themeName: String) {
         viewModelScope.launch {
-            getApplication<Application>().dataStore.edit {
-                it[THEME_KEY] = themeName
+            getApplication<Application>().dataStore.edit { preferences ->
+                preferences[THEME_KEY] = themeName
             }
         }
     }

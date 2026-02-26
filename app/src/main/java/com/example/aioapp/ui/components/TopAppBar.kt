@@ -27,34 +27,35 @@ import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun TopAppBar(currentScreen: String, navController: NavController, drawerState: DrawerState, scope: CoroutineScope) {
-    val gradientColors = Brush.horizontalGradient(
-        colors = listOf(
-            GradientStart,
-            GradientMid1,
-            GradientMid2,
-            GradientMid3,
-            GradientEnd
-        )
-    )
-    val fontFamily = FontFamily(Font(R.font.bbhbogle_regular))
-
+fun TopAppBar(
+    currentScreen: String,
+    navController: NavController,
+    drawerState: DrawerState,
+    scope: CoroutineScope
+) {
     CenterAlignedTopAppBar(
         title = {
             if (currentScreen == "home") {
                 Text(
                     text = "AIOApp",
                     style = TextStyle(
-                        brush = gradientColors,
-                        fontFamily = fontFamily,
+                        brush = Brush.horizontalGradient(
+                            colors = listOf(
+                                GradientStart,
+                                GradientMid1,
+                                GradientMid2,
+                                GradientMid3,
+                                GradientEnd
+                            )
+                        ),
+                        fontFamily = FontFamily(Font(R.font.bbhbogle_regular)),
                         fontSize = 32.sp
                     )
                 )
             } else {
-                val title = if (currentScreen == "filemanager") {
-                    "File Manager"
-                } else {
-                    currentScreen.replaceFirstChar { it.uppercase() }
+                val title = when (currentScreen) {
+                    "filemanager" -> "File Manager"
+                    else -> currentScreen.replaceFirstChar { it.uppercase() }
                 }
                 Text(text = title)
             }

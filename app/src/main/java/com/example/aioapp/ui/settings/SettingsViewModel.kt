@@ -1,29 +1,5 @@
 package com.example.aioapp.ui.settings
 
-import android.app.Application
-import android.content.Context
-import androidx.datastore.preferences.core.edit
-import androidx.datastore.preferences.core.stringPreferencesKey
-import androidx.datastore.preferences.preferencesDataStore
-import androidx.lifecycle.AndroidViewModel
-import androidx.lifecycle.viewModelScope
-import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.launch
+import androidx.lifecycle.ViewModel
 
-private val THEME_KEY = stringPreferencesKey("theme")
-private val Context.dataStore by preferencesDataStore("settings")
-
-class SettingsViewModel(application: Application) : AndroidViewModel(application) {
-
-    val theme = getApplication<Application>().dataStore.data.map {
-        it[THEME_KEY] ?: "System"
-    }
-
-    fun setTheme(theme: String) {
-        viewModelScope.launch {
-            getApplication<Application>().dataStore.edit {
-                it[THEME_KEY] = theme
-            }
-        }
-    }
-}
+class SettingsViewModel : ViewModel()
