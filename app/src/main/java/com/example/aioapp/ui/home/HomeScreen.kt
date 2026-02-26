@@ -1,5 +1,7 @@
 package com.example.aioapp.ui.home
 
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -10,16 +12,18 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.example.aioapp.core.model.Functionality
@@ -32,8 +36,8 @@ fun HomeScreen(padding: PaddingValues, navController: NavController) {
         modifier = Modifier.padding(padding).fillMaxSize(),
         contentPadding = PaddingValues(16.dp)
     ) {
-        items(functionalities) { functionality ->
-            FunctionalityItem(functionality = functionality) {
+        itemsIndexed(functionalities) { index, functionality ->
+            FunctionalityItem(functionality = functionality, index = index) {
                 navController.navigate(functionality.route)
             }
         }
@@ -44,12 +48,29 @@ fun HomeScreen(padding: PaddingValues, navController: NavController) {
 @Composable
 fun FunctionalityItem(
     functionality: Functionality,
+    index: Int,
     onClick: () -> Unit
 ) {
+    val animatedProgress = remember { Animatable(0f) }
+    LaunchedEffect(Unit) {
+        animatedProgress.animateTo(
+            targetValue = 1f,
+            animationSpec = tween(durationMillis = 250, delayMillis = index * 40)
+        )
+    }
+
     Card(
         onClick = onClick,
         shape = RoundedCornerShape(16.dp),
-        modifier = Modifier.size(150.dp).padding(8.dp)
+        modifier = Modifier
+            .size(150.dp)
+            .padding(8.dp)
+            .graphicsLayer {
+                alpha = animatedProgress.value
+                scaleX = 0.9f + (animatedProgress.value * 0.1f)
+                scaleY = 0.9f + (animatedProgress.value * 0.1f)
+                translationY = (1f - animatedProgress.value) * 40f
+            }
     ) {
         Column(
             modifier = Modifier.fillMaxSize().padding(16.dp),

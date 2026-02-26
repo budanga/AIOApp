@@ -88,7 +88,8 @@ import java.util.Locale
 @Composable
 fun FileManagerScreen(
     navController: NavController,
-    viewModel: FileManagerViewModel = viewModel()
+    viewModel: FileManagerViewModel = viewModel(),
+    theme: String = "System"
 ) {
     val currentDirectory by viewModel.currentDirectory.collectAsState()
     val canNavigateUp by viewModel.canNavigateUp.collectAsState()

@@ -17,11 +17,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.example.aioapp.R
-import com.example.aioapp.ui.theme.GradientEnd
-import com.example.aioapp.ui.theme.GradientMid1
-import com.example.aioapp.ui.theme.GradientMid2
-import com.example.aioapp.ui.theme.GradientMid3
-import com.example.aioapp.ui.theme.GradientStart
+import com.example.aioapp.ui.theme.LocalAppGradient
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 
@@ -33,6 +29,8 @@ fun TopAppBar(
     drawerState: DrawerState,
     scope: CoroutineScope
 ) {
+    val gradientColors = LocalAppGradient.current
+    
     CenterAlignedTopAppBar(
         title = {
             if (currentScreen == "home") {
@@ -40,13 +38,7 @@ fun TopAppBar(
                     text = "AIOApp",
                     style = TextStyle(
                         brush = Brush.horizontalGradient(
-                            colors = listOf(
-                                GradientStart,
-                                GradientMid1,
-                                GradientMid2,
-                                GradientMid3,
-                                GradientEnd
-                            )
+                            colors = gradientColors
                         ),
                         fontFamily = FontFamily(Font(R.font.bbhbogle_regular)),
                         fontSize = 40.sp
