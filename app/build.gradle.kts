@@ -17,9 +17,13 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    buildFeatures {
+        compose = true
+    }
+
     buildTypes {
         release {
-            isMinifyEnabled = false
+            isMinifyEnabled = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
@@ -30,13 +34,10 @@ android {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
     }
+}
 
-    kotlin {
-        jvmToolchain(11)
-    }
-    buildFeatures {
-        compose = true
-    }
+kotlin {
+    jvmToolchain(11)
 }
 
 dependencies {
@@ -51,7 +52,8 @@ dependencies {
     implementation(libs.androidx.core.splashscreen)
     implementation(libs.material)
     implementation(libs.androidx.navigation.compose)
-    implementation("androidx.documentfile:documentfile:1.1.0")
+    implementation(libs.androidx.documentfile)
+    implementation(libs.androidx.compose.ui.text.google.fonts)
     implementation(libs.androidx.datastore.preferences)
     implementation(libs.coil.compose)
     implementation(libs.androidx.material.icons.extended)

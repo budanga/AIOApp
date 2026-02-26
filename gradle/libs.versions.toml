@@ -1,5 +1,6 @@
 [versions]
 agp = "9.0.1"
+documentfile = "1.1.0"
 kotlin = "2.3.10"
 
 coreKtx = "1.17.0"
@@ -16,9 +17,12 @@ coil = "2.7.0"
 material = "1.13.0"
 materialIconsExtended = "1.7.8"
 datastorePreferences = "1.2.0"
+uiTextGoogleFonts = "1.10.4"
 
 [libraries]
+androidx-compose-ui-text-google-fonts = { module = "androidx.compose.ui:ui-text-google-fonts", version.ref = "uiTextGoogleFonts" }
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
+androidx-documentfile = { module = "androidx.documentfile:documentfile", version.ref = "documentfile" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }
 androidx-junit = { group = "androidx.test.ext", name = "junit", version.ref = "junitVersion" }
 androidx-espresso-core = { group = "androidx.test.espresso", name = "espresso-core", version.ref = "espressoCore" }

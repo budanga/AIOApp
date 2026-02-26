@@ -47,12 +47,12 @@ class MainActivity : ComponentActivity() {
                 ) {
                     Scaffold(
                         topBar = {
-                            if (currentScreen != "filemanager") {
+                            if (currentScreen != "filemanager" && currentScreen != "notes") {
                                 TopAppBar(currentScreen = currentScreen, navController = navController, drawerState = drawerState, scope = scope)
                             }
                         }
                     ) { padding ->
-                        AppNavHost(navController = navController, viewModel = viewModel, padding = padding)
+                        AppNavHost(navController = navController, viewModel = viewModel, padding = padding, drawerState = drawerState)
                     }
                 }
             }

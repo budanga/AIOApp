@@ -1,7 +1,9 @@
 package com.example.aioapp.core.navigation
 
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.material3.DrawerState
 import androidx.compose.runtime.Composable
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -9,10 +11,16 @@ import com.example.aioapp.MainViewModel
 import com.example.aioapp.ui.filemanager.FileManagerScreen
 import com.example.aioapp.ui.home.HomeScreen
 import com.example.aioapp.ui.notes.NotesScreen
+import com.example.aioapp.ui.notes.NotesViewModel
 import com.example.aioapp.ui.settings.SettingsScreen
 
 @Composable
-fun AppNavHost(navController: NavHostController, viewModel: MainViewModel, padding: PaddingValues) {
+fun AppNavHost(
+    navController: NavHostController,
+    viewModel: MainViewModel,
+    padding: PaddingValues,
+    drawerState: DrawerState
+) {
     NavHost(
         navController = navController,
         startDestination = "home"
@@ -26,7 +34,13 @@ fun AppNavHost(navController: NavHostController, viewModel: MainViewModel, paddi
         }
 
         composable("notes") {
-            NotesScreen()
+            val notesViewModel: NotesViewModel = viewModel()
+            NotesScreen(
+                viewModel = notesViewModel,
+                padding = padding,
+                navController = navController,
+                drawerState = drawerState
+            )
         }
 
         composable("settings") {
