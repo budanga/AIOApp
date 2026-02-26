@@ -1,6 +1,7 @@
 package com.example.aioapp.ui.components
 
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Settings
@@ -23,7 +24,9 @@ fun AppDrawer(
     drawerState: DrawerState,
     scope: CoroutineScope
 ) {
-    ModalDrawerSheet {
+    ModalDrawerSheet(
+        modifier = Modifier.fillMaxWidth(0.7f)
+    ) {
         Spacer(Modifier.padding(16.dp))
         functionalities.forEach { functionality ->
             NavigationDrawerItem(

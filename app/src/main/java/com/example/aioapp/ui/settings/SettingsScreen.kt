@@ -4,7 +4,9 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
@@ -12,7 +14,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.example.aioapp.MainViewModel
 
 @Composable
@@ -20,14 +24,41 @@ fun SettingsScreen(viewModel: MainViewModel, padding: PaddingValues) {
     val currentTheme = viewModel.theme.collectAsState(initial = "System").value
 
     Column(modifier = Modifier.padding(padding)) {
-        ThemeOption(label = "System", isSelected = currentTheme == "System") {
-            viewModel.setTheme("System")
+        Spacer(modifier = Modifier.height(8.dp))
+        
+        // Theme Category
+        SettingsCategory(title = "Theme") {
+            ThemeOption(label = "System", isSelected = currentTheme == "System") {
+                viewModel.setTheme("System")
+            }
+            ThemeOption(label = "Light mode", isSelected = currentTheme == "Light") {
+                viewModel.setTheme("Light")
+            }
+            ThemeOption(label = "Dark mode", isSelected = currentTheme == "Dark") {
+                viewModel.setTheme("Dark")
+            }
         }
-        ThemeOption(label = "Dark mode", isSelected = currentTheme == "Dark") {
-            viewModel.setTheme("Dark")
-        }
-        ThemeOption(label = "Light mode", isSelected = currentTheme == "Light") {
-            viewModel.setTheme("Light")
+    }
+}
+
+@Composable
+fun SettingsCategory(
+    title: String,
+    content: @Composable () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp)
+    ) {
+        Text(
+            text = title,
+            fontSize = 20.sp,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+        )
+        Column {
+            content()
         }
     }
 }
@@ -38,10 +69,14 @@ fun ThemeOption(label: String, isSelected: Boolean, onClick: () -> Unit) {
         modifier = Modifier
             .fillMaxWidth()
             .clickable { onClick() }
-            .padding(16.dp),
+            .padding(horizontal = 16.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         RadioButton(selected = isSelected, onClick = onClick)
-        Text(text = label, modifier = Modifier.padding(start = 8.dp))
+        Text(
+            text = label,
+            fontSize = 14.sp,
+            modifier = Modifier.padding(start = 8.dp)
+        )
     }
 }

@@ -26,11 +26,13 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         setTheme(R.style.Theme_AIOApp)
         setContent {
-            val theme = viewModel.theme.collectAsState(initial = "System").value
+            val theme by viewModel.theme.collectAsState()
+            val systemDarkTheme = isSystemInDarkTheme()
             val useDarkTheme = when (theme) {
                 "Dark" -> true
                 "Light" -> false
-                else -> isSystemInDarkTheme()
+                "System" -> systemDarkTheme
+                else -> systemDarkTheme
             }
             AIOAppTheme(darkTheme = useDarkTheme) {
                 val navController = rememberNavController()
