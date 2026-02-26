@@ -12,13 +12,21 @@ import com.example.aioapp.ui.notes.NotesScreen
 import com.example.aioapp.ui.settings.SettingsScreen
 
 @Composable
-fun AppNavHost(navController: NavHostController, viewModel: MainViewModel, padding: PaddingValues) {
+fun AppNavHost(
+    navController: NavHostController,
+    viewModel: MainViewModel,
+    padding: PaddingValues
+) {
     NavHost(
         navController = navController,
         startDestination = "home"
     ) {
         composable("home") {
-            HomeScreen(padding = padding, navController = navController)
+            HomeScreen(
+                onFeatureClick = { route ->
+                    navController.navigate(route)
+                }
+            )
         }
 
         composable("filemanager") {
