@@ -33,6 +33,8 @@ val LocalAppGradient = staticCompositionLocalOf {
     listOf(GradientStart, GradientMid1, GradientMid2, GradientMid3, GradientEnd)
 }
 
+val LocalDarkTheme = staticCompositionLocalOf { false }
+
 @Composable
 fun AIOAppTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
@@ -47,7 +49,10 @@ fun AIOAppTheme(
         baseColors.map { Color(1f - it.red, 1f - it.green, 1f - it.blue, it.alpha) }
     }
 
-    CompositionLocalProvider(LocalAppGradient provides gradientColors) {
+    CompositionLocalProvider(
+        LocalAppGradient provides gradientColors,
+        LocalDarkTheme provides darkTheme
+    ) {
         MaterialTheme(
             colorScheme = colorScheme,
             content = content

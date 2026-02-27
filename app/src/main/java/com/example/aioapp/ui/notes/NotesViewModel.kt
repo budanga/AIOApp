@@ -4,41 +4,38 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.aioapp.core.model.Note
 import com.example.aioapp.core.model.NoteSortOrder
+import com.example.aioapp.core.repository.NoteRepository
+import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.stateIn
-import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 import java.util.UUID
+import javax.inject.Inject
 
-class NotesViewModel : ViewModel() {
-    private val _notes = MutableStateFlow<List<Note>>(emptyList())
+@HiltViewModel
+class NotesViewModel @Inject constructor(
+    private val repository: NoteRepository
+) : ViewModel() {
     
     private val _sortOrder = MutableStateFlow(NoteSortOrder.CREATION_DATE)
     val sortOrder: StateFlow<NoteSortOrder> = _sortOrder.asStateFlow()
 
-    val notes: StateFlow<List<Note>> = combine(_notes, _sortOrder) { notes, order ->
-        when (order) {
-            NoteSortOrder.ALPHABETICAL -> notes.sortedBy { it.title }
-            NoteSortOrder.CREATION_DATE -> notes.sortedByDescending { it.createdAt }
-            NoteSortOrder.MODIFICATION_DATE -> notes.sortedByDescending { it.modifiedAt }
-        }
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val notes: StateFlow<List<Note>> = _sortOrder.flatMapLatest { order ->
+        repository.getNotes(order)
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5000),
         initialValue = emptyList()
     )
 
-    fun isTitleUnique(title: String, excludeId: String? = null): Boolean {
-        return _notes.value.none { 
-            it.title.trim().equals(title.trim(), ignoreCase = true) && it.id != excludeId 
-        }
-    }
-
-    fun addNote(title: String, content: String, color: Int): Boolean {
-        if (!isTitleUnique(title)) return false
+    suspend fun addNote(title: String, content: String, color: Int): Boolean {
+        if (!repository.isTitleUnique(title, null)) return false
         
         val newNote = Note(
             id = UUID.randomUUID().toString(),
@@ -48,30 +45,28 @@ class NotesViewModel : ViewModel() {
             createdAt = System.currentTimeMillis(),
             modifiedAt = System.currentTimeMillis()
         )
-        _notes.update { it + newNote }
+        
+        repository.insertNote(newNote)
         return true
     }
 
-    fun updateNote(id: String, title: String, content: String): Boolean {
-        if (!isTitleUnique(title, id)) return false
+    suspend fun updateNote(id: String, title: String, content: String): Boolean {
+        if (!repository.isTitleUnique(title, id)) return false
 
-        _notes.update { list ->
-            list.map {
-                if (it.id == id) {
-                    it.copy(
-                        title = title.trim(),
-                        content = content,
-                        modifiedAt = System.currentTimeMillis()
-                    )
-                } else it
-            }
-        }
+        val currentNote = notes.value.find { it.id == id } ?: return false
+        val updatedNote = currentNote.copy(
+            title = title.trim(),
+            content = content,
+            modifiedAt = System.currentTimeMillis()
+        )
+        
+        repository.updateNote(updatedNote)
         return true
     }
 
     fun deleteNotes(ids: Set<String>) {
-        _notes.update { list ->
-            list.filterNot { it.id in ids }
+        viewModelScope.launch {
+            repository.deleteNotes(ids.toList())
         }
     }
 

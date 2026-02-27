@@ -18,7 +18,9 @@ import com.example.aioapp.core.navigation.AppNavHost
 import com.example.aioapp.ui.components.AppDrawer
 import com.example.aioapp.ui.components.TopAppBar
 import com.example.aioapp.ui.theme.AIOAppTheme
+import dagger.hilt.android.AndroidEntryPoint
 
+@AndroidEntryPoint
 class MainActivity : ComponentActivity() {
 
     private val viewModel: MainViewModel by viewModels()

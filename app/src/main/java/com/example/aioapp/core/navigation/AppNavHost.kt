@@ -8,7 +8,7 @@ import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.material3.DrawerState
 import androidx.compose.runtime.Composable
-import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -43,7 +43,7 @@ fun AppNavHost(
         }
 
         composable("notes") {
-            val notesViewModel: NotesViewModel = viewModel()
+            val notesViewModel: NotesViewModel = hiltViewModel()
             NotesScreen(
                 viewModel = notesViewModel,
                 padding = padding,

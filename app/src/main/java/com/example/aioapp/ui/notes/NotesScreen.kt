@@ -11,12 +11,13 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Sort
@@ -34,6 +35,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
@@ -86,7 +88,6 @@ fun NotesScreen(
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
-            // Moved to content to match ViewEditNoteScreen's positioning relative to system insets
         },
         floatingActionButton = {
             AnimatedVisibility(
@@ -299,10 +300,12 @@ fun NotesScreen(
             AddNoteDialog(
                 onDismiss = { showAddDialog = false },
                 onConfirm = { title, content, color ->
-                    if (viewModel.addNote(title, content, color)) {
-                        showAddDialog = false
-                    } else {
-                        scope.launch { snackbarHostState.showSnackbar("Note title must be unique") }
+                    scope.launch {
+                        if (viewModel.addNote(title, content, color)) {
+                            showAddDialog = false
+                        } else {
+                            snackbarHostState.showSnackbar("Note title must be unique")
+                        }
                     }
                 },
                 appGradient = appGradient
@@ -321,13 +324,15 @@ fun NoteItem(
 ) {
     val dateFormat = remember { SimpleDateFormat("MMM d, yyyy", Locale.getDefault()) }
     val dateString = dateFormat.format(Date(note.createdAt))
+    val baseColor = Color(note.color)
+    val contentColor = if (baseColor.luminance() > 0.5f) Color.Black else Color.White
 
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .combinedClickable(onClick = onClick, onLongClick = onLongClick)
             .then(if (isSelected) Modifier.border(2.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(12.dp)) else Modifier),
-        colors = CardDefaults.cardColors(containerColor = Color(note.color).copy(alpha = if (isSelected) 0.7f else 1f)),
+        colors = CardDefaults.cardColors(containerColor = baseColor.copy(alpha = if (isSelected) 0.7f else 1f)),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
@@ -342,13 +347,13 @@ fun NoteItem(
                         fontWeight = FontWeight.Bold,
                         style = MaterialTheme.typography.titleMedium,
                         modifier = Modifier.weight(1f),
-                        color = Color.Black
+                        color = contentColor
                     )
                 }
                 Text(
                     text = dateString,
                     style = MaterialTheme.typography.labelSmall,
-                    color = Color.Black.copy(alpha = 0.6f)
+                    color = contentColor.copy(alpha = 0.6f)
                 )
             }
             if (note.content.isNotBlank()) {
@@ -357,7 +362,7 @@ fun NoteItem(
                     text = note.content,
                     style = MaterialTheme.typography.bodyMedium,
                     maxLines = 3,
-                    color = Color.Black.copy(alpha = 0.8f)
+                    color = contentColor.copy(alpha = 0.8f)
                 )
             }
         }
@@ -378,15 +383,21 @@ fun ViewEditNoteScreen(
     var content by remember { mutableStateOf(note.content) }
     val dateFormat = remember { SimpleDateFormat("MMM d, yyyy", Locale.getDefault()) }
     val dateString = dateFormat.format(Date(note.createdAt))
+    val scope = rememberCoroutineScope()
 
-    val isDark = isSystemInDarkTheme()
+    val isDarkApp = LocalDarkTheme.current
     val baseColor = Color(note.color)
-    val noteGradient = remember(baseColor, isDark) {
+    val isLightNote = baseColor.luminance() > 0.5f
+    val contentColor = if (isLightNote) Color.Black else Color.White
+
+    val noteGradient = remember(baseColor, isDarkApp, isLightNote) {
         val shift = 0.35f
-        val bottomColor = if (isDark) {
-            lerp(baseColor, Color.Black, shift)
+        val bottomColor = if (isDarkApp) {
+            val target = if (isLightNote) Color(0xFF444444) else Color.Black
+            lerp(baseColor, target, shift)
         } else {
-            lerp(baseColor, Color.White, shift)
+            val target = if (!isLightNote) Color(0xFFBBBBBB) else Color.White
+            lerp(baseColor, target, shift)
         }
         Brush.verticalGradient(
             colors = listOf(baseColor, bottomColor)
@@ -394,7 +405,7 @@ fun ViewEditNoteScreen(
     }
 
     Scaffold(
-        modifier = Modifier.background(noteGradient),
+        modifier = Modifier.fillMaxSize().background(noteGradient),
         topBar = {
             Column {
                 TopAppBar(
@@ -403,19 +414,19 @@ fun ViewEditNoteScreen(
                     title = { },
                     navigationIcon = {
                         IconButton(onClick = onDismiss) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Color.Black)
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = contentColor)
                         }
                     },
                     colors = TopAppBarDefaults.topAppBarColors(
                         containerColor = Color.Transparent,
-                        titleContentColor = Color.Black,
-                        navigationIconContentColor = Color.Black
+                        titleContentColor = contentColor,
+                        navigationIconContentColor = contentColor
                     )
                 )
                 HorizontalDivider(
                     modifier = Modifier.fillMaxWidth(),
                     thickness = 0.5.dp,
-                    color = Color.Black.copy(alpha = 0.1f)
+                    color = contentColor.copy(alpha = 0.1f)
                 )
             }
         },
@@ -446,10 +457,12 @@ fun ViewEditNoteScreen(
                         indication = LocalIndication.current
                     ) {
                         if (isEditing) {
-                            if (viewModel.updateNote(note.id, title, content)) {
-                                isEditing = false
-                            } else {
-                                onUniqueError()
+                            scope.launch {
+                                if (viewModel.updateNote(note.id, title, content)) {
+                                    isEditing = false
+                                } else {
+                                    onUniqueError()
+                                }
                             }
                         } else {
                             isEditing = true
@@ -492,8 +505,8 @@ fun ViewEditNoteScreen(
                         .padding(16.dp)
                 ) {
                     if (editing) {
-                        val bentoContainerColor = Color.Black.copy(alpha = 0.05f)
-                        val bentoBorderColor = Color.Black.copy(alpha = 0.1f)
+                        val bentoContainerColor = contentColor.copy(alpha = 0.05f)
+                        val bentoBorderColor = contentColor.copy(alpha = 0.1f)
 
                         Card(
                             modifier = Modifier
@@ -506,15 +519,15 @@ fun ViewEditNoteScreen(
                                 value = title,
                                 onValueChange = { title = it },
                                 modifier = Modifier.fillMaxWidth(),
-                                textStyle = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold, color = Color.Black),
-                                placeholder = { Text("Title", color = Color.Black.copy(alpha = 0.5f)) },
+                                textStyle = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold, color = contentColor),
+                                placeholder = { Text("Title", color = contentColor.copy(alpha = 0.5f)) },
                                 colors = TextFieldDefaults.colors(
                                     focusedContainerColor = Color.Transparent,
                                     unfocusedContainerColor = Color.Transparent,
                                     focusedIndicatorColor = Color.Transparent,
                                     unfocusedIndicatorColor = Color.Transparent,
-                                    focusedTextColor = Color.Black,
-                                    unfocusedTextColor = Color.Black
+                                    focusedTextColor = contentColor,
+                                    unfocusedTextColor = contentColor
                                 )
                             )
                         }
@@ -531,15 +544,15 @@ fun ViewEditNoteScreen(
                                 value = content,
                                 onValueChange = { content = it },
                                 modifier = Modifier.fillMaxSize(),
-                                textStyle = MaterialTheme.typography.bodyLarge.copy(color = Color.Black),
-                                placeholder = { Text("Start typing...", color = Color.Black.copy(alpha = 0.5f)) },
+                                textStyle = MaterialTheme.typography.bodyLarge.copy(color = contentColor),
+                                placeholder = { Text("Start typing...", color = contentColor.copy(alpha = 0.5f)) },
                                 colors = TextFieldDefaults.colors(
                                     focusedContainerColor = Color.Transparent,
                                     unfocusedContainerColor = Color.Transparent,
                                     focusedIndicatorColor = Color.Transparent,
                                     unfocusedIndicatorColor = Color.Transparent,
-                                    focusedTextColor = Color.Black,
-                                    unfocusedTextColor = Color.Black
+                                    focusedTextColor = contentColor,
+                                    unfocusedTextColor = contentColor
                                 )
                             )
                         }
@@ -548,14 +561,14 @@ fun ViewEditNoteScreen(
                             text = title,
                             style = MaterialTheme.typography.headlineMedium,
                             fontWeight = FontWeight.Bold,
-                            color = Color.Black
+                            color = contentColor
                         )
                         Spacer(modifier = Modifier.height(16.dp))
                         Text(
                             text = content,
                             style = MaterialTheme.typography.bodyLarge,
                             modifier = Modifier.weight(1f),
-                            color = Color.Black
+                            color = contentColor
                         )
                     }
                     Spacer(modifier = Modifier.height(48.dp))
@@ -568,7 +581,7 @@ fun ViewEditNoteScreen(
                     .align(Alignment.BottomStart)
                     .padding(16.dp),
                 style = MaterialTheme.typography.labelMedium,
-                color = Color.Black.copy(alpha = 0.6f)
+                color = contentColor.copy(alpha = 0.6f)
             )
         }
     }
@@ -593,7 +606,10 @@ fun AddNoteDialog(
         containerColor = MaterialTheme.colorScheme.background,
         title = { Text("New Note", color = MaterialTheme.colorScheme.onBackground) },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Column(
+                modifier = Modifier.verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -649,7 +665,15 @@ fun AddNoteDialog(
                                     .size(36.dp)
                                     .background(color, CircleShape)
                                     .clickable { selectedColor = color }
-                                    .border(if (selectedColor == color) 2.dp else 0.dp, Color.Black, CircleShape)
+                                    .border(
+                                        width = if (selectedColor == color) 2.dp else 1.dp,
+                                        color = if (selectedColor == color) {
+                                            MaterialTheme.colorScheme.primary
+                                        } else {
+                                            MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f)
+                                        }, 
+                                        shape = CircleShape
+                                    )
                             )
                         }
                     }
