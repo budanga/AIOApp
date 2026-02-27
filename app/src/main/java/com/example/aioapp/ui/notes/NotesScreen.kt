@@ -204,7 +204,7 @@ fun NotesScreen(
                             navigationIcon = {
                                 if (isSelectionMode) {
                                     IconButton(onClick = { selectedNoteIds = emptySet() }) {
-                                        Icon(Icons.Default.Close, contentDescription = "Clear Selection", tint = MaterialTheme.colorScheme.onSurface)
+                                        Icon(Icons.Default.Close, contentDescription = "Clear Selection", tint = MaterialTheme.colorScheme.onSurface, modifier = Modifier.size(28.dp))
                                     }
                                 } else {
                                     DefaultNavigationIcon(navController, drawerState, scope)
@@ -221,12 +221,12 @@ fun NotesScreen(
                                             snackbarHostState.showSnackbar(msg)
                                         }
                                     }) {
-                                        Icon(Icons.Default.Delete, contentDescription = "Delete", tint = Color.Red)
+                                        Icon(Icons.Default.Delete, contentDescription = "Delete", tint = Color.Red, modifier = Modifier.size(28.dp))
                                     }
                                 }
                                 Box {
                                     IconButton(onClick = { showSortMenu = true }) {
-                                        Icon(Icons.AutoMirrored.Filled.Sort, contentDescription = "Sort", tint = MaterialTheme.colorScheme.onSurface)
+                                        Icon(Icons.AutoMirrored.Filled.Sort, contentDescription = "Sort", tint = MaterialTheme.colorScheme.onSurface, modifier = Modifier.size(28.dp))
                                     }
                                     DropdownMenu(
                                         expanded = showSortMenu,
@@ -454,7 +454,7 @@ fun ViewEditNoteScreen(
                 },
                 navigationIcon = {
                     IconButton(onClick = onDismiss) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = contentColor)
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = contentColor, modifier = Modifier.size(28.dp))
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(

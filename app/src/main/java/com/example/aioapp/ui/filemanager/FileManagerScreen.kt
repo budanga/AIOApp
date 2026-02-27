@@ -488,18 +488,18 @@ fun SelectionTopAppBar(
         title = { Text("$selectedCount Selected") },
         navigationIcon = {
             IconButton(onClick = onClearSelection) {
-                Icon(Icons.Default.Close, contentDescription = "Cancel")
+                Icon(Icons.Default.Close, contentDescription = "Cancel", modifier = Modifier.size(28.dp))
             }
         },
         actions = {
             IconButton(onClick = onCopy) {
-                Icon(Icons.Default.ContentCopy, contentDescription = "Copy")
+                Icon(Icons.Default.ContentCopy, contentDescription = "Copy", modifier = Modifier.size(28.dp))
             }
             IconButton(onClick = onCut) {
-                Icon(Icons.Default.ContentCut, contentDescription = "Cut")
+                Icon(Icons.Default.ContentCut, contentDescription = "Cut", modifier = Modifier.size(28.dp))
             }
             IconButton(onClick = onDelete) {
-                Icon(Icons.Default.Delete, contentDescription = "Delete")
+                Icon(Icons.Default.Delete, contentDescription = "Delete", modifier = Modifier.size(28.dp))
             }
         },
         colors = TopAppBarDefaults.topAppBarColors(
@@ -541,7 +541,7 @@ fun SearchTopAppBar(
                 trailingIcon = {
                     if (query.isNotEmpty()) {
                         IconButton(onClick = { onQueryChange("") }) {
-                            Icon(Icons.Default.Clear, contentDescription = "Clear search")
+                            Icon(Icons.Default.Clear, contentDescription = "Clear search", modifier = Modifier.size(28.dp))
                         }
                     }
                 }
@@ -549,7 +549,11 @@ fun SearchTopAppBar(
         },
         navigationIcon = {
             IconButton(onClick = onCloseSearch) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                Icon(
+                    Icons.AutoMirrored.Filled.ArrowBack, 
+                    contentDescription = "Back",
+                    modifier = Modifier.size(28.dp)
+                )
             }
         },
         colors = TopAppBarDefaults.topAppBarColors(
@@ -814,7 +818,7 @@ fun FileManagerTopAppBar(
             },
             navigationIcon = {
                 IconButton(onClick = onNavigateUp) {
-                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", modifier = Modifier.size(28.dp))
                 }
             },
             colors = TopAppBarDefaults.topAppBarColors(
@@ -845,17 +849,17 @@ fun FileManagerTopAppBar(
             
             Row(verticalAlignment = Alignment.CenterVertically) {
                 IconButton(onClick = onShowSearch) {
-                    Icon(Icons.Default.Search, contentDescription = "Search")
+                    Icon(Icons.Default.Search, contentDescription = "Search", modifier = Modifier.size(28.dp))
                 }
                 IconButton(onClick = onPaste, enabled = !isClipboardEmpty) {
-                    Icon(Icons.Default.ContentPaste, contentDescription = "Paste")
+                    Icon(Icons.Default.ContentPaste, contentDescription = "Paste", modifier = Modifier.size(28.dp))
                 }
                 IconButton(onClick = onShowCreateFolderDialog) {
-                    Icon(Icons.Default.CreateNewFolder, contentDescription = "Create folder")
+                    Icon(Icons.Default.CreateNewFolder, contentDescription = "Create folder", modifier = Modifier.size(28.dp))
                 }
                 Box {
                     IconButton(onClick = { showSortMenu = true }) {
-                        Icon(Icons.AutoMirrored.Filled.Sort, contentDescription = "Sort")
+                        Icon(Icons.AutoMirrored.Filled.Sort, contentDescription = "Sort", modifier = Modifier.size(28.dp))
                     }
                     DropdownMenu(expanded = showSortMenu, onDismissRequest = { showSortMenu = false }) {
                         DropdownMenuItem(text = { Text("Name (A-Z)") }, onClick = { onSetSortOrder(SortOrder.NAME_AZ); showSortMenu = false })

@@ -38,12 +38,12 @@ fun AioTopBar(
     modifier: Modifier = Modifier,
     windowInsets: WindowInsets = TopAppBarDefaults.windowInsets
 ) {
-    CenterAlignedTopAppBar(
+    androidx.compose.material3.TopAppBar(
         title = title,
         navigationIcon = navigationIcon,
         actions = actions,
         colors = colors,
-        modifier = modifier.height(56.dp),
+        modifier = modifier.height(72.dp),
         windowInsets = windowInsets
     )
 }
@@ -56,11 +56,19 @@ fun DefaultNavigationIcon(
 ) {
     if (navController.previousBackStackEntry != null) {
         IconButton(onClick = { navController.navigateUp() }) {
-            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+            Icon(
+                Icons.AutoMirrored.Filled.ArrowBack, 
+                contentDescription = "Back",
+                modifier = Modifier.size(28.dp)
+            )
         }
     } else {
         IconButton(onClick = { scope.launch { drawerState.open() } }) {
-            Icon(Icons.Filled.Menu, contentDescription = "Menu")
+            Icon(
+                Icons.Filled.Menu, 
+                contentDescription = "Menu",
+                modifier = Modifier.size(28.dp)
+            )
         }
     }
 }
