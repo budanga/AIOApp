@@ -6,6 +6,8 @@ import android.net.Uri
 import android.os.Build
 import android.os.Environment
 import android.provider.DocumentsContract
+import android.text.format.Formatter
+import androidx.compose.runtime.Stable
 import androidx.core.content.FileProvider
 import androidx.documentfile.provider.DocumentFile
 import androidx.lifecycle.AndroidViewModel
@@ -28,22 +30,31 @@ import kotlinx.coroutines.withContext
 import java.io.File
 import java.nio.file.Files
 import java.nio.file.attribute.BasicFileAttributes
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
+@Stable
 data class FileData(
     val uri: Uri,
     val name: String,
     val size: Long,
+    val formattedSize: String,
     val lastModified: Long,
+    val formattedDate: String,
     val creationTime: Long = 0L,
     val mimeType: String?,
     val path: String = ""
 )
 
+@Stable
 data class DirectoryData(
     val uri: Uri,
     val name: String,
     val size: Long = 0L,
+    val formattedSize: String = "",
     val lastModified: Long = 0L,
+    val formattedDate: String = "",
     val creationTime: Long = 0L,
     val path: String = ""
 )
@@ -69,6 +80,14 @@ enum class SortOrder {
 }
 
 class FileManagerViewModel(application: Application) : AndroidViewModel(application) {
+
+    companion object {
+        private val dateFormatter = SimpleDateFormat("MMM dd, yyyy", Locale.getDefault())
+        
+        fun formatDate(timestamp: Long): String {
+            return if (timestamp > 0) dateFormatter.format(Date(timestamp)) else ""
+        }
+    }
 
     private val directoryContentCache = mutableMapOf<Uri, Pair<List<DirectoryData>, List<FileData>>>()
     private val directorySizeCache = mutableMapOf<Uri, Long>()
@@ -101,6 +120,7 @@ class FileManagerViewModel(application: Application) : AndroidViewModel(applicat
     val clipboardItem: StateFlow<ClipboardItem?> = _clipboardItem.asStateFlow()
     val isRefreshing: StateFlow<Boolean> = _isRefreshing.asStateFlow()
     val toastMessage: SharedFlow<String> = _toastMessage.asSharedFlow()
+    val sortOrder: StateFlow<SortOrder> = _sortOrder.asStateFlow()
 
     val canNavigateUp: StateFlow<Boolean> = _directoryStack
         .map { it.isNotEmpty() }
@@ -227,9 +247,28 @@ class FileManagerViewModel(application: Application) : AndroidViewModel(applicat
                     for (file in files) {
                         if (file.name?.contains(query, ignoreCase = true) == true) {
                             if (file.isDirectory) {
-                                results.add(SearchResult.Directory(DirectoryData(file.uri, file.name ?: "", 0L, file.lastModified(), 0L, file.uri.toString())))
+                                results.add(SearchResult.Directory(DirectoryData(
+                                    file.uri, 
+                                    file.name ?: "", 
+                                    0L, 
+                                    "", 
+                                    file.lastModified(), 
+                                    formatDate(file.lastModified()), 
+                                    0L, 
+                                    file.uri.toString()
+                                )))
                             } else {
-                                results.add(SearchResult.File(FileData(file.uri, file.name ?: "", file.length(), file.lastModified(), 0L, file.type, file.uri.toString())))
+                                results.add(SearchResult.File(FileData(
+                                    file.uri, 
+                                    file.name ?: "", 
+                                    file.length(), 
+                                    Formatter.formatShortFileSize(getApplication(), file.length()), 
+                                    file.lastModified(), 
+                                    formatDate(file.lastModified()), 
+                                    0L, 
+                                    file.type, 
+                                    file.uri.toString()
+                                )))
                             }
                         }
                         if (file.isDirectory && depth < 2) {
@@ -463,7 +502,17 @@ class FileManagerViewModel(application: Application) : AndroidViewModel(applicat
 
         val directoryData = directoryDocs.map { 
             val cachedSize = directorySizeCache[it.uri] ?: 0L
-            DirectoryData(it.uri, it.name ?: "", cachedSize, it.lastModified(), 0L, it.uri.toString()) 
+            val formattedSize = if (cachedSize > 0) Formatter.formatShortFileSize(getApplication(), cachedSize) else ""
+            DirectoryData(
+                it.uri, 
+                it.name ?: "", 
+                cachedSize, 
+                formattedSize, 
+                it.lastModified(), 
+                formatDate(it.lastModified()), 
+                0L, 
+                it.uri.toString()
+            ) 
         }
         val fileData = mutableListOf<FileData>()
 
@@ -475,7 +524,17 @@ class FileManagerViewModel(application: Application) : AndroidViewModel(applicat
         fileDocs.chunked(30).forEach { chunk ->
             if (directoryUri != _currentDirectory.value) return@forEach
             val fileDataChunk = chunk.map { 
-                FileData(it.uri, it.name ?: "", it.length(), it.lastModified(), 0L, it.type, it.uri.toString()) 
+                FileData(
+                    it.uri, 
+                    it.name ?: "", 
+                    it.length(), 
+                    Formatter.formatShortFileSize(getApplication(), it.length()), 
+                    it.lastModified(), 
+                    formatDate(it.lastModified()), 
+                    0L, 
+                    it.type, 
+                    it.uri.toString()
+                ) 
             }
             fileData.addAll(fileDataChunk)
             if (directoryUri == _currentDirectory.value) {
@@ -495,17 +554,37 @@ class FileManagerViewModel(application: Application) : AndroidViewModel(applicat
                 Files.readAttributes(file.toPath(), BasicFileAttributes::class.java).creationTime().toMillis()
             } catch (e: Exception) { 0L }
         } else 0L
-        return FileData(Uri.fromFile(file), file.name, file.length(), file.lastModified(), creationTime, getMimeType(file), file.absolutePath)
+        return FileData(
+            Uri.fromFile(file), 
+            file.name, 
+            file.length(), 
+            Formatter.formatShortFileSize(getApplication(), file.length()), 
+            file.lastModified(), 
+            formatDate(file.lastModified()), 
+            creationTime, 
+            getMimeType(file), 
+            file.absolutePath
+        )
     }
 
     private fun createDirectoryData(file: File): DirectoryData {
         val cachedSize = directorySizeCache[Uri.fromFile(file)] ?: 0L
+        val formattedSize = if (cachedSize > 0) Formatter.formatShortFileSize(getApplication(), cachedSize) else ""
         val creationTime = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             try {
                 Files.readAttributes(file.toPath(), BasicFileAttributes::class.java).creationTime().toMillis()
             } catch (e: Exception) { 0L }
         } else 0L
-        return DirectoryData(Uri.fromFile(file), file.name, cachedSize, file.lastModified(), creationTime, file.absolutePath)
+        return DirectoryData(
+            Uri.fromFile(file), 
+            file.name, 
+            cachedSize, 
+            formattedSize, 
+            file.lastModified(), 
+            formatDate(file.lastModified()), 
+            creationTime, 
+            file.absolutePath
+        )
     }
 
     private fun startDirectorySizeCalculations(directories: List<DirectoryData>) {
@@ -560,13 +639,14 @@ class FileManagerViewModel(application: Application) : AndroidViewModel(applicat
     }
 
     private fun updateDirectorySize(uri: Uri, size: Long) {
+        val formattedSize = if (size > 0) Formatter.formatShortFileSize(getApplication(), size) else ""
         directorySizeCache[uri] = size
         _directories.value = _directories.value.map {
-            if (it.uri == uri) it.copy(size = size) else it
+            if (it.uri == uri) it.copy(size = size, formattedSize = formattedSize) else it
         }
         _currentDirectory.value?.let { currentUri ->
             directoryContentCache[currentUri]?.let { (dirs, files) ->
-                val updatedDirs = dirs.map { if (it.uri == uri) it.copy(size = size) else it }
+                val updatedDirs = dirs.map { if (it.uri == uri) it.copy(size = size, formattedSize = formattedSize) else it }
                 directoryContentCache[currentUri] = updatedDirs to files
             }
         }
@@ -576,8 +656,8 @@ class FileManagerViewModel(application: Application) : AndroidViewModel(applicat
         android.webkit.MimeTypeMap.getSingleton().getMimeTypeFromExtension(file.extension)
 
     private fun sortFiles(files: List<FileData>, sortOrder: SortOrder): List<FileData> = when (sortOrder) {
-        SortOrder.NAME_AZ -> files.sortedBy { it.name }
-        SortOrder.NAME_ZA -> files.sortedByDescending { it.name }
+        SortOrder.NAME_AZ -> files.sortedWith(compareBy(String.CASE_INSENSITIVE_ORDER) { it.name })
+        SortOrder.NAME_ZA -> files.sortedWith(compareByDescending(String.CASE_INSENSITIVE_ORDER) { it.name })
         SortOrder.SIZE_SMALLER -> files.sortedBy { it.size }
         SortOrder.SIZE_LARGER -> files.sortedByDescending { it.size }
         SortOrder.DATE_RECENT -> files.sortedByDescending { it.lastModified }
@@ -586,8 +666,8 @@ class FileManagerViewModel(application: Application) : AndroidViewModel(applicat
 
     private fun sortDirectories(directories: List<DirectoryData>, sortOrder: SortOrder): List<DirectoryData> = 
         when (sortOrder) {
-            SortOrder.NAME_AZ -> directories.sortedBy { it.name }
-            SortOrder.NAME_ZA -> directories.sortedByDescending { it.name }
+            SortOrder.NAME_AZ -> directories.sortedWith(compareBy(String.CASE_INSENSITIVE_ORDER) { it.name })
+            SortOrder.NAME_ZA -> directories.sortedWith(compareByDescending(String.CASE_INSENSITIVE_ORDER) { it.name })
             SortOrder.SIZE_SMALLER -> directories.sortedBy { it.size }
             SortOrder.SIZE_LARGER -> directories.sortedByDescending { it.size }
             SortOrder.DATE_RECENT -> directories.sortedByDescending { it.lastModified }

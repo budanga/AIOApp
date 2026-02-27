@@ -4,7 +4,6 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Build
 import android.provider.Settings
-import android.text.format.Formatter
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -18,6 +17,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.background
@@ -31,16 +31,19 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
@@ -111,7 +114,6 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.documentfile.provider.DocumentFile
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -120,9 +122,6 @@ import androidx.navigation.NavController
 import com.example.aioapp.R
 import com.example.aioapp.ui.theme.LocalAppGradient
 import kotlinx.coroutines.flow.collectLatest
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -150,7 +149,7 @@ fun FileManagerScreen(
     var isSearchBarVisible by remember { mutableStateOf(false) }
 
     val appGradientColors = LocalAppGradient.current
-    val appGradient = Brush.horizontalGradient(colors = appGradientColors)
+    val appGradient = remember(appGradientColors) { Brush.horizontalGradient(colors = appGradientColors) }
     val electrolize = FontFamily(Font(R.font.electrolize_regular))
 
     val fullPath = remember(currentDirectory) {
@@ -218,49 +217,56 @@ fun FileManagerScreen(
         Scaffold(
             topBar = {
                 currentDirectory?.let { directory ->
-                    if (selectedItems.isNotEmpty()) {
-                        SelectionTopAppBar(
-                            selectedCount = selectedItems.size,
-                            onClearSelection = viewModel::clearSelection,
-                            onCopy = viewModel::copySelected,
-                            onCut = viewModel::cutSelected,
-                            onDelete = { showDeleteConfirmationDialog = true }
-                        )
-                    } else if (isSearchBarVisible) {
-                        SearchTopAppBar(
-                            query = searchQuery,
-                            onQueryChange = viewModel::setSearchQuery,
-                            onCloseSearch = {
-                                isSearchBarVisible = false
-                                viewModel.setSearchQuery("")
-                            }
-                        )
-                    } else {
-                        FileManagerTopAppBar(
-                            currentDirectory = directory,
-                            canNavigateUp = canNavigateUp,
-                            onNavigateUp = {
-                                if (canNavigateUp) {
-                                    viewModel.navigateUp()
-                                } else {
-                                    navController.navigate("home") {
-                                        popUpTo("home") { inclusive = false }
-                                        launchSingleTop = true
-                                        anim {
-                                            enter = 0
-                                            exit = 0
-                                            popEnter = 0
-                                            popExit = 0
+                    Column {
+                        if (selectedItems.isNotEmpty()) {
+                            SelectionTopAppBar(
+                                selectedCount = selectedItems.size,
+                                onClearSelection = viewModel::clearSelection,
+                                onCopy = viewModel::copySelected,
+                                onCut = viewModel::cutSelected,
+                                onDelete = { showDeleteConfirmationDialog = true }
+                            )
+                        } else if (isSearchBarVisible) {
+                            SearchTopAppBar(
+                                query = searchQuery,
+                                onQueryChange = viewModel::setSearchQuery,
+                                onCloseSearch = {
+                                    isSearchBarVisible = false
+                                    viewModel.setSearchQuery("")
+                                }
+                            )
+                        } else {
+                            FileManagerTopAppBar(
+                                currentDirectory = directory,
+                                canNavigateUp = canNavigateUp,
+                                onNavigateUp = {
+                                    if (canNavigateUp) {
+                                        viewModel.navigateUp()
+                                    } else {
+                                        navController.navigate("home") {
+                                            popUpTo("home") { inclusive = false }
+                                            launchSingleTop = true
+                                            anim {
+                                                enter = 0
+                                                exit = 0
+                                                popEnter = 0
+                                                popExit = 0
+                                            }
                                         }
                                     }
-                                }
-                            },
-                            onSetSortOrder = viewModel::setSortOrder,
-                            onShowCreateFolderDialog = { showCreateFolderDialog = true },
-                            onShowSearch = { isSearchBarVisible = true },
-                            isClipboardEmpty = clipboardItem == null,
-                            onPaste = viewModel::paste,
-                            onTitleClick = { showFullPath = true }
+                                },
+                                onSetSortOrder = viewModel::setSortOrder,
+                                onShowCreateFolderDialog = { showCreateFolderDialog = true },
+                                onShowSearch = { isSearchBarVisible = true },
+                                isClipboardEmpty = clipboardItem == null,
+                                onPaste = viewModel::paste,
+                                onTitleClick = { showFullPath = true }
+                            )
+                        }
+                        HorizontalDivider(
+                            modifier = Modifier.fillMaxWidth(),
+                            thickness = 0.5.dp,
+                            color = MaterialTheme.colorScheme.outlineVariant
                         )
                     }
                 }
@@ -427,7 +433,6 @@ fun FileManagerScreen(
 @Composable
 fun InfoSheet(item: Any, onDismiss: () -> Unit) {
     val sheetState = rememberModalBottomSheetState()
-    val context = LocalContext.current
     
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -444,18 +449,18 @@ fun InfoSheet(item: Any, onDismiss: () -> Unit) {
                 modifier = Modifier.padding(bottom = 16.dp)
             )
             
-            val (name, path, size, lastModified, creationTime) = when (item) {
-                is FileData -> listOf(item.name, item.path, Formatter.formatShortFileSize(context, item.size), item.lastModified, item.creationTime)
-                is DirectoryData -> listOf(item.name, item.path, if (item.size > 0) Formatter.formatShortFileSize(context, item.size) else "Calculating...", item.lastModified, item.creationTime)
-                else -> listOf("", "", "", 0L, 0L)
+            val (name, path, size, formattedDate, formattedCreation) = when (item) {
+                is FileData -> listOf(item.name, item.path, item.formattedSize, item.formattedDate, FileManagerViewModel.formatDate(item.creationTime))
+                is DirectoryData -> listOf(item.name, item.path, if (item.formattedSize.isNotEmpty()) item.formattedSize else "Calculating...", item.formattedDate, FileManagerViewModel.formatDate(item.creationTime))
+                else -> listOf("", "", "", "", "")
             }
 
-            InfoRow("Name", name as String)
-            InfoRow("Path", path as String)
-            InfoRow("Size", size as String)
-            InfoRow("Modified", SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date(lastModified as Long)))
-            if ((creationTime as Long) > 0) {
-                InfoRow("Created", SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date(creationTime)))
+            InfoRow("Name", name)
+            InfoRow("Path", path)
+            InfoRow("Size", size)
+            InfoRow("Modified", formattedDate)
+            if (formattedCreation.isNotEmpty()) {
+                InfoRow("Created", formattedCreation)
             }
             
             Spacer(modifier = Modifier.height(32.dp))
@@ -482,6 +487,7 @@ fun SelectionTopAppBar(
     onDelete: () -> Unit
 ) {
     TopAppBar(
+        windowInsets = WindowInsets.statusBars,
         title = { Text("$selectedCount Selected") },
         navigationIcon = {
             IconButton(onClick = onClearSelection) {
@@ -516,6 +522,7 @@ fun SearchTopAppBar(
     val focusManager = LocalFocusManager.current
 
     TopAppBar(
+        windowInsets = WindowInsets.statusBars,
         title = {
             TextField(
                 value = query,
@@ -570,7 +577,12 @@ fun SearchResultsList(
         }
     } else {
         LazyColumn(modifier = Modifier.fillMaxSize()) {
-            items(results) { result ->
+            items(results, key = { result ->
+                when (result) {
+                    is SearchResult.Directory -> "dir_${result.data.uri}"
+                    is SearchResult.File -> "file_${result.data.uri}"
+                }
+            }) { result ->
                 when (result) {
                     is SearchResult.Directory -> SearchDirectoryItem(result.data, onClick = { onDirectoryClick(result.data) }, onInfo = { onShowInfo(result.data) })
                     is SearchResult.File -> SearchFileItem(result.data, onClick = { onFileClick(result.data) }, onInfo = { onShowInfo(result.data) })
@@ -638,8 +650,17 @@ fun DirectoryContent(
 ) {
     val directories by viewModel.sortedDirectories.collectAsState()
     val files by viewModel.sortedFiles.collectAsState()
+    val sortOrder by viewModel.sortOrder.collectAsState()
+    val listState = rememberLazyListState()
 
-    LazyColumn(modifier = Modifier.fillMaxSize()) {
+    LaunchedEffect(sortOrder) {
+        listState.scrollToItem(0)
+    }
+
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        state = listState
+    ) {
         items(directories, key = { it.uri }) { dir ->
             DirectoryItem(
                 directory = dir, 
@@ -682,20 +703,13 @@ fun DirectoryItem(
     onLongClick: () -> Unit,
     onInfo: () -> Unit
 ) {
-    val context = LocalContext.current
-    val formattedSize = remember(directory.size) { if (directory.size > 0) Formatter.formatShortFileSize(context, directory.size) else "" }
-    val formattedDate = remember(directory.lastModified) { SimpleDateFormat("MMM dd, yyyy", Locale.getDefault()).format(Date(directory.lastModified)) }
-
-    Box(
+    Surface(
         modifier = Modifier
             .padding(horizontal = 4.dp, vertical = 2.dp)
-            .border(
-                width = 2.dp,
-                brush = if (isSelected) appGradient else Brush.linearGradient(listOf(Color.Transparent, Color.Transparent)),
-                shape = RoundedCornerShape(12.dp)
-            )
-            .alpha(if (isCut) 0.5f else 1f)
-            .clip(RoundedCornerShape(12.dp))
+            .alpha(if (isCut) 0.5f else 1f),
+        shape = RoundedCornerShape(12.dp),
+        color = Color.Transparent,
+        border = if (isSelected) BorderStroke(2.dp, appGradient) else null
     ) {
         ListItem(
             modifier = Modifier
@@ -705,11 +719,12 @@ fun DirectoryItem(
                 ),
             headlineContent = { Text(directory.name) },
             supportingContent = { 
-                if (formattedSize.isNotEmpty()) {
-                    Text("$formattedSize | $formattedDate") 
+                val supportText = if (directory.formattedSize.isNotEmpty()) {
+                    "${directory.formattedSize} | ${directory.formattedDate}" 
                 } else {
-                    Text(formattedDate)
+                    directory.formattedDate
                 }
+                Text(supportText)
             },
             leadingContent = { Icon(Icons.Default.Folder, contentDescription = "Directory") },
             trailingContent = {
@@ -733,20 +748,13 @@ fun FileItem(
     onLongClick: () -> Unit,
     onInfo: () -> Unit
 ) {
-    val context = LocalContext.current
-    val formattedSize = remember(file.size) { Formatter.formatShortFileSize(context, file.size) }
-    val formattedDate = remember(file.lastModified) { SimpleDateFormat("MMM dd, yyyy", Locale.getDefault()).format(Date(file.lastModified)) }
-
-    Box(
+    Surface(
         modifier = Modifier
             .padding(horizontal = 4.dp, vertical = 2.dp)
-            .border(
-                width = 2.dp,
-                brush = if (isSelected) appGradient else Brush.linearGradient(listOf(Color.Transparent, Color.Transparent)),
-                shape = RoundedCornerShape(12.dp)
-            )
-            .alpha(if (isCut) 0.5f else 1f)
-            .clip(RoundedCornerShape(12.dp))
+            .alpha(if (isCut) 0.5f else 1f),
+        shape = RoundedCornerShape(12.dp),
+        color = Color.Transparent,
+        border = if (isSelected) BorderStroke(2.dp, appGradient) else null
     ) {
         ListItem(
             modifier = Modifier
@@ -757,7 +765,7 @@ fun FileItem(
             headlineContent = {
                 Text(file.name, maxLines = 1, overflow = TextOverflow.Ellipsis)
             },
-            supportingContent = { Text("$formattedSize | $formattedDate") },
+            supportingContent = { Text("${file.formattedSize} | ${file.formattedDate}") },
             leadingContent = { Icon(Icons.AutoMirrored.Filled.Article, "File") },
             trailingContent = {
                 IconButton(onClick = onInfo) {
@@ -796,6 +804,7 @@ fun FileManagerTopAppBar(
     }
     var showSortMenu by remember { mutableStateOf(false) }
     TopAppBar(
+        windowInsets = WindowInsets.statusBars,
         title = {
             Text(
                 text = directoryName,
