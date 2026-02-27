@@ -22,7 +22,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.material.icons.filled.*
-import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -33,7 +32,6 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBarColors
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -68,29 +66,11 @@ import androidx.navigation.NavController
 import com.example.aioapp.R
 import com.example.aioapp.core.model.Note
 import com.example.aioapp.core.model.NoteSortOrder
+import com.example.aioapp.ui.components.AppTopAppBar
 import com.example.aioapp.ui.theme.*
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun AppTopAppBar(
-    title: @Composable () -> Unit,
-    navigationIcon: @Composable () -> Unit,
-    modifier: Modifier = Modifier,
-    actions: @Composable RowScope.() -> Unit = {},
-    colors: TopAppBarColors = TopAppBarDefaults.topAppBarColors()
-) {
-    CenterAlignedTopAppBar(
-        modifier = modifier.height(56.dp),
-        windowInsets = WindowInsets(0),
-        title = title,
-        navigationIcon = navigationIcon,
-        actions = actions,
-        colors = colors
-    )
-}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -125,215 +105,237 @@ fun NotesScreen(
     val appGradientColors = LocalAppGradient.current
     val appGradient = Brush.horizontalGradient(colors = appGradientColors)
 
-    Scaffold(
-        snackbarHost = { 
-            SnackbarHost(
-                hostState = snackbarHostState,
-                modifier = Modifier.imePadding() 
-            ) 
+    AnimatedContent(
+        targetState = viewingNoteId,
+        transitionSpec = {
+            (fadeIn(animationSpec = tween(220)) + scaleIn(initialScale = 0.95f, animationSpec = tween(220)))
+                .togetherWith(fadeOut(animationSpec = tween(160)))
         },
-        floatingActionButton = {
-            AnimatedVisibility(
-                visible = !isSelectionMode && viewingNoteId == null && !showAddDialog,
-                enter = fadeIn(tween(200)) + scaleIn(animationSpec = tween(200)),
-                exit = fadeOut(tween(200)) + scaleOut(animationSpec = tween(200))
-            ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    if (notes.isEmpty()) {
-                        Text(
-                            text = buildAnnotatedString {
-                                withStyle(style = SpanStyle(fontFamily = homemadeApple, fontSize = 20.sp)) { append("Write ") }
-                                withStyle(style = SpanStyle(fontSize = 20.sp)) { append("your first note!") }
-                            },
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-
-                    val interactionSource = remember { MutableInteractionSource() }
-                    val isPressed by interactionSource.collectIsPressedAsState()
-                    val scale by animateFloatAsState(
-                        targetValue = if (isPressed) 0.88f else 1f,
-                        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow),
-                        label = "fabScale"
+        label = "ScreenTransition"
+    ) { targetViewingNoteId ->
+        if (targetViewingNoteId == null) {
+            Scaffold(
+                snackbarHost = {
+                    SnackbarHost(
+                        hostState = snackbarHostState,
+                        modifier = Modifier.imePadding()
                     )
-
-                    val infiniteTransition = rememberInfiniteTransition(label = "pulse")
-                    val pulseScale by infiniteTransition.animateFloat(
-                        initialValue = 1f,
-                        targetValue = if (notes.isEmpty()) 1.1f else 1f,
-                        animationSpec = infiniteRepeatable(
-                            animation = tween(1000, easing = FastOutSlowInEasing),
-                            repeatMode = RepeatMode.Reverse
-                        ),
-                        label = "pulse"
-                    )
-
-                    Box(
-                        modifier = Modifier
-                            .size(56.dp)
-                            .graphicsLayer(scaleX = scale * pulseScale, scaleY = scale * pulseScale)
-                            .shadow(if (isPressed) 4.dp else 12.dp, CircleShape)
-                            .clip(CircleShape)
-                            .background(appGradient)
-                            .border(1.dp, Color.White.copy(alpha = 0.2f), CircleShape)
-                            .clickable(
-                                interactionSource = interactionSource,
-                                indication = LocalIndication.current
-                            ) { showAddDialog = true },
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            Icons.Filled.Add, 
-                            contentDescription = "Add Note", 
-                            tint = Color.White,
-                            modifier = Modifier.size(28.dp)
-                        )
-                    }
-                }
-            }
-        },
-        containerColor = MaterialTheme.colorScheme.background
-    ) { innerPadding ->
-        Box(modifier = Modifier.fillMaxSize().padding(padding)) {
-            AnimatedContent(
-                targetState = viewingNoteId,
-                transitionSpec = {
-                    (fadeIn(animationSpec = tween(220)) + scaleIn(initialScale = 0.95f, animationSpec = tween(220)))
-                        .togetherWith(fadeOut(animationSpec = tween(160)))
                 },
-                label = "ScreenTransition"
-            ) { targetViewingNoteId ->
-                if (targetViewingNoteId == null) {
-                    Column(modifier = Modifier.fillMaxSize()) {
-                        AppTopAppBar(
-                            title = {
-                                Text(
-                                    text = if (isSelectionMode) "${selectedNoteIds.size} Selected" else "Notes",
-                                    color = MaterialTheme.colorScheme.onSurface,
-                                    fontSize = 20.sp
-                                )
-                            },
-                            navigationIcon = {
-                                if (isSelectionMode) {
-                                    IconButton(onClick = { selectedNoteIds = emptySet() }) {
-                                        Icon(Icons.Default.Close, contentDescription = "Clear Selection", tint = MaterialTheme.colorScheme.onSurface)
-                                    }
-                                } else if (navController.previousBackStackEntry != null) {
-                                    IconButton(onClick = { navController.navigateUp() }) {
-                                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = MaterialTheme.colorScheme.onSurface)
-                                    }
-                                } else {
-                                    IconButton(onClick = { scope.launch { drawerState.open() } }) {
-                                        Icon(Icons.Filled.Menu, contentDescription = "Menu", tint = MaterialTheme.colorScheme.onSurface)
-                                    }
-                                }
-                            },
-                            actions = {
-                                if (isSelectionMode) {
-                                    IconButton(onClick = {
-                                        val count = selectedNoteIds.size
-                                        viewModel.deleteNotes(selectedNoteIds)
-                                        selectedNoteIds = emptySet()
-                                        scope.launch {
-                                            val msg = if (count == 1) "Note deleted successfully" else "Notes deleted successfully"
-                                            snackbarHostState.showSnackbar(msg)
-                                        }
-                                    }) {
-                                        Icon(Icons.Default.Delete, contentDescription = "Delete", tint = Color.Red)
-                                    }
-                                }
-                                Box {
-                                    IconButton(onClick = { showSortMenu = true }) {
-                                        Icon(Icons.AutoMirrored.Filled.Sort, contentDescription = "Sort", tint = MaterialTheme.colorScheme.onSurface)
-                                    }
-                                    DropdownMenu(
-                                        expanded = showSortMenu,
-                                        onDismissRequest = { showSortMenu = false }
-                                    ) {
-                                        NoteSortOrder.entries.forEach { order ->
-                                            DropdownMenuItem(
-                                                text = { Text(if (order == NoteSortOrder.ALPHABETICAL) "Name" else order.name.replace("_", " ").lowercase().replaceFirstChar { it.uppercase() }) },
-                                                onClick = {
-                                                    viewModel.setSortOrder(order)
-                                                    showSortMenu = false
-                                                }
-                                            )
-                                        }
-                                    }
-                                }
-                            },
-                            colors = TopAppBarDefaults.topAppBarColors(
-                                containerColor = MaterialTheme.colorScheme.surface
+                topBar = {
+                    AppTopAppBar(
+                        title = {
+                            Text(
+                                text = if (isSelectionMode) "${selectedNoteIds.size} Selected" else "Notes",
+                                style = MaterialTheme.typography.titleLarge,
+                                fontFamily = RobotoMono,
+                                fontWeight = FontWeight.Medium
                             )
-                        )
-                        Box(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
-                            if (notes.isNotEmpty()) {
-                                LazyColumn(
-                                    modifier = Modifier.fillMaxSize(),
-                                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-                                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                        },
+                        navigationIcon = {
+                            if (isSelectionMode) {
+                                IconButton(onClick = { selectedNoteIds = emptySet() }) {
+                                    Icon(Icons.Default.Close, contentDescription = "Clear Selection")
+                                }
+                            } else if (navController.previousBackStackEntry != null) {
+                                IconButton(onClick = { navController.navigateUp() }) {
+                                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                                }
+                            } else {
+                                IconButton(onClick = { scope.launch { drawerState.open() } }) {
+                                    Icon(Icons.Filled.Menu, contentDescription = "Menu")
+                                }
+                            }
+                        },
+                        actions = {
+                            if (isSelectionMode) {
+                                IconButton(onClick = {
+                                    val count = selectedNoteIds.size
+                                    viewModel.deleteNotes(selectedNoteIds)
+                                    selectedNoteIds = emptySet()
+                                    scope.launch {
+                                        val msg = if (count == 1) "Note deleted successfully" else "Notes deleted successfully"
+                                        snackbarHostState.showSnackbar(msg)
+                                    }
+                                }) {
+                                    Icon(Icons.Default.Delete, contentDescription = "Delete", tint = Color.Red)
+                                }
+                            }
+                            Box {
+                                IconButton(onClick = { showSortMenu = true }) {
+                                    Icon(Icons.AutoMirrored.Filled.Sort, contentDescription = "Sort")
+                                }
+                                DropdownMenu(
+                                    expanded = showSortMenu,
+                                    onDismissRequest = { showSortMenu = false }
                                 ) {
-                                    items(notes, key = { it.id }) {
-                                        NoteItem(
-                                            note = it,
-                                            isSelected = selectedNoteIds.contains(it.id),
-                                            onLongClick = {
-                                                if (!isSelectionMode) selectedNoteIds = setOf(it.id)
-                                            },
+                                    NoteSortOrder.entries.forEach { order ->
+                                        DropdownMenuItem(
+                                            text = { Text(if (order == NoteSortOrder.ALPHABETICAL) "Name" else order.name.replace("_", " ").lowercase().replaceFirstChar { it.uppercase() }) },
                                             onClick = {
-                                                if (isSelectionMode) {
-                                                    selectedNoteIds = if (selectedNoteIds.contains(it.id)) {
-                                                        selectedNoteIds - it.id
-                                                    } else {
-                                                        selectedNoteIds + it.id
-                                                    }
-                                                } else {
-                                                    viewingNoteId = it.id
-                                                }
+                                                viewModel.setSortOrder(order)
+                                                showSortMenu = false
                                             }
                                         )
                                     }
                                 }
-                            } else {
-                                Column(
-                                    modifier = Modifier.fillMaxSize().padding(32.dp),
-                                    horizontalAlignment = Alignment.CenterHorizontally,
-                                    verticalArrangement = Arrangement.Center
-                                ) {
-                                    Text(
-                                        text = "No notes yet",
-                                        style = MaterialTheme.typography.displaySmall,
-                                        fontWeight = FontWeight.Normal,
-                                        color = MaterialTheme.colorScheme.onSurface
-                                    )
-                                }
+                            }
+                        }
+                    )
+                },
+                floatingActionButton = {
+                    AnimatedVisibility(
+                        visible = !isSelectionMode && !showAddDialog,
+                        enter = fadeIn(tween(200)) + scaleIn(animationSpec = tween(200)),
+                        exit = fadeOut(tween(200)) + scaleOut(animationSpec = tween(200))
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            if (notes.isEmpty()) {
+                                Text(
+                                    text = buildAnnotatedString {
+                                        withStyle(style = SpanStyle(fontFamily = homemadeApple, fontSize = 20.sp)) { append("Write ") }
+                                        withStyle(style = SpanStyle(fontSize = 20.sp)) { append("your first note!") }
+                                    },
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+
+                            val interactionSource = remember { MutableInteractionSource() }
+                            val isPressed by interactionSource.collectIsPressedAsState()
+                            val scale by animateFloatAsState(
+                                targetValue = if (isPressed) 0.88f else 1f,
+                                animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow),
+                                label = "fabScale"
+                            )
+
+                            val infiniteTransition = rememberInfiniteTransition(label = "pulse")
+                            val pulseScale by infiniteTransition.animateFloat(
+                                initialValue = 1f,
+                                targetValue = if (notes.isEmpty()) { 1.1f } else { 1f },
+                                animationSpec = infiniteRepeatable(
+                                    animation = tween(1000, easing = FastOutSlowInEasing),
+                                    repeatMode = RepeatMode.Reverse
+                                ),
+                                label = "pulse"
+                            )
+
+                            Box(
+                                modifier = Modifier
+                                    .size(56.dp)
+                                    .graphicsLayer(scaleX = scale * pulseScale, scaleY = scale * pulseScale)
+                                    .shadow(if (isPressed) 4.dp else 12.dp, CircleShape)
+                                    .clip(CircleShape)
+                                    .background(appGradient)
+                                    .border(1.dp, Color.White.copy(alpha = 0.2f), CircleShape)
+                                    .clickable(
+                                        interactionSource = interactionSource,
+                                        indication = LocalIndication.current
+                                    ) { showAddDialog = true },
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    Icons.Filled.Add,
+                                    contentDescription = "Add Note",
+                                    tint = Color.White,
+                                    modifier = Modifier.size(28.dp)
+                                )
                             }
                         }
                     }
-                } else {
-                    val note = notes.find { it.id == targetViewingNoteId }
-                    if (note != null) {
-                        // The ViewEditNoteScreen is now responsible for its own top bar
-                        ViewEditNoteScreen(
-                            note = note,
-                            viewModel = viewModel,
-                            onDismiss = { viewingNoteId = null },
-                            appGradient = appGradient,
-                            onUniqueError = { 
-                                scope.launch {
-                                    snackbarHostState.showSnackbar("Note title must be unique")
-                                }
+                },
+                containerColor = MaterialTheme.colorScheme.background
+            ) { innerPadding ->
+                Box(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
+                    if (notes.isNotEmpty()) {
+                        LazyColumn(
+                            modifier = Modifier.fillMaxSize(),
+                            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            items(notes, key = { it.id }) { note ->
+                                NoteItem(
+                                    note = note,
+                                    isSelected = selectedNoteIds.contains(note.id),
+                                    onLongClick = {
+                                        if (!isSelectionMode) selectedNoteIds = setOf(note.id)
+                                    },
+                                    onClick = {
+                                        if (isSelectionMode) {
+                                            selectedNoteIds = if (selectedNoteIds.contains(note.id)) {
+                                                selectedNoteIds - note.id
+                                            } else {
+                                                selectedNoteIds + note.id
+                                            }
+                                        } else {
+                                            viewingNoteId = note.id
+                                        }
+                                    }
+                                )
                             }
-                        )
+                        }
                     } else {
-                        viewingNoteId = null
+                        Column(
+                            modifier = Modifier.fillMaxSize().padding(32.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Center
+                        ) {
+                            Text(
+                                text = "No notes yet",
+                                style = MaterialTheme.typography.displaySmall,
+                                fontWeight = FontWeight.Normal,
+                                color = MaterialTheme.colorScheme.onSurface,
+                                fontFamily = RobotoMono
+                            )
+                        }
+                    }
+                }
+
+                if (showAddDialog) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(Color.Black.copy(alpha = 0.6f))
+                            .clickable { showAddDialog = false }
+                            .imePadding(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        AddNoteDialog(
+                            onDismiss = { showAddDialog = false },
+                            onConfirm = { title, content, color ->
+                                scope.launch {
+                                    if (viewModel.addNote(title, content, color)) {
+                                        showAddDialog = false
+                                    } else {
+                                        snackbarHostState.showSnackbar("Note title must be unique")
+                                    }
+                                }
+                            },
+                            appGradient = appGradient
+                        )
                     }
                 }
             }
+        } else {
+            val note = notes.find { it.id == targetViewingNoteId }
+            if (note != null) {
+                ViewEditNoteScreen(
+                    note = note,
+                    viewModel = viewModel,
+                    onDismiss = { viewingNoteId = null },
+                    appGradient = appGradient,
+                    onUniqueError = {
+                        scope.launch {
+                            snackbarHostState.showSnackbar("Note title must be unique")
+                        }
+                    }
+                )
+            } else {
+                viewingNoteId = null
+            }
         }
+    }
 
         if (showAddDialog) {
             Box(
@@ -360,7 +362,7 @@ fun NotesScreen(
             }
         }
     }
-}
+
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -396,7 +398,8 @@ fun NoteItem(
                         fontWeight = FontWeight.Bold,
                         style = MaterialTheme.typography.titleMedium,
                         modifier = Modifier.weight(1f),
-                        color = contentColor
+                        color = contentColor,
+                        fontFamily = RobotoMono
                     )
                 }
                 Text(
@@ -470,7 +473,8 @@ fun ViewEditNoteScreen(
                         text = note.title,
                         color = contentColor,
                         maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
+                        overflow = TextOverflow.Ellipsis,
+                        fontFamily = RobotoMono
                     )
                 },
                 navigationIcon = {
@@ -581,8 +585,8 @@ fun ViewEditNoteScreen(
                                 value = title,
                                 onValueChange = { title = it },
                                 modifier = Modifier.fillMaxWidth(),
-                                textStyle = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold, color = contentColor),
-                                placeholder = { Text("Title", color = contentColor.copy(alpha = 0.5f)) },
+                                textStyle = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold, color = contentColor, fontFamily = RobotoMono),
+                                placeholder = { Text("Title", color = contentColor.copy(alpha = 0.5f), fontFamily = RobotoMono) },
                                 colors = TextFieldDefaults.colors(
                                     focusedContainerColor = Color.Transparent,
                                     unfocusedContainerColor = Color.Transparent,
@@ -605,8 +609,8 @@ fun ViewEditNoteScreen(
                                 value = content,
                                 onValueChange = { content = it },
                                 modifier = Modifier.fillMaxWidth(),
-                                textStyle = MaterialTheme.typography.bodyLarge.copy(color = contentColor),
-                                placeholder = { Text("Start typing...", color = contentColor.copy(alpha = 0.5f)) },
+                                textStyle = MaterialTheme.typography.bodyLarge.copy(color = contentColor, fontFamily = RobotoMono),
+                                placeholder = { Text("Start typing...", color = contentColor.copy(alpha = 0.5f), fontFamily = RobotoMono) },
                                 colors = TextFieldDefaults.colors(
                                     focusedContainerColor = Color.Transparent,
                                     unfocusedContainerColor = Color.Transparent,
@@ -622,13 +626,15 @@ fun ViewEditNoteScreen(
                             text = title,
                             style = MaterialTheme.typography.headlineMedium,
                             fontWeight = FontWeight.Bold,
-                            color = contentColor
+                            color = contentColor,
+                            fontFamily = RobotoMono
                         )
                         Spacer(modifier = Modifier.height(16.dp))
                         Text(
                             text = content,
                             style = MaterialTheme.typography.bodyLarge,
-                            color = contentColor
+                            color = contentColor,
+                            fontFamily = RobotoMono
                         )
                     }
                 }
@@ -639,7 +645,8 @@ fun ViewEditNoteScreen(
             Text(
                 text = "Created: $dateString",
                 style = MaterialTheme.typography.labelMedium,
-                color = contentColor.copy(alpha = 0.6f)
+                color = contentColor.copy(alpha = 0.6f),
+                fontFamily = RobotoMono
             )
             
             Spacer(modifier = Modifier.height(120.dp))
@@ -680,7 +687,8 @@ fun AddNoteDialog(
             Text(
                 "New Note",
                 style = MaterialTheme.typography.headlineSmall,
-                color = MaterialTheme.colorScheme.onBackground
+                color = MaterialTheme.colorScheme.onBackground,
+                fontFamily = RobotoMono
             )
 
             Box(
@@ -692,7 +700,7 @@ fun AddNoteDialog(
                 TextField(
                     value = title,
                     onValueChange = { title = it },
-                    placeholder = { Text("Title") },
+                    placeholder = { Text("Title", fontFamily = RobotoMono) },
                     modifier = Modifier.fillMaxWidth().focusRequester(focusRequester),
                     colors = TextFieldDefaults.colors(
                         focusedContainerColor = Color.Transparent,
@@ -701,7 +709,8 @@ fun AddNoteDialog(
                         unfocusedIndicatorColor = Color.Transparent,
                         focusedTextColor = MaterialTheme.colorScheme.onBackground,
                         unfocusedTextColor = MaterialTheme.colorScheme.onBackground
-                    )
+                    ),
+                    textStyle = MaterialTheme.typography.bodyLarge.copy(fontFamily = RobotoMono)
                 )
             }
             LaunchedEffect(Unit) { focusRequester.requestFocus() }
@@ -715,7 +724,7 @@ fun AddNoteDialog(
                 TextField(
                     value = content,
                     onValueChange = { content = it },
-                    placeholder = { Text("Note (Optional)") },
+                    placeholder = { Text("Note (Optional)", fontFamily = RobotoMono) },
                     modifier = Modifier.fillMaxWidth().heightIn(min = 100.dp),
                     colors = TextFieldDefaults.colors(
                         focusedContainerColor = Color.Transparent,
@@ -724,12 +733,13 @@ fun AddNoteDialog(
                         unfocusedIndicatorColor = Color.Transparent,
                         focusedTextColor = MaterialTheme.colorScheme.onBackground,
                         unfocusedTextColor = MaterialTheme.colorScheme.onBackground
-                    )
+                    ),
+                    textStyle = MaterialTheme.typography.bodyLarge.copy(fontFamily = RobotoMono)
                 )
             }
 
             Column {
-                Text("Background Color:", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onBackground)
+                Text("Background Color:", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onBackground, fontFamily = RobotoMono)
                 Spacer(modifier = Modifier.height(8.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     colors.forEach { color ->
@@ -743,7 +753,7 @@ fun AddNoteDialog(
                                     color = if (selectedColor == color) {
                                         MaterialTheme.colorScheme.primary
                                     } else {
-                                        MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f) 
+                                        MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f)
                                     },
                                     shape = CircleShape
                                 )
@@ -760,7 +770,7 @@ fun AddNoteDialog(
                     onClick = onDismiss,
                     modifier = Modifier.height(44.dp).width(100.dp)
                 ) {
-                    Text("Cancel", fontWeight = FontWeight.Bold)
+                    Text("Cancel", fontWeight = FontWeight.Bold, fontFamily = RobotoMono)
                 }
 
                 val interactionSource = remember { MutableInteractionSource() }
@@ -787,7 +797,8 @@ fun AddNoteDialog(
                     Text(
                         "Add",
                         color = if (isFormComplete) Color.White else Color.DarkGray,
-                        fontWeight = FontWeight.Bold
+                        fontWeight = FontWeight.Bold,
+                        fontFamily = RobotoMono
                     )
                 }
             }

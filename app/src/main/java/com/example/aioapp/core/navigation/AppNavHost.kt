@@ -58,7 +58,8 @@ fun AppNavHost(
             val pomodoroViewModel: PomodoroViewModel = hiltViewModel()
             PomodoroScreen(
                 viewModel = pomodoroViewModel,
-                padding = padding
+                padding = padding,
+                navController = navController
             )
         }
 

@@ -122,6 +122,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.example.aioapp.R
 import com.example.aioapp.ui.theme.LocalAppGradient
+import com.example.aioapp.ui.theme.RobotoMono
 import kotlinx.coroutines.flow.collectLatest
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -151,7 +152,6 @@ fun FileManagerScreen(
 
     val appGradientColors = LocalAppGradient.current
     val appGradient = remember(appGradientColors) { Brush.horizontalGradient(colors = appGradientColors) }
-    val electrolize = FontFamily(Font(R.font.electrolize_regular))
 
     val fullPath = remember(currentDirectory) {
         currentDirectory?.let { uri ->
@@ -386,7 +386,7 @@ fun FileManagerScreen(
                     onDismiss = { showCreateFileDialog = false },
                     onCreate = viewModel::createFile,
                     appGradient = appGradient,
-                    titleFontFamily = electrolize
+                    titleFontFamily = RobotoMono
                 )
             }
         }
@@ -404,7 +404,7 @@ fun FileManagerScreen(
                     onDismiss = { showCreateFolderDialog = false },
                     onCreate = viewModel::createFolder,
                     appGradient = appGradient,
-                    titleFontFamily = electrolize
+                    titleFontFamily = RobotoMono
                 )
             }
         }
@@ -484,7 +484,7 @@ fun SelectionTopAppBar(
 ) {
     TopAppBar(
         windowInsets = WindowInsets.statusBars,
-        title = { Text("$selectedCount Selected") },
+        title = { Text("$selectedCount Selected", fontFamily = RobotoMono) },
         navigationIcon = {
             IconButton(onClick = onClearSelection) {
                 Icon(Icons.Default.Close, contentDescription = "Cancel")
@@ -806,7 +806,8 @@ fun FileManagerTopAppBar(
             title = {
                 Text(
                     text = "File Manager",
-                    style = MaterialTheme.typography.titleLarge
+                    style = MaterialTheme.typography.titleLarge,
+                    fontFamily = RobotoMono
                 )
             },
             navigationIcon = {

@@ -49,7 +49,7 @@ class MainActivity : ComponentActivity() {
                 ) {
                     Scaffold(
                         topBar = {
-                            if (currentScreen != "filemanager" && currentScreen != "notes") {
+                            if (currentScreen != "filemanager" && currentScreen != "notes" && currentScreen != "pomodoro") {
                                 TopAppBar(currentScreen = currentScreen, navController = navController, drawerState = drawerState, scope = scope)
                             }
                         }
