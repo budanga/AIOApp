@@ -1,5 +1,7 @@
 package com.example.aioapp.ui.components
 
+import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Menu
@@ -9,8 +11,10 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBarColors
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.Font
@@ -24,17 +28,37 @@ import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
+fun AioTopBar(
+    title: @Composable () -> Unit,
+    navigationIcon: @Composable () -> Unit = {},
+    actions: @Composable RowScope.() -> Unit = {},
+    colors: TopAppBarColors = TopAppBarDefaults.topAppBarColors(),
+    modifier: Modifier = Modifier,
+    windowInsets: WindowInsets = WindowInsets(0)
+) {
+    CenterAlignedTopAppBar(
+        title = title,
+        navigationIcon = navigationIcon,
+        actions = actions,
+        colors = colors,
+        modifier = modifier,
+        windowInsets = windowInsets
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
 fun TopAppBar(
     currentScreen: String,
     navController: NavController,
     drawerState: DrawerState,
     scope: CoroutineScope,
-    actions: @Composable () -> Unit = {},
-    colors: androidx.compose.material3.TopAppBarColors = TopAppBarDefaults.topAppBarColors()
+    actions: @Composable RowScope.() -> Unit = {},
+    colors: TopAppBarColors = TopAppBarDefaults.topAppBarColors()
 ) {
     val gradientColors = LocalAppGradient.current
 
-    CenterAlignedTopAppBar(
+    AioTopBar(
         title = {
             if (currentScreen == "home") {
                 Text(
@@ -48,11 +72,11 @@ fun TopAppBar(
                     )
                 )
             } else {
-                val title = when (currentScreen) {
+                val titleString = when (currentScreen) {
                     "filemanager" -> "File Manager"
                     else -> currentScreen.replaceFirstChar { it.uppercase() }
                 }
-                Text(text = title)
+                Text(text = titleString)
             }
         },
         navigationIcon = {
@@ -66,7 +90,7 @@ fun TopAppBar(
                 }
             }
         },
-        actions = { actions() },
+        actions = actions,
         colors = colors
     )
 }

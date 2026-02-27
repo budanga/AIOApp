@@ -121,6 +121,7 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.example.aioapp.R
+import com.example.aioapp.ui.components.AioTopBar
 import com.example.aioapp.ui.theme.LocalAppGradient
 import kotlinx.coroutines.flow.collectLatest
 
@@ -482,7 +483,7 @@ fun SelectionTopAppBar(
     onCut: () -> Unit,
     onDelete: () -> Unit
 ) {
-    TopAppBar(
+    AioTopBar(
         windowInsets = WindowInsets.statusBars,
         title = { Text("$selectedCount Selected") },
         navigationIcon = {
@@ -517,7 +518,7 @@ fun SearchTopAppBar(
     val focusRequester = remember { FocusRequester() }
     val focusManager = LocalFocusManager.current
 
-    TopAppBar(
+    AioTopBar(
         windowInsets = WindowInsets.statusBars,
         title = {
             TextField(
@@ -801,7 +802,7 @@ fun FileManagerTopAppBar(
     var showSortMenu by remember { mutableStateOf(false) }
 
     Column(modifier = Modifier.fillMaxWidth()) {
-        CenterAlignedTopAppBar(
+        AioTopBar(
             windowInsets = WindowInsets.statusBars,
             title = {
                 Text(
