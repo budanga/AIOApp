@@ -17,6 +17,8 @@ import com.example.aioapp.ui.filemanager.FileManagerScreen
 import com.example.aioapp.ui.home.HomeScreen
 import com.example.aioapp.ui.notes.NotesScreen
 import com.example.aioapp.ui.notes.NotesViewModel
+import com.example.aioapp.ui.pomodoro.PomodoroScreen
+import com.example.aioapp.ui.pomodoro.PomodoroViewModel
 import com.example.aioapp.ui.settings.SettingsScreen
 
 @Composable
@@ -49,6 +51,14 @@ fun AppNavHost(
                 padding = padding,
                 navController = navController,
                 drawerState = drawerState
+            )
+        }
+
+        composable("pomodoro") {
+            val pomodoroViewModel: PomodoroViewModel = hiltViewModel()
+            PomodoroScreen(
+                viewModel = pomodoroViewModel,
+                padding = padding
             )
         }
 

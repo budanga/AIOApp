@@ -3,6 +3,7 @@ package com.example.aioapp.core.model
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Note
 import androidx.compose.material.icons.filled.Folder
+import androidx.compose.material.icons.filled.Timer
 import androidx.compose.ui.graphics.vector.ImageVector
 
 data class Functionality(
@@ -21,6 +22,10 @@ val functionalities = listOf(
         name = "Notes",
         icon = Icons.AutoMirrored.Filled.Note,
         route = "notes"
+    ),
+    Functionality(
+        name = "Pomodoro",
+        icon = Icons.Default.Timer,
+        route = "pomodoro"
     )
 )
-
