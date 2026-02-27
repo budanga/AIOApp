@@ -65,6 +65,7 @@ import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -263,11 +264,6 @@ fun FileManagerScreen(
                                 onTitleClick = { showFullPath = true }
                             )
                         }
-                        HorizontalDivider(
-                            modifier = Modifier.fillMaxWidth(),
-                            thickness = 0.5.dp,
-                            color = MaterialTheme.colorScheme.outlineVariant
-                        )
                     }
                 }
             },
@@ -365,7 +361,7 @@ fun FileManagerScreen(
                     tonalElevation = 4.dp,
                     shadowElevation = 8.dp,
                     modifier = Modifier
-                        .padding(top = 48.dp, start = 56.dp, end = 16.dp)
+                        .padding(top = 104.dp, start = 16.dp, end = 16.dp)
                 ) {
                     Text(
                         text = fullPath,
@@ -803,49 +799,73 @@ fun FileManagerTopAppBar(
         }
     }
     var showSortMenu by remember { mutableStateOf(false) }
-    TopAppBar(
-        windowInsets = WindowInsets.statusBars,
-        title = {
+
+    Column(modifier = Modifier.fillMaxWidth()) {
+        CenterAlignedTopAppBar(
+            windowInsets = WindowInsets.statusBars,
+            title = {
+                Text(
+                    text = "File Manager",
+                    style = MaterialTheme.typography.titleLarge
+                )
+            },
+            navigationIcon = {
+                IconButton(onClick = onNavigateUp) {
+                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                }
+            },
+            colors = TopAppBarDefaults.topAppBarColors(
+                containerColor = Color.Transparent
+            )
+        )
+        
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(start = 16.dp, end = 8.dp, bottom = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
             Text(
                 text = directoryName,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.clickable(
-                    interactionSource = remember { MutableInteractionSource() },
-                    indication = null
-                ) { onTitleClick() }
+                modifier = Modifier
+                    .weight(1f)
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null
+                    ) { onTitleClick() },
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
-        },
-        navigationIcon = {
-            IconButton(onClick = onNavigateUp) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Navigate up")
-            }
-        },
-        actions = {
-            IconButton(onClick = onShowSearch) {
-                Icon(Icons.Default.Search, contentDescription = "Search")
-            }
-            IconButton(onClick = onPaste, enabled = !isClipboardEmpty) {
-                Icon(Icons.Default.ContentPaste, contentDescription = "Paste")
-            }
-            IconButton(onClick = onShowCreateFolderDialog) {
-                Icon(Icons.Default.CreateNewFolder, contentDescription = "Create folder")
-            }
-            Box {
-                IconButton(onClick = { showSortMenu = true }) {
-                    Icon(Icons.AutoMirrored.Filled.Sort, contentDescription = "Sort")
+            
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                IconButton(onClick = onShowSearch) {
+                    Icon(Icons.Default.Search, contentDescription = "Search")
                 }
-                DropdownMenu(expanded = showSortMenu, onDismissRequest = { showSortMenu = false }) {
-                    DropdownMenuItem(text = { Text("Name (A-Z)") }, onClick = { onSetSortOrder(SortOrder.NAME_AZ); showSortMenu = false })
-                    DropdownMenuItem(text = { Text("Name (Z-A)") }, onClick = { onSetSortOrder(SortOrder.NAME_ZA); showSortMenu = false })
-                    DropdownMenuItem(text = { Text("Size (Smaller)") }, onClick = { onSetSortOrder(SortOrder.SIZE_SMALLER); showSortMenu = false })
-                    DropdownMenuItem(text = { Text("Size (Larger)") }, onClick = { onSetSortOrder(SortOrder.SIZE_LARGER); showSortMenu = false })
-                    DropdownMenuItem(text = { Text("Date (Recent)") }, onClick = { onSetSortOrder(SortOrder.DATE_RECENT); showSortMenu = false })
-                    DropdownMenuItem(text = { Text("Date (Older)") }, onClick = { onSetSortOrder(SortOrder.DATE_OLDER); showSortMenu = false })
+                IconButton(onClick = onPaste, enabled = !isClipboardEmpty) {
+                    Icon(Icons.Default.ContentPaste, contentDescription = "Paste")
+                }
+                IconButton(onClick = onShowCreateFolderDialog) {
+                    Icon(Icons.Default.CreateNewFolder, contentDescription = "Create folder")
+                }
+                Box {
+                    IconButton(onClick = { showSortMenu = true }) {
+                        Icon(Icons.AutoMirrored.Filled.Sort, contentDescription = "Sort")
+                    }
+                    DropdownMenu(expanded = showSortMenu, onDismissRequest = { showSortMenu = false }) {
+                        DropdownMenuItem(text = { Text("Name (A-Z)") }, onClick = { onSetSortOrder(SortOrder.NAME_AZ); showSortMenu = false })
+                        DropdownMenuItem(text = { Text("Name (Z-A)") }, onClick = { onSetSortOrder(SortOrder.NAME_ZA); showSortMenu = false })
+                        DropdownMenuItem(text = { Text("Size (Smaller)") }, onClick = { onSetSortOrder(SortOrder.SIZE_SMALLER); showSortMenu = false })
+                        DropdownMenuItem(text = { Text("Size (Larger)") }, onClick = { onSetSortOrder(SortOrder.SIZE_LARGER); showSortMenu = false })
+                        DropdownMenuItem(text = { Text("Date (Recent)") }, onClick = { onSetSortOrder(SortOrder.DATE_RECENT); showSortMenu = false })
+                        DropdownMenuItem(text = { Text("Date (Older)") }, onClick = { onSetSortOrder(SortOrder.DATE_OLDER); showSortMenu = false })
+                    }
                 }
             }
         }
-    )
+    }
 }
 
 @Composable
