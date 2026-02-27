@@ -19,9 +19,30 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.aioapp.MainViewModel
 
+import androidx.compose.material3.DrawerState
+import androidx.compose.material3.Scaffold
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.navigation.NavController
+import com.example.aioapp.ui.components.AioTopBar
+import com.example.aioapp.ui.components.DefaultNavigationIcon
+
 @Composable
-fun SettingsScreen(viewModel: MainViewModel, padding: PaddingValues) {
+fun SettingsScreen(
+    viewModel: MainViewModel,
+    navController: NavController,
+    drawerState: DrawerState
+) {
     val currentTheme = viewModel.theme.collectAsState(initial = "System").value
+    val scope = rememberCoroutineScope()
+
+    Scaffold(
+        topBar = {
+            AioTopBar(
+                title = { Text("Settings") },
+                navigationIcon = { DefaultNavigationIcon(navController, drawerState, scope) }
+            )
+        }
+    ) { padding ->
 
     Column(modifier = Modifier.padding(padding)) {
         Spacer(modifier = Modifier.height(8.dp))

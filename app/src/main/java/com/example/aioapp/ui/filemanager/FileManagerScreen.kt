@@ -807,7 +807,9 @@ fun FileManagerTopAppBar(
             title = {
                 Text(
                     text = "File Manager",
-                    style = MaterialTheme.typography.titleLarge
+                    style = MaterialTheme.typography.titleLarge.copy(
+                        fontFamily = FontFamily(Font(R.font.roboto_mono_variable_font_wght))
+                    )
                 )
             },
             navigationIcon = {

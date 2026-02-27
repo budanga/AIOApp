@@ -7,7 +7,6 @@ import androidx.activity.viewModels
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.ModalNavigationDrawer
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -16,7 +15,6 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.example.aioapp.core.navigation.AppNavHost
 import com.example.aioapp.ui.components.AppDrawer
-import com.example.aioapp.ui.components.TopAppBar
 import com.example.aioapp.ui.theme.AIOAppTheme
 import dagger.hilt.android.AndroidEntryPoint
 
@@ -38,8 +36,6 @@ class MainActivity : ComponentActivity() {
             }
             AIOAppTheme(darkTheme = useDarkTheme) {
                 val navController = rememberNavController()
-                val backStackEntry by navController.currentBackStackEntryAsState()
-                val currentScreen = backStackEntry?.destination?.route ?: "home"
                 val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
                 val scope = rememberCoroutineScope()
 
@@ -47,15 +43,7 @@ class MainActivity : ComponentActivity() {
                     drawerState = drawerState,
                     drawerContent = { AppDrawer(navController = navController, drawerState = drawerState, scope = scope) }
                 ) {
-                    Scaffold(
-                        topBar = {
-                            if (currentScreen != "filemanager" && currentScreen != "notes") {
-                                TopAppBar(currentScreen = currentScreen, navController = navController, drawerState = drawerState, scope = scope)
-                            }
-                        }
-                    ) { padding ->
-                        AppNavHost(navController = navController, viewModel = viewModel, padding = padding, drawerState = drawerState)
-                    }
+                    AppNavHost(navController = navController, viewModel = viewModel, padding = PaddingValues(0.dp), drawerState = drawerState)
                 }
             }
         }

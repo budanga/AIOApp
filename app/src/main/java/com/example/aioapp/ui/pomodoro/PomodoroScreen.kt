@@ -19,13 +19,29 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.aioapp.core.model.PomodoroMode
 import com.example.aioapp.ui.theme.LocalAppGradient
 
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.navigation.NavController
+import com.example.aioapp.ui.components.AioTopBar
+import com.example.aioapp.ui.components.DefaultNavigationIcon
+
 @Composable
 fun PomodoroScreen(
     viewModel: PomodoroViewModel,
-    padding: PaddingValues
+    navController: NavController,
+    drawerState: DrawerState
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val gradientColors = LocalAppGradient.current
+    val scope = rememberCoroutineScope()
+
+    Scaffold(
+        topBar = {
+            AioTopBar(
+                title = { Text("Pomodoro") },
+                navigationIcon = { DefaultNavigationIcon(navController, drawerState, scope) }
+            )
+        }
+    ) { padding ->
 
     Column(
         modifier = Modifier

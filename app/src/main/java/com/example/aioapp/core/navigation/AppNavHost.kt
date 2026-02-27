@@ -37,7 +37,7 @@ fun AppNavHost(
         popExitTransition = { fadeOut(animationSpec = tween(300)) + scaleOut(targetScale = 0.92f, animationSpec = tween(300)) }
     ) {
         composable("home") {
-            HomeScreen(padding = padding, navController = navController)
+            HomeScreen(navController = navController, drawerState = drawerState)
         }
 
         composable("filemanager") {
@@ -58,12 +58,17 @@ fun AppNavHost(
             val pomodoroViewModel: PomodoroViewModel = hiltViewModel()
             PomodoroScreen(
                 viewModel = pomodoroViewModel,
-                padding = padding
+                navController = navController,
+                drawerState = drawerState
             )
         }
 
         composable("settings") {
-            SettingsScreen(viewModel = viewModel, padding = padding)
+            SettingsScreen(
+                viewModel = viewModel,
+                navController = navController,
+                drawerState = drawerState
+            )
         }
     }
 }

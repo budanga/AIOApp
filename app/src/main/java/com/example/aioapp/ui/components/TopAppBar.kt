@@ -2,6 +2,8 @@ package com.example.aioapp.ui.components
 
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.height
+import androidx.compose.ui.unit.dp
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Menu
@@ -34,63 +36,31 @@ fun AioTopBar(
     actions: @Composable RowScope.() -> Unit = {},
     colors: TopAppBarColors = TopAppBarDefaults.topAppBarColors(),
     modifier: Modifier = Modifier,
-    windowInsets: WindowInsets = WindowInsets(0)
+    windowInsets: WindowInsets = TopAppBarDefaults.windowInsets
 ) {
     CenterAlignedTopAppBar(
         title = title,
         navigationIcon = navigationIcon,
         actions = actions,
         colors = colors,
-        modifier = modifier,
+        modifier = modifier.height(56.dp),
         windowInsets = windowInsets
     )
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun TopAppBar(
-    currentScreen: String,
+fun DefaultNavigationIcon(
     navController: NavController,
     drawerState: DrawerState,
-    scope: CoroutineScope,
-    actions: @Composable RowScope.() -> Unit = {},
-    colors: TopAppBarColors = TopAppBarDefaults.topAppBarColors()
+    scope: CoroutineScope
 ) {
-    val gradientColors = LocalAppGradient.current
-
-    AioTopBar(
-        title = {
-            if (currentScreen == "home") {
-                Text(
-                    text = "AIOApp",
-                    style = TextStyle(
-                        brush = Brush.horizontalGradient(
-                            colors = gradientColors
-                        ),
-                        fontFamily = FontFamily(Font(R.font.bbhbogle_regular)),
-                        fontSize = 40.sp
-                    )
-                )
-            } else {
-                val titleString = when (currentScreen) {
-                    "filemanager" -> "File Manager"
-                    else -> currentScreen.replaceFirstChar { it.uppercase() }
-                }
-                Text(text = titleString)
-            }
-        },
-        navigationIcon = {
-            if (navController.previousBackStackEntry != null) {
-                IconButton(onClick = { navController.navigateUp() }) {
-                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                }
-            } else {
-                IconButton(onClick = { scope.launch { drawerState.open() } }) {
-                    Icon(Icons.Filled.Menu, contentDescription = "Menu")
-                }
-            }
-        },
-        actions = actions,
-        colors = colors
-    )
+    if (navController.previousBackStackEntry != null) {
+        IconButton(onClick = { navController.navigateUp() }) {
+            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+        }
+    } else {
+        IconButton(onClick = { scope.launch { drawerState.open() } }) {
+            Icon(Icons.Filled.Menu, contentDescription = "Menu")
+        }
+    }
 }
