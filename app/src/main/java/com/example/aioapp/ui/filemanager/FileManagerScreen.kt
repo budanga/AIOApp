@@ -306,7 +306,7 @@ fun FileManagerScreen(
                 }
             }
         ) { padding ->
-            Box(modifier = Modifier.padding(padding)) {
+            Box(modifier = Modifier.padding(padding).fillMaxSize()) {
                 if (currentDirectory != null) {
                     if (isSearching) {
                         SearchResultsList(

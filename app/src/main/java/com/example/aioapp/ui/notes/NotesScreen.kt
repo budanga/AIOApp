@@ -182,7 +182,7 @@ fun NotesScreen(
         },
         containerColor = MaterialTheme.colorScheme.background
     ) { innerPadding ->
-        Box(modifier = Modifier.fillMaxSize().padding(padding)) {
+        Box(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
             AnimatedContent(
                 targetState = viewingNoteId,
                 transitionSpec = {
@@ -248,7 +248,7 @@ fun NotesScreen(
                                 containerColor = MaterialTheme.colorScheme.surface
                             )
                         )
-                        Box(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
+                        Box(modifier = Modifier.fillMaxSize()) {
                             if (notes.isNotEmpty()) {
                                 LazyColumn(
                                     modifier = Modifier.fillMaxSize(),
