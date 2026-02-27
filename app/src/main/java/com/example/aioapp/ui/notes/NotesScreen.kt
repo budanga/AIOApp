@@ -23,6 +23,8 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.CenterAlignedTopAppBar
+import com.example.aioapp.ui.components.AioTopBar
+import com.example.aioapp.ui.components.DefaultNavigationIcon
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -73,24 +75,7 @@ import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
 
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun AppTopAppBar(
-    title: @Composable () -> Unit,
-    navigationIcon: @Composable () -> Unit,
-    modifier: Modifier = Modifier,
-    actions: @Composable RowScope.() -> Unit = {},
-    colors: TopAppBarColors = TopAppBarDefaults.topAppBarColors()
-) {
-    CenterAlignedTopAppBar(
-        modifier = modifier.height(56.dp),
-        windowInsets = WindowInsets(0),
-        title = title,
-        navigationIcon = navigationIcon,
-        actions = actions,
-        colors = colors
-    )
-}
+// AppTopAppBar is no longer needed as we use AioTopBar directly
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -208,7 +193,7 @@ fun NotesScreen(
             ) { targetViewingNoteId ->
                 if (targetViewingNoteId == null) {
                     Column(modifier = Modifier.fillMaxSize()) {
-                        AppTopAppBar(
+                        AioTopBar(
                             title = {
                                 Text(
                                     text = if (isSelectionMode) "${selectedNoteIds.size} Selected" else "Notes",
@@ -221,14 +206,8 @@ fun NotesScreen(
                                     IconButton(onClick = { selectedNoteIds = emptySet() }) {
                                         Icon(Icons.Default.Close, contentDescription = "Clear Selection", tint = MaterialTheme.colorScheme.onSurface)
                                     }
-                                } else if (navController.previousBackStackEntry != null) {
-                                    IconButton(onClick = { navController.navigateUp() }) {
-                                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = MaterialTheme.colorScheme.onSurface)
-                                    }
                                 } else {
-                                    IconButton(onClick = { scope.launch { drawerState.open() } }) {
-                                        Icon(Icons.Filled.Menu, contentDescription = "Menu", tint = MaterialTheme.colorScheme.onSurface)
-                                    }
+                                    DefaultNavigationIcon(navController, drawerState, scope)
                                 }
                             },
                             actions = {
@@ -252,7 +231,7 @@ fun NotesScreen(
                                     DropdownMenu(
                                         expanded = showSortMenu,
                                         onDismissRequest = { showSortMenu = false }
-                                    ) {
+                                     ) {
                                         NoteSortOrder.entries.forEach { order ->
                                             DropdownMenuItem(
                                                 text = { Text(if (order == NoteSortOrder.ALPHABETICAL) "Name" else order.name.replace("_", " ").lowercase().replaceFirstChar { it.uppercase() }) },
@@ -464,7 +443,7 @@ fun ViewEditNoteScreen(
             ) 
         },
         topBar = {
-            AppTopAppBar(
+            AioTopBar(
                 title = {
                     Text(
                         text = note.title,

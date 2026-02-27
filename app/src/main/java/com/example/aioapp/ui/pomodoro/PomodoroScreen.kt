@@ -19,7 +19,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.aioapp.core.model.PomodoroMode
 import com.example.aioapp.ui.theme.LocalAppGradient
 
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.navigation.NavController
 import com.example.aioapp.ui.components.AioTopBar
 import com.example.aioapp.ui.components.DefaultNavigationIcon
@@ -163,6 +162,7 @@ fun PomodoroScreen(
             }
         }
     }
+}
 }
 
 private fun formatTime(seconds: Long): String {

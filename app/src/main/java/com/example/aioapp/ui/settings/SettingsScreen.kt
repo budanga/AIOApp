@@ -61,6 +61,7 @@ fun SettingsScreen(
         }
     }
 }
+}
 
 @Composable
 fun SettingsCategory(
