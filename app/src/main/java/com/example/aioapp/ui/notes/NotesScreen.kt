@@ -80,11 +80,12 @@ fun AppTopAppBar(
     navigationIcon: @Composable () -> Unit,
     modifier: Modifier = Modifier,
     actions: @Composable RowScope.() -> Unit = {},
-    colors: TopAppBarColors = TopAppBarDefaults.topAppBarColors()
+    colors: TopAppBarColors = TopAppBarDefaults.topAppBarColors(),
+    windowInsets: WindowInsets = TopAppBarDefaults.windowInsets
 ) {
     CenterAlignedTopAppBar(
-        modifier = modifier.height(56.dp),
-        windowInsets = WindowInsets(0),
+        modifier = modifier,
+        windowInsets = windowInsets,
         title = title,
         navigationIcon = navigationIcon,
         actions = actions,
@@ -209,11 +210,12 @@ fun NotesScreen(
                 if (targetViewingNoteId == null) {
                     Column(modifier = Modifier.fillMaxSize()) {
                         AppTopAppBar(
+                            windowInsets = WindowInsets(0),
                             title = {
                                 Text(
                                     text = if (isSelectionMode) "${selectedNoteIds.size} Selected" else "Notes",
                                     color = MaterialTheme.colorScheme.onSurface,
-                                    fontSize = 20.sp
+                                    style = MaterialTheme.typography.titleLarge
                                 )
                             },
                             navigationIcon = {
@@ -465,12 +467,14 @@ fun ViewEditNoteScreen(
         },
         topBar = {
             AppTopAppBar(
+                windowInsets = WindowInsets(0),
                 title = {
                     Text(
                         text = note.title,
                         color = contentColor,
                         maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
+                        overflow = TextOverflow.Ellipsis,
+                        style = MaterialTheme.typography.titleLarge
                     )
                 },
                 navigationIcon = {
