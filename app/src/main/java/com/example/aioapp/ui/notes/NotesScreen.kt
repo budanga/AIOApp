@@ -22,8 +22,27 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.material.icons.filled.*
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.CenterAlignedTopAppBar
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBarColors
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.DrawerState
+import androidx.compose.material3.Surface
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TextField
+import androidx.compose.material3.TextFieldDefaults
+import androidx.compose.runtime.* 
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -41,6 +60,7 @@ import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -52,6 +72,25 @@ import com.example.aioapp.ui.theme.*
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun AppTopAppBar(
+    title: @Composable () -> Unit,
+    navigationIcon: @Composable () -> Unit,
+    modifier: Modifier = Modifier,
+    actions: @Composable RowScope.() -> Unit = {},
+    colors: TopAppBarColors = TopAppBarDefaults.topAppBarColors()
+) {
+    CenterAlignedTopAppBar(
+        modifier = modifier.height(56.dp),
+        windowInsets = WindowInsets(0),
+        title = title,
+        navigationIcon = navigationIcon,
+        actions = actions,
+        colors = colors
+    )
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -169,9 +208,7 @@ fun NotesScreen(
             ) { targetViewingNoteId ->
                 if (targetViewingNoteId == null) {
                     Column(modifier = Modifier.fillMaxSize()) {
-                        TopAppBar(
-                            modifier = Modifier.height(56.dp),
-                            windowInsets = WindowInsets(0),
+                        AppTopAppBar(
                             title = {
                                 Text(
                                     text = if (isSelectionMode) "${selectedNoteIds.size} Selected" else "Notes",
@@ -232,11 +269,6 @@ fun NotesScreen(
                                 containerColor = MaterialTheme.colorScheme.surface
                             )
                         )
-                        HorizontalDivider(
-                            modifier = Modifier.fillMaxWidth(),
-                            thickness = 0.5.dp,
-                            color = MaterialTheme.colorScheme.outlineVariant
-                        )
                         Box(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
                             if (notes.isNotEmpty()) {
                                 LazyColumn(
@@ -244,22 +276,22 @@ fun NotesScreen(
                                     contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
                                     verticalArrangement = Arrangement.spacedBy(8.dp)
                                 ) {
-                                    items(notes, key = { it.id }) { note ->
+                                    items(notes, key = { it.id }) {
                                         NoteItem(
-                                            note = note,
-                                            isSelected = selectedNoteIds.contains(note.id),
+                                            note = it,
+                                            isSelected = selectedNoteIds.contains(it.id),
                                             onLongClick = {
-                                                if (!isSelectionMode) selectedNoteIds = setOf(note.id)
+                                                if (!isSelectionMode) selectedNoteIds = setOf(it.id)
                                             },
                                             onClick = {
                                                 if (isSelectionMode) {
-                                                    selectedNoteIds = if (selectedNoteIds.contains(note.id)) {
-                                                        selectedNoteIds - note.id
+                                                    selectedNoteIds = if (selectedNoteIds.contains(it.id)) {
+                                                        selectedNoteIds - it.id
                                                     } else {
-                                                        selectedNoteIds + note.id
+                                                        selectedNoteIds + it.id
                                                     }
                                                 } else {
-                                                    viewingNoteId = note.id
+                                                    viewingNoteId = it.id
                                                 }
                                             }
                                         )
@@ -284,15 +316,16 @@ fun NotesScreen(
                 } else {
                     val note = notes.find { it.id == targetViewingNoteId }
                     if (note != null) {
+                        // The ViewEditNoteScreen is now responsible for its own top bar
                         ViewEditNoteScreen(
                             note = note,
                             viewModel = viewModel,
                             onDismiss = { viewingNoteId = null },
                             appGradient = appGradient,
                             onUniqueError = { 
-                                scope.launch { 
-                                    snackbarHostState.showSnackbar("Note title must be unique") 
-                                } 
+                                scope.launch {
+                                    snackbarHostState.showSnackbar("Note title must be unique")
+                                }
                             }
                         )
                     } else {
@@ -431,28 +464,26 @@ fun ViewEditNoteScreen(
             ) 
         },
         topBar = {
-            Column {
-                TopAppBar(
-                    modifier = Modifier.height(56.dp),
-                    windowInsets = WindowInsets(0),
-                    title = { },
-                    navigationIcon = {
-                        IconButton(onClick = onDismiss) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = contentColor)
-                        }
-                    },
-                    colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = Color.Transparent,
-                        titleContentColor = contentColor,
-                        navigationIconContentColor = contentColor
+            AppTopAppBar(
+                title = {
+                    Text(
+                        text = note.title,
+                        color = contentColor,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
+                },
+                navigationIcon = {
+                    IconButton(onClick = onDismiss) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = contentColor)
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = Color.Transparent,
+                    titleContentColor = contentColor,
+                    navigationIconContentColor = contentColor
                 )
-                HorizontalDivider(
-                    modifier = Modifier.fillMaxWidth(),
-                    thickness = 0.5.dp,
-                    color = contentColor.copy(alpha = 0.1f)
-                )
-            }
+            )
         },
         floatingActionButton = {
             val interactionSource = remember { MutableInteractionSource() }
@@ -568,8 +599,8 @@ fun ViewEditNoteScreen(
                                 .fillMaxWidth()
                                 .border(0.5.dp, bentoBorderColor, RoundedCornerShape(16.dp)),
                             shape = RoundedCornerShape(16.dp),
-                            colors = CardDefaults.cardColors(containerColor = bentoContainerColor.copy(alpha = bentoContainerColor.alpha * 0.8f))
-                        ) {
+                            colors = CardDefaults.cardColors(containerColor = bentoContainerColor.copy(alpha = bentoContainerColor.alpha * 0.8f)))
+                         {
                             TextField(
                                 value = content,
                                 onValueChange = { content = it },
@@ -712,8 +743,8 @@ fun AddNoteDialog(
                                     color = if (selectedColor == color) {
                                         MaterialTheme.colorScheme.primary
                                     } else {
-                                        MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f)
-                                    }, 
+                                        MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f) 
+                                    },
                                     shape = CircleShape
                                 )
                         )

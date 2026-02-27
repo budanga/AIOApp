@@ -9,6 +9,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.text.TextStyle
@@ -27,10 +28,12 @@ fun TopAppBar(
     currentScreen: String,
     navController: NavController,
     drawerState: DrawerState,
-    scope: CoroutineScope
+    scope: CoroutineScope,
+    actions: @Composable () -> Unit = {},
+    colors: androidx.compose.material3.TopAppBarColors = TopAppBarDefaults.topAppBarColors()
 ) {
     val gradientColors = LocalAppGradient.current
-    
+
     CenterAlignedTopAppBar(
         title = {
             if (currentScreen == "home") {
@@ -62,6 +65,8 @@ fun TopAppBar(
                     Icon(Icons.Filled.Menu, contentDescription = "Menu")
                 }
             }
-        }
+        },
+        actions = { actions() },
+        colors = colors
     )
 }
