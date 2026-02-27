@@ -26,7 +26,6 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.focus.FocusRequester
@@ -73,9 +72,11 @@ fun NotesScreen(
     val isSelectionMode = selectedNoteIds.isNotEmpty()
 
     // Handle system back button
-    BackHandler(enabled = isSelectionMode || viewingNoteId != null) {
+    BackHandler(enabled = isSelectionMode || viewingNoteId != null || showAddDialog) {
         if (isSelectionMode) {
             selectedNoteIds = emptySet()
+        } else if (showAddDialog) {
+            showAddDialog = false
         } else {
             viewingNoteId = null
         }
@@ -86,12 +87,15 @@ fun NotesScreen(
     val appGradient = Brush.horizontalGradient(colors = appGradientColors)
 
     Scaffold(
-        snackbarHost = { SnackbarHost(snackbarHostState) },
-        topBar = {
+        snackbarHost = { 
+            SnackbarHost(
+                hostState = snackbarHostState,
+                modifier = Modifier.imePadding() 
+            ) 
         },
         floatingActionButton = {
             AnimatedVisibility(
-                visible = !isSelectionMode && viewingNoteId == null,
+                visible = !isSelectionMode && viewingNoteId == null && !showAddDialog,
                 enter = fadeIn(tween(200)) + scaleIn(animationSpec = tween(200)),
                 exit = fadeOut(tween(200)) + scaleOut(animationSpec = tween(200))
             ) {
@@ -193,8 +197,13 @@ fun NotesScreen(
                             actions = {
                                 if (isSelectionMode) {
                                     IconButton(onClick = {
+                                        val count = selectedNoteIds.size
                                         viewModel.deleteNotes(selectedNoteIds)
                                         selectedNoteIds = emptySet()
+                                        scope.launch {
+                                            val msg = if (count == 1) "Note deleted successfully" else "Notes deleted successfully"
+                                            snackbarHostState.showSnackbar(msg)
+                                        }
                                     }) {
                                         Icon(Icons.Default.Delete, contentDescription = "Delete", tint = Color.Red)
                                     }
@@ -280,7 +289,11 @@ fun NotesScreen(
                             viewModel = viewModel,
                             onDismiss = { viewingNoteId = null },
                             appGradient = appGradient,
-                            onUniqueError = { scope.launch { snackbarHostState.showSnackbar("Note title must be unique") } }
+                            onUniqueError = { 
+                                scope.launch { 
+                                    snackbarHostState.showSnackbar("Note title must be unique") 
+                                } 
+                            }
                         )
                     } else {
                         viewingNoteId = null
@@ -294,22 +307,24 @@ fun NotesScreen(
                 modifier = Modifier
                     .fillMaxSize()
                     .background(Color.Black.copy(alpha = 0.6f))
-                    .clickable(enabled = false) {}
-            )
-
-            AddNoteDialog(
-                onDismiss = { showAddDialog = false },
-                onConfirm = { title, content, color ->
-                    scope.launch {
-                        if (viewModel.addNote(title, content, color)) {
-                            showAddDialog = false
-                        } else {
-                            snackbarHostState.showSnackbar("Note title must be unique")
+                    .clickable { showAddDialog = false }
+                    .imePadding(),
+                contentAlignment = Alignment.Center
+            ) {
+                AddNoteDialog(
+                    onDismiss = { showAddDialog = false },
+                    onConfirm = { title, content, color ->
+                        scope.launch {
+                            if (viewModel.addNote(title, content, color)) {
+                                showAddDialog = false
+                            } else {
+                                snackbarHostState.showSnackbar("Note title must be unique")
+                            }
                         }
-                    }
-                },
-                appGradient = appGradient
-            )
+                    },
+                    appGradient = appGradient
+                )
+            }
         }
     }
 }
@@ -325,7 +340,8 @@ fun NoteItem(
     val dateFormat = remember { SimpleDateFormat("MMM d, yyyy", Locale.getDefault()) }
     val dateString = dateFormat.format(Date(note.createdAt))
     val baseColor = Color(note.color)
-    val contentColor = if (baseColor.luminance() > 0.5f) Color.Black else Color.White
+    val isLightNote = baseColor.luminance() > 0.5f
+    val contentColor = if (isLightNote) Color.Black else Color.White
 
     Card(
         modifier = Modifier
@@ -384,6 +400,8 @@ fun ViewEditNoteScreen(
     val dateFormat = remember { SimpleDateFormat("MMM d, yyyy", Locale.getDefault()) }
     val dateString = dateFormat.format(Date(note.createdAt))
     val scope = rememberCoroutineScope()
+    val scrollState = rememberScrollState()
+    val snackbarHostState = remember { SnackbarHostState() }
 
     val isDarkApp = LocalDarkTheme.current
     val baseColor = Color(note.color)
@@ -406,6 +424,12 @@ fun ViewEditNoteScreen(
 
     Scaffold(
         modifier = Modifier.fillMaxSize().background(noteGradient),
+        snackbarHost = { 
+            SnackbarHost(
+                hostState = snackbarHostState,
+                modifier = Modifier.imePadding()
+            ) 
+        },
         topBar = {
             Column {
                 TopAppBar(
@@ -446,6 +470,8 @@ fun ViewEditNoteScreen(
 
             Box(
                 modifier = Modifier
+                    .navigationBarsPadding()
+                    .imePadding()
                     .size(56.dp)
                     .graphicsLayer(scaleX = scale, scaleY = scale)
                     .shadow(if (isPressed) 4.dp else 12.dp, CircleShape)
@@ -461,7 +487,7 @@ fun ViewEditNoteScreen(
                                 if (viewModel.updateNote(note.id, title, content)) {
                                     isEditing = false
                                 } else {
-                                    onUniqueError()
+                                    snackbarHostState.showSnackbar("Note title must be unique")
                                 }
                             }
                         } else {
@@ -473,7 +499,8 @@ fun ViewEditNoteScreen(
                 AnimatedContent(
                     targetState = isEditing,
                     transitionSpec = {
-                        (fadeIn() + scaleIn()).togetherWith(fadeOut() + scaleOut())
+                        (fadeIn(animationSpec = tween(100)) + scaleIn(animationSpec = tween(100)))
+                            .togetherWith(fadeOut(animationSpec = tween(100)) + scaleOut(animationSpec = tween(100)))
                     },
                     label = "IconChange"
                 ) { editing ->
@@ -490,7 +517,15 @@ fun ViewEditNoteScreen(
         },
         containerColor = Color.Transparent
     ) { innerPadding ->
-        Box(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding)
+                .consumeWindowInsets(innerPadding)
+                .imePadding()
+                .verticalScroll(scrollState)
+                .padding(16.dp)
+        ) {
             AnimatedContent(
                 targetState = isEditing,
                 transitionSpec = {
@@ -499,11 +534,7 @@ fun ViewEditNoteScreen(
                 },
                 label = "EditTransition"
             ) { editing ->
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(16.dp)
-                ) {
+                Column(modifier = Modifier.fillMaxWidth()) {
                     if (editing) {
                         val bentoContainerColor = contentColor.copy(alpha = 0.05f)
                         val bentoBorderColor = contentColor.copy(alpha = 0.1f)
@@ -535,7 +566,6 @@ fun ViewEditNoteScreen(
                         Card(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .weight(1f)
                                 .border(0.5.dp, bentoBorderColor, RoundedCornerShape(16.dp)),
                             shape = RoundedCornerShape(16.dp),
                             colors = CardDefaults.cardColors(containerColor = bentoContainerColor.copy(alpha = bentoContainerColor.alpha * 0.8f))
@@ -543,7 +573,7 @@ fun ViewEditNoteScreen(
                             TextField(
                                 value = content,
                                 onValueChange = { content = it },
-                                modifier = Modifier.fillMaxSize(),
+                                modifier = Modifier.fillMaxWidth(),
                                 textStyle = MaterialTheme.typography.bodyLarge.copy(color = contentColor),
                                 placeholder = { Text("Start typing...", color = contentColor.copy(alpha = 0.5f)) },
                                 colors = TextFieldDefaults.colors(
@@ -567,22 +597,21 @@ fun ViewEditNoteScreen(
                         Text(
                             text = content,
                             style = MaterialTheme.typography.bodyLarge,
-                            modifier = Modifier.weight(1f),
                             color = contentColor
                         )
                     }
-                    Spacer(modifier = Modifier.height(48.dp))
                 }
             }
-
+            
+            Spacer(modifier = Modifier.height(24.dp))
+            
             Text(
-                text = dateString,
-                modifier = Modifier
-                    .align(Alignment.BottomStart)
-                    .padding(16.dp),
+                text = "Created: $dateString",
                 style = MaterialTheme.typography.labelMedium,
                 color = contentColor.copy(alpha = 0.6f)
             )
+            
+            Spacer(modifier = Modifier.height(120.dp))
         }
     }
 }
@@ -599,152 +628,138 @@ fun AddNoteDialog(
     var selectedColor by remember { mutableStateOf(colors[0]) }
     val focusRequester = remember { FocusRequester() }
 
-    val isFormComplete = title.isNotBlank() && content.isNotBlank()
+    val isFormComplete = title.isNotBlank()
 
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        containerColor = MaterialTheme.colorScheme.background,
-        title = { Text("New Note", color = MaterialTheme.colorScheme.onBackground) },
-        text = {
-            Column(
-                modifier = Modifier.verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+    Surface(
+        modifier = Modifier
+            .padding(24.dp)
+            .fillMaxWidth()
+            .wrapContentHeight()
+            .clickable(enabled = false) {},
+        shape = RoundedCornerShape(28.dp),
+        color = MaterialTheme.colorScheme.background,
+        tonalElevation = 6.dp
+    ) {
+        Column(
+            modifier = Modifier
+                .padding(24.dp)
+                .verticalScroll(rememberScrollState()),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            Text(
+                "New Note",
+                style = MaterialTheme.typography.headlineSmall,
+                color = MaterialTheme.colorScheme.onBackground
+            )
+
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .border(1.5.dp, appGradient, RoundedCornerShape(8.dp))
+                    .padding(2.dp)
             ) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .border(1.5.dp, appGradient, RoundedCornerShape(8.dp))
-                        .padding(2.dp)
-                ) {
-                    TextField(
-                        value = title,
-                        onValueChange = { title = it },
-                        placeholder = { Text("Title") },
-                        modifier = Modifier.fillMaxWidth().focusRequester(focusRequester),
-                        colors = TextFieldDefaults.colors(
-                            focusedContainerColor = Color.Transparent,
-                            unfocusedContainerColor = Color.Transparent,
-                            focusedIndicatorColor = Color.Transparent,
-                            unfocusedIndicatorColor = Color.Transparent,
-                            focusedTextColor = MaterialTheme.colorScheme.onBackground,
-                            unfocusedTextColor = MaterialTheme.colorScheme.onBackground
-                        )
+                TextField(
+                    value = title,
+                    onValueChange = { title = it },
+                    placeholder = { Text("Title") },
+                    modifier = Modifier.fillMaxWidth().focusRequester(focusRequester),
+                    colors = TextFieldDefaults.colors(
+                        focusedContainerColor = Color.Transparent,
+                        unfocusedContainerColor = Color.Transparent,
+                        focusedIndicatorColor = Color.Transparent,
+                        unfocusedIndicatorColor = Color.Transparent,
+                        focusedTextColor = MaterialTheme.colorScheme.onBackground,
+                        unfocusedTextColor = MaterialTheme.colorScheme.onBackground
                     )
-                }
-                LaunchedEffect(Unit) { focusRequester.requestFocus() }
+                )
+            }
+            LaunchedEffect(Unit) { focusRequester.requestFocus() }
 
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .border(1.5.dp, appGradient, RoundedCornerShape(8.dp))
-                        .padding(2.dp)
-                ) {
-                    TextField(
-                        value = content,
-                        onValueChange = { content = it },
-                        placeholder = { Text("Note") },
-                        modifier = Modifier.fillMaxWidth().heightIn(min = 100.dp),
-                        colors = TextFieldDefaults.colors(
-                            focusedContainerColor = Color.Transparent,
-                            unfocusedContainerColor = Color.Transparent,
-                            focusedIndicatorColor = Color.Transparent,
-                            unfocusedIndicatorColor = Color.Transparent,
-                            focusedTextColor = MaterialTheme.colorScheme.onBackground,
-                            unfocusedTextColor = MaterialTheme.colorScheme.onBackground
-                        )
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .border(1.5.dp, appGradient, RoundedCornerShape(8.dp))
+                    .padding(2.dp)
+            ) {
+                TextField(
+                    value = content,
+                    onValueChange = { content = it },
+                    placeholder = { Text("Note (Optional)") },
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 100.dp),
+                    colors = TextFieldDefaults.colors(
+                        focusedContainerColor = Color.Transparent,
+                        unfocusedContainerColor = Color.Transparent,
+                        focusedIndicatorColor = Color.Transparent,
+                        unfocusedIndicatorColor = Color.Transparent,
+                        focusedTextColor = MaterialTheme.colorScheme.onBackground,
+                        unfocusedTextColor = MaterialTheme.colorScheme.onBackground
                     )
-                }
+                )
+            }
 
-                Column {
-                    Text("Background Color:", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onBackground)
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        colors.forEach { color ->
-                            Box(
-                                modifier = Modifier
-                                    .size(36.dp)
-                                    .background(color, CircleShape)
-                                    .clickable { selectedColor = color }
-                                    .border(
-                                        width = if (selectedColor == color) 2.dp else 1.dp,
-                                        color = if (selectedColor == color) {
-                                            MaterialTheme.colorScheme.primary
-                                        } else {
-                                            MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f)
-                                        }, 
-                                        shape = CircleShape
-                                    )
-                            )
-                        }
+            Column {
+                Text("Background Color:", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onBackground)
+                Spacer(modifier = Modifier.height(8.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    colors.forEach { color ->
+                        Box(
+                            modifier = Modifier
+                                .size(36.dp)
+                                .background(color, CircleShape)
+                                .clickable { selectedColor = color }
+                                .border(
+                                    width = if (selectedColor == color) 2.dp else 1.dp,
+                                    color = if (selectedColor == color) {
+                                        MaterialTheme.colorScheme.primary
+                                    } else {
+                                        MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f)
+                                    }, 
+                                    shape = CircleShape
+                                )
+                        )
                     }
                 }
             }
-        },
-        confirmButton = {
-            val alpha by animateFloatAsState(
-                targetValue = if (isFormComplete) 1f else 0f,
-                animationSpec = tween(durationMillis = 300),
-                label = "alpha"
-            )
-            val textColor by animateColorAsState(
-                targetValue = if (isFormComplete) Color.White else Color.DarkGray,
-                animationSpec = tween(durationMillis = 300),
-                label = "textColor"
-            )
 
-            val interactionSource = remember { MutableInteractionSource() }
-            val isPressed by interactionSource.collectIsPressedAsState()
-            val scale by animateFloatAsState(
-                targetValue = if (isPressed) 0.95f else 1f,
-                animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium),
-                label = "scale"
-            )
-
-            Box(
-                modifier = Modifier
-                    .height(44.dp)
-                    .width(100.dp)
-                    .graphicsLayer(scaleX = scale, scaleY = scale)
-                    .shadow(if (isPressed) 2.dp else 6.dp, RoundedCornerShape(12.dp))
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(Color(0xFFE0E0E0))
-                    .clickable(
-                        enabled = isFormComplete,
-                        interactionSource = interactionSource,
-                        indication = LocalIndication.current
-                    ) { onConfirm(title, content, selectedColor.toArgb()) },
-                contentAlignment = Alignment.Center
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.End)
             ) {
+                TextButton(
+                    onClick = onDismiss,
+                    modifier = Modifier.height(44.dp).width(100.dp)
+                ) {
+                    Text("Cancel", fontWeight = FontWeight.Bold)
+                }
+
+                val interactionSource = remember { MutableInteractionSource() }
+                val isPressed by interactionSource.collectIsPressedAsState()
+                val scale by animateFloatAsState(
+                    targetValue = if (isPressed) 0.95f else 1f,
+                    label = "scale"
+                )
+
                 Box(
                     modifier = Modifier
-                        .fillMaxSize()
-                        .alpha(alpha)
-                        .background(appGradient)
-                )
-                Text(
-                    "Add",
-                    color = textColor,
-                    fontWeight = FontWeight.Bold
-                )
-            }
-        },
-        dismissButton = {
-            Box(
-                modifier = Modifier
-                    .height(44.dp)
-                    .width(100.dp)
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(MaterialTheme.colorScheme.background)
-                    .border(0.5.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(12.dp))
-                    .clickable { onDismiss() },
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    "Cancel",
-                    color = MaterialTheme.colorScheme.onSurface,
-                    fontWeight = FontWeight.Bold
-                )
+                        .height(44.dp)
+                        .width(100.dp)
+                        .graphicsLayer(scaleX = scale, scaleY = scale)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(if (isFormComplete) appGradient else Brush.linearGradient(listOf(Color.LightGray, Color.LightGray)))
+                        .clickable(
+                            enabled = isFormComplete,
+                            interactionSource = interactionSource,
+                            indication = LocalIndication.current
+                        ) { onConfirm(title, content, selectedColor.toArgb()) },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        "Add",
+                        color = if (isFormComplete) Color.White else Color.DarkGray,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
             }
         }
-    )
+    }
 }
