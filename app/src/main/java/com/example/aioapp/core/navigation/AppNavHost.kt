@@ -5,10 +5,14 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.DrawerState
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -20,6 +24,7 @@ import com.example.aioapp.ui.notes.NotesViewModel
 import com.example.aioapp.ui.pomodoro.PomodoroScreen
 import com.example.aioapp.ui.pomodoro.PomodoroViewModel
 import com.example.aioapp.ui.settings.SettingsScreen
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 
 @Composable
 fun AppNavHost(
@@ -61,6 +66,12 @@ fun AppNavHost(
                 padding = padding,
                 navController = navController
             )
+        }
+
+        composable("unitconverter") {
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Text(text = "Unit Converter (Not Implemented)")
+            }
         }
 
         composable("settings") {
