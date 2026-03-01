@@ -4,6 +4,8 @@ import android.content.Context
 import androidx.room.Room
 import com.example.aioapp.core.database.AppDatabase
 import com.example.aioapp.core.database.NoteDao
+import com.example.aioapp.core.database.CurrencyDao
+import com.example.aioapp.core.database.UnitOrderDao
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -30,5 +32,15 @@ object DatabaseModule {
     @Provides
     fun provideNoteDao(database: AppDatabase): NoteDao {
         return database.noteDao()
+    }
+
+    @Provides
+    fun provideCurrencyDao(database: AppDatabase): CurrencyDao {
+        return database.currencyDao()
+    }
+
+    @Provides
+    fun provideUnitOrderDao(database: AppDatabase): UnitOrderDao {
+        return database.unitOrderDao()
     }
 }

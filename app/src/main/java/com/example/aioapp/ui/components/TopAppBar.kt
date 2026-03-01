@@ -77,6 +77,7 @@ fun TopAppBar(
                     "filemanager" -> "File Manager"
                     "pomodoro" -> "Pomodoro"
                     "notes" -> "Notes"
+                    "unitconverter" -> "Unit Converter"
                     else -> currentScreen.replaceFirstChar { it.uppercase() }
                 }
                 Text(
