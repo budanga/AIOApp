@@ -44,6 +44,8 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.LocalIndication
+import androidx.compose.ui.res.stringResource
+import com.example.aioapp.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -62,7 +64,7 @@ fun TrucoScreen(
             AppTopAppBar(
                 title = {
                     Text(
-                        text = "Truco",
+                        text = stringResource(R.string.feature_truco),
                         style = MaterialTheme.typography.titleLarge,
                         fontFamily = RobotoMono,
                         fontWeight = FontWeight.Medium
@@ -70,15 +72,15 @@ fun TrucoScreen(
                 },
                 navigationIcon = {
                     IconButton(onClick = { navController.navigateUp() }) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.nav_back))
                     }
                 },
                 actions = {
                     IconButton(onClick = { showHistory = true }) {
-                        Icon(Icons.Default.History, contentDescription = "History")
+                        Icon(Icons.Default.History, contentDescription = stringResource(R.string.truco_history_icon))
                     }
                     IconButton(onClick = { viewModel.reset() }) {
-                        Icon(Icons.Default.Refresh, contentDescription = "Reset")
+                        Icon(Icons.Default.Refresh, contentDescription = stringResource(R.string.truco_reset_icon))
                     }
                 }
             )
@@ -104,14 +106,14 @@ fun TrucoScreen(
                         onClick = { viewModel.setMaxPoints(15) },
                         shape = SegmentedButtonDefaults.itemShape(index = 0, count = 2)
                     ) {
-                        Text("15 Points", fontFamily = RobotoMono)
+                        Text(stringResource(R.string.truco_15_points), fontFamily = RobotoMono)
                     }
                     SegmentedButton(
                         selected = uiState.maxPoints == 30,
                         onClick = { viewModel.setMaxPoints(30) },
                         shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2)
                     ) {
-                        Text("30 Points", fontFamily = RobotoMono)
+                        Text(stringResource(R.string.truco_30_points), fontFamily = RobotoMono)
                     }
                 }
 
@@ -212,14 +214,14 @@ fun HistoryDialog(
                         verticalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
                         Text(
-                            "Game History",
+                            stringResource(R.string.truco_history_title),
                             style = MaterialTheme.typography.headlineSmall.copy(fontFamily = RobotoMono),
                             color = MaterialTheme.colorScheme.onBackground
                         )
 
                         if (history.isEmpty()) {
                             Text(
-                                "No games played yet.",
+                                stringResource(R.string.truco_history_empty),
                                 fontFamily = RobotoMono,
                                 modifier = Modifier.padding(vertical = 16.dp),
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -247,7 +249,7 @@ fun HistoryDialog(
                                                     verticalAlignment = Alignment.CenterVertically
                                                 ) {
                                                     Text(
-                                                        text = "${game.winner.uppercase()} WON",
+                                                        text = stringResource(R.string.truco_won_label, game.winner.uppercase()),
                                                         fontWeight = FontWeight.Bold,
                                                         style = MaterialTheme.typography.labelLarge,
                                                         fontFamily = RobotoMono,
@@ -292,7 +294,7 @@ fun HistoryDialog(
                                                     }
                                                 }
                                                 Text(
-                                                    text = "Mode: ${game.maxPoints} pts",
+                                                    text = stringResource(R.string.truco_mode_label, game.maxPoints),
                                                     style = MaterialTheme.typography.labelSmall,
                                                     fontFamily = RobotoMono,
                                                     modifier = Modifier.fillMaxWidth(),
@@ -313,7 +315,7 @@ fun HistoryDialog(
                             if (history.isNotEmpty()) {
                                 TextButton(onClick = onClear) {
                                     Text(
-                                        "CLEAR ALL",
+                                        stringResource(R.string.truco_history_clear),
                                         color = MaterialTheme.colorScheme.error,
                                         fontFamily = RobotoMono,
                                         fontWeight = FontWeight.Bold
@@ -339,7 +341,7 @@ fun HistoryDialog(
                                 contentAlignment = Alignment.Center
                             ) {
                                 Text(
-                                    "CLOSE",
+                                    stringResource(R.string.truco_history_close),
                                     color = Color.White,
                                     fontWeight = FontWeight.Bold,
                                     fontFamily = RobotoMono
@@ -385,7 +387,7 @@ fun WinOverlay(
             )
 
             Text(
-                text = "¡WINNER!",
+                text = stringResource(R.string.truco_winner_label),
                 style = MaterialTheme.typography.displaySmall,
                 fontFamily = RobotoMono,
                 fontWeight = FontWeight.Black,
@@ -418,7 +420,7 @@ fun WinOverlay(
                     Icon(Icons.Default.Refresh, contentDescription = null, tint = Color.White)
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        "REINICIAR",
+                        stringResource(R.string.truco_play_again),
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
                         color = Color.White,
@@ -538,7 +540,7 @@ fun TeamColumn(
                         .clip(CircleShape)
                         .background(MaterialTheme.colorScheme.surface)
                 ) {
-                    Icon(Icons.Default.Remove, contentDescription = "Decrement")
+                    Icon(Icons.Default.Remove, contentDescription = stringResource(R.string.truco_decrement))
                 }
 
                 IconButton(
@@ -548,7 +550,7 @@ fun TeamColumn(
                         .clip(CircleShape)
                         .background(appGradient)
                 ) {
-                    Icon(Icons.Default.Add, contentDescription = "Increment", tint = Color.White)
+                    Icon(Icons.Default.Add, contentDescription = stringResource(R.string.truco_increment), tint = Color.White)
                 }
             }
         }

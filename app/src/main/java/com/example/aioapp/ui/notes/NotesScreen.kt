@@ -67,6 +67,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.res.stringResource
 import androidx.navigation.NavController
 import com.example.aioapp.R
 import com.example.aioapp.core.model.Note
@@ -558,7 +559,7 @@ fun NoteItem(
                                 )
                                 Spacer(modifier = Modifier.width(4.dp))
                                 Text(
-                                    text = "PINNED",
+                                    text = stringResource(R.string.notes_pinned),
                                     style = MaterialTheme.typography.labelSmall.copy(
                                         fontFamily = robotoMono,
                                         fontWeight = FontWeight.Bold,
@@ -815,7 +816,7 @@ fun ViewEditNoteScreen(
             Spacer(modifier = Modifier.height(24.dp))
 
             Text(
-                text = "Created: $dateString",
+                text = stringResource(R.string.notes_created, dateString),
                 style = MaterialTheme.typography.labelMedium,
                 color = contentColor.copy(alpha = 0.6f)
             )

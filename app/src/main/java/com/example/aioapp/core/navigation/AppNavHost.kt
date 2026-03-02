@@ -11,7 +11,7 @@ import androidx.compose.runtime.Composable
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
-import com.example.aioapp.MainViewModel
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.example.aioapp.ui.filemanager.FileManagerScreen
 import com.example.aioapp.ui.home.HomeScreen
 import com.example.aioapp.ui.notes.NotesScreen
@@ -19,7 +19,7 @@ import com.example.aioapp.ui.notes.NotesViewModel
 import com.example.aioapp.ui.pomodoro.PomodoroScreen
 import com.example.aioapp.ui.pomodoro.PomodoroViewModel
 import com.example.aioapp.ui.settings.SettingsScreen
-import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import com.example.aioapp.ui.settings.SettingsViewModel
 import com.example.aioapp.ui.unitconverter.UnitConverterScreen
 import com.example.aioapp.ui.unitconverter.UnitConverterViewModel
 import com.example.aioapp.ui.truco.TrucoScreen
@@ -28,7 +28,6 @@ import com.example.aioapp.ui.truco.TrucoViewModel
 @Composable
 fun AppNavHost(
     navController: NavHostController,
-    viewModel: MainViewModel,
     padding: PaddingValues,
     drawerState: DrawerState
 ) {
@@ -86,7 +85,8 @@ fun AppNavHost(
         }
 
         composable("settings") {
-            SettingsScreen(viewModel = viewModel, padding = padding)
+            val settingsViewModel: SettingsViewModel = hiltViewModel()
+            SettingsScreen(viewModel = settingsViewModel, padding = padding)
         }
     }
 }

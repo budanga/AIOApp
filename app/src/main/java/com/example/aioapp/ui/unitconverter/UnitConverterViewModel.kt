@@ -16,6 +16,7 @@ enum class UnitCategory {
 }
 
 data class ConversionResult(
+    val unitId: String,
     val unitName: String,
     val value: String,
     val symbol: String,
@@ -25,6 +26,7 @@ data class ConversionResult(
 data class UnitConverterUiState(
     val selectedCategory: UnitCategory = UnitCategory.MASS,
     val inputValue: String = "",
+    /** Stores the stable [UnitInfo.id], not the display name. */
     val fromUnit: String = "",
     val availableUnits: List<UnitInfo> = emptyList(),
     val results: List<ConversionResult> = emptyList(),
@@ -33,8 +35,11 @@ data class UnitConverterUiState(
 )
 
 data class UnitInfo(
-    val name: String, 
-    val symbol: String, 
+    /** Stable, locale-independent key used for persistence and conversion logic. */
+    val id: String,
+    /** Display-only — do not use as a logic or persistence key. */
+    val name: String,
+    val symbol: String,
     val factor: Double,
     val rate: Double? = null,
     val displayOrder: Int = 0
@@ -50,28 +55,26 @@ class UnitConverterViewModel @Inject constructor(
     private val supportedCurrencyCodes = listOf("USD", "EUR", "ARS", "CLP", "UYU", "BRL", "JPY", "CNY")
 
     private val commonCurrencies = listOf(
-        UnitInfo("US Dollar", "USD", 1.0, 1.0),
-        UnitInfo("Euro", "EUR", 1.0, 0.92),
-        UnitInfo("Argentine Peso", "ARS", 1.0, 840.0),
-        UnitInfo("Chilean Peso", "CLP", 1.0, 970.0),
-        UnitInfo("Uruguayan Peso", "UYU", 1.0, 39.0),
-        UnitInfo("Brazilian Real", "BRL", 1.0, 4.97),
-        UnitInfo("Japanese Yen", "JPY", 1.0, 150.0),
-        UnitInfo("Chinese Yuan", "CNY", 1.0, 7.19)
+        UnitInfo("USD", "US Dollar", "USD", 1.0, 1.0),
+        UnitInfo("EUR", "Euro", "EUR", 1.0, 0.92),
+        UnitInfo("ARS", "Argentine Peso", "ARS", 1.0, 840.0),
+        UnitInfo("CLP", "Chilean Peso", "CLP", 1.0, 970.0),
+        UnitInfo("UYU", "Uruguayan Peso", "UYU", 1.0, 39.0),
+        UnitInfo("BRL", "Brazilian Real", "BRL", 1.0, 4.97),
+        UnitInfo("JPY", "Japanese Yen", "JPY", 1.0, 150.0),
+        UnitInfo("CNY", "Chinese Yuan", "CNY", 1.0, 7.19)
     )
 
-    private fun getCurrencyName(code: String): String {
-        return when (code) {
-            "USD" -> "US Dollar"
-            "EUR" -> "Euro"
-            "ARS" -> "Argentine Peso"
-            "CLP" -> "Chilean Peso"
-            "UYU" -> "Uruguayan Peso"
-            "BRL" -> "Brazilian Real"
-            "JPY" -> "Japanese Yen"
-            "CNY" -> "Chinese Yuan"
-            else -> code
-        }
+    private fun getCurrencyInfo(code: String): Pair<String, String> = when (code) {
+        "USD" -> "US Dollar" to "USD"
+        "EUR" -> "Euro" to "EUR"
+        "ARS" -> "Argentine Peso" to "ARS"
+        "CLP" -> "Chilean Peso" to "CLP"
+        "UYU" -> "Uruguayan Peso" to "UYU"
+        "BRL" -> "Brazilian Real" to "BRL"
+        "JPY" -> "Japanese Yen" to "JPY"
+        "CNY" -> "Chinese Yuan" to "CNY"
+        else -> code to code
     }
 
     private val _uiState = MutableStateFlow(UnitConverterUiState())
@@ -81,79 +84,79 @@ class UnitConverterViewModel @Inject constructor(
 
     private val unitsMap = mapOf(
         UnitCategory.MASS to listOf(
-            UnitInfo("Kilogram", "kg", 1.0),
-            UnitInfo("Gram", "g", 1000.0),
-            UnitInfo("Milligram", "mg", 1000000.0),
-            UnitInfo("Pound", "lb", 2.20462),
-            UnitInfo("Ounce", "oz", 35.274)
+            UnitInfo("kilogram", "Kilogram", "kg", 1.0),
+            UnitInfo("gram", "Gram", "g", 1000.0),
+            UnitInfo("milligram", "Milligram", "mg", 1000000.0),
+            UnitInfo("pound", "Pound", "lb", 2.20462),
+            UnitInfo("ounce", "Ounce", "oz", 35.274)
         ),
         UnitCategory.LENGTH to listOf(
-            UnitInfo("Meter", "m", 1.0),
-            UnitInfo("Kilometer", "km", 0.001),
-            UnitInfo("Centimeter", "cm", 100.0),
-            UnitInfo("Millimeter", "mm", 1000.0),
-            UnitInfo("Mile", "mi", 0.000621371),
-            UnitInfo("Yard", "yd", 1.09361),
-            UnitInfo("Foot", "ft", 3.28084),
-            UnitInfo("Inch", "in", 39.3701)
+            UnitInfo("meter", "Meter", "m", 1.0),
+            UnitInfo("kilometer", "Kilometer", "km", 0.001),
+            UnitInfo("centimeter", "Centimeter", "cm", 100.0),
+            UnitInfo("millimeter", "Millimeter", "mm", 1000.0),
+            UnitInfo("mile", "Mile", "mi", 0.000621371),
+            UnitInfo("yard", "Yard", "yd", 1.09361),
+            UnitInfo("foot", "Foot", "ft", 3.28084),
+            UnitInfo("inch", "Inch", "in", 39.3701)
         ),
         UnitCategory.TEMPERATURE to listOf(
-            UnitInfo("Celsius", "°C", 1.0),
-            UnitInfo("Fahrenheit", "°F", 1.0),
-            UnitInfo("Kelvin", "K", 1.0)
+            UnitInfo("celsius", "Celsius", "°C", 1.0),
+            UnitInfo("fahrenheit", "Fahrenheit", "°F", 1.0),
+            UnitInfo("kelvin", "Kelvin", "K", 1.0)
         ),
         UnitCategory.SPEED to listOf(
-            UnitInfo("Meter/second", "m/s", 1.0),
-            UnitInfo("Kilometer/hour", "km/h", 3.6),
-            UnitInfo("Mile/hour", "mph", 2.23694),
-            UnitInfo("Knot", "kn", 1.94384),
-            UnitInfo("Foot/second", "ft/s", 3.28084)
+            UnitInfo("meter_per_second", "Meter/second", "m/s", 1.0),
+            UnitInfo("kilometer_per_hour", "Kilometer/hour", "km/h", 3.6),
+            UnitInfo("mile_per_hour", "Mile/hour", "mph", 2.23694),
+            UnitInfo("knot", "Knot", "kn", 1.94384),
+            UnitInfo("foot_per_second", "Foot/second", "ft/s", 3.28084)
         ),
         UnitCategory.VOLUME to listOf(
-            UnitInfo("Liter", "L", 1.0),
-            UnitInfo("Milliliter", "mL", 1000.0),
-            UnitInfo("Cubic meter", "m³", 0.001),
-            UnitInfo("Gallon", "gal", 0.264172),
-            UnitInfo("Quart", "qt", 1.05669),
-            UnitInfo("Pint", "pt", 2.11338),
-            UnitInfo("Cup", "cup", 4.22675)
+            UnitInfo("liter", "Liter", "L", 1.0),
+            UnitInfo("milliliter", "Milliliter", "mL", 1000.0),
+            UnitInfo("cubic_meter", "Cubic meter", "m³", 0.001),
+            UnitInfo("gallon", "Gallon", "gal", 0.264172),
+            UnitInfo("quart", "Quart", "qt", 1.05669),
+            UnitInfo("pint", "Pint", "pt", 2.11338),
+            UnitInfo("cup", "Cup", "cup", 4.22675)
         ),
         UnitCategory.TIME to listOf(
-            UnitInfo("Second", "s", 1.0),
-            UnitInfo("Millisecond", "ms", 1000.0),
-            UnitInfo("Minute", "min", 1.0/60.0),
-            UnitInfo("Hour", "h", 1.0/3600.0),
-            UnitInfo("Day", "d", 1.0/86400.0),
-            UnitInfo("Week", "wk", 1.0/604800.0)
+            UnitInfo("second", "Second", "s", 1.0),
+            UnitInfo("millisecond", "Millisecond", "ms", 1000.0),
+            UnitInfo("minute", "Minute", "min", 1.0 / 60.0),
+            UnitInfo("hour", "Hour", "h", 1.0 / 3600.0),
+            UnitInfo("day", "Day", "d", 1.0 / 86400.0),
+            UnitInfo("week", "Week", "wk", 1.0 / 604800.0)
         ),
         UnitCategory.STORAGE to listOf(
-            UnitInfo("Byte", "B", 1.0),
-            UnitInfo("Kilobyte", "KB", 1.0/1024.0),
-            UnitInfo("Megabyte", "MB", 1.0/(1024.0*1024.0)),
-            UnitInfo("Gigabyte", "GB", 1.0/(1024.0*1024.0*1024.0)),
-            UnitInfo("Terabyte", "TB", 1.0/(1024.0*1024.0*1024.0*1024.0))
+            UnitInfo("byte", "Byte", "B", 1.0),
+            UnitInfo("kilobyte", "Kilobyte", "KB", 1.0 / 1024.0),
+            UnitInfo("megabyte", "Megabyte", "MB", 1.0 / (1024.0 * 1024.0)),
+            UnitInfo("gigabyte", "Gigabyte", "GB", 1.0 / (1024.0 * 1024.0 * 1024.0)),
+            UnitInfo("terabyte", "Terabyte", "TB", 1.0 / (1024.0 * 1024.0 * 1024.0 * 1024.0))
         ),
         UnitCategory.ENERGY to listOf(
-            UnitInfo("Joule", "J", 1.0),
-            UnitInfo("Kilojoule", "kJ", 0.001),
-            UnitInfo("Calorie", "cal", 0.239006),
-            UnitInfo("Kilocalorie", "kcal", 0.000239006),
-            UnitInfo("Watt-hour", "Wh", 0.000277778),
-            UnitInfo("Kilowatt-hour", "kWh", 2.77778e-7)
+            UnitInfo("joule", "Joule", "J", 1.0),
+            UnitInfo("kilojoule", "Kilojoule", "kJ", 0.001),
+            UnitInfo("calorie", "Calorie", "cal", 0.239006),
+            UnitInfo("kilocalorie", "Kilocalorie", "kcal", 0.000239006),
+            UnitInfo("watt_hour", "Watt-hour", "Wh", 0.000277778),
+            UnitInfo("kilowatt_hour", "Kilowatt-hour", "kWh", 2.77778e-7)
         ),
         UnitCategory.PRESSURE to listOf(
-            UnitInfo("Pascal", "Pa", 1.0),
-            UnitInfo("Kilopascal", "kPa", 0.001),
-            UnitInfo("Bar", "bar", 0.00001),
-            UnitInfo("PSI", "psi", 0.000145038),
-            UnitInfo("Atmosphere", "atm", 9.86923e-6)
+            UnitInfo("pascal", "Pascal", "Pa", 1.0),
+            UnitInfo("kilopascal", "Kilopascal", "kPa", 0.001),
+            UnitInfo("bar", "Bar", "bar", 0.00001),
+            UnitInfo("psi", "PSI", "psi", 0.000145038),
+            UnitInfo("atmosphere", "Atmosphere", "atm", 9.86923e-6)
         ),
         UnitCategory.ELECTRICAL to listOf(
-            UnitInfo("Ampere", "A", 1.0),
-            UnitInfo("Milliampere", "mA", 1000.0),
-            UnitInfo("Microampere", "µA", 1000000.0),
-            UnitInfo("Volt", "V", 1.0),
-            UnitInfo("Ohm", "Ω", 1.0)
+            UnitInfo("ampere", "Ampere", "A", 1.0),
+            UnitInfo("milliampere", "Milliampere", "mA", 1000.0),
+            UnitInfo("microampere", "Microampere", "µA", 1000000.0),
+            UnitInfo("volt", "Volt", "V", 1.0),
+            UnitInfo("ohm", "Ohm", "Ω", 1.0)
         )
     )
 
@@ -171,7 +174,8 @@ class UnitConverterViewModel @Inject constructor(
             if (category == UnitCategory.CURRENCY) {
                 val filteredRates = rates.filter { it.code in supportedCurrencyCodes }
                 val baseUnitInfos = if (filteredRates.isEmpty()) commonCurrencies else filteredRates.map { rate ->
-                    UnitInfo(getCurrencyName(rate.code), rate.code, 1.0, rate.rate)
+                    val (name, symbol) = getCurrencyInfo(rate.code)
+                    UnitInfo(rate.code, name, symbol, 1.0, rate.rate)
                 }
                 loadAndApplyOrders(category, baseUnitInfos)
             }
@@ -196,18 +200,18 @@ class UnitConverterViewModel @Inject constructor(
                     baseUnits.mapIndexed { index, unitInfo -> unitInfo.copy(displayOrder = index) }
                 } else {
                     baseUnits.map { unit ->
-                        val order = savedOrders.find { it.unitName == unit.name }?.displayOrder ?: 999
+                        val order = savedOrders.find { it.unitName == unit.id }?.displayOrder ?: 999
                         unit.copy(displayOrder = order)
                     }.sortedBy { it.displayOrder }
                 }
 
                 _uiState.update { state ->
                     val currentFromUnit = state.fromUnit
-                    val newFromUnit = if (currentFromUnit.isEmpty() || orderedUnits.none { it.name == currentFromUnit }) {
+                    val newFromUnit = if (currentFromUnit.isEmpty() || orderedUnits.none { it.id == currentFromUnit }) {
                         if (category == UnitCategory.CURRENCY) {
-                            orderedUnits.find { it.symbol == "USD" }?.name ?: orderedUnits.firstOrNull()?.name ?: ""
+                            orderedUnits.find { it.id == "USD" }?.id ?: orderedUnits.firstOrNull()?.id ?: ""
                         } else {
-                            orderedUnits.firstOrNull()?.name ?: ""
+                            orderedUnits.firstOrNull()?.id ?: ""
                         }
                     } else {
                         currentFromUnit
@@ -224,14 +228,14 @@ class UnitConverterViewModel @Inject constructor(
 
     fun selectCategory(category: UnitCategory) {
         if (category == UnitCategory.CURRENCY) {
-            _uiState.update { 
+            _uiState.update {
                 it.copy(
                     selectedCategory = category,
                     inputValue = "",
                     results = emptyList(),
                     lastUpdated = System.currentTimeMillis(),
                     errorMessage = null
-                ) 
+                )
             }
             fetchCurrencyRates()
         } else {
@@ -258,13 +262,11 @@ class UnitConverterViewModel @Inject constructor(
 
     fun onInputChange(value: String) {
         _uiState.update { it.copy(inputValue = value) }
-        viewModelScope.launch {
-            _inputFlow.emit(value)
-        }
+        viewModelScope.launch { _inputFlow.emit(value) }
     }
 
-    fun onFromUnitChange(unitName: String) {
-        _uiState.update { it.copy(fromUnit = unitName) }
+    fun onFromUnitChange(unitId: String) {
+        _uiState.update { it.copy(fromUnit = unitId) }
         performConversion()
     }
 
@@ -285,19 +287,19 @@ class UnitConverterViewModel @Inject constructor(
             currentResults.add(toIndex, resItem)
         }
 
-        _uiState.update { 
+        _uiState.update {
             it.copy(
                 availableUnits = updatedUnits,
                 results = currentResults
-            ) 
+            )
         }
     }
 
     fun saveReorderedUnits() {
         viewModelScope.launch {
             val currentState = _uiState.value
-            val orders = currentState.availableUnits.map { 
-                UnitOrder(currentState.selectedCategory.name, it.name, it.displayOrder)
+            val orders = currentState.availableUnits.map {
+                UnitOrder(currentState.selectedCategory.name, it.id, it.displayOrder)
             }
             unitOrderRepository.saveOrders(orders)
         }
@@ -312,16 +314,17 @@ class UnitConverterViewModel @Inject constructor(
         val input = currentState.inputValue.toDoubleOrNull() ?: 0.0
         val category = currentState.selectedCategory
         val units = currentState.availableUnits
-        
+
         if (units.isEmpty() && category != UnitCategory.CURRENCY) return
-        
-        val fromUnit = units.find { it.name == currentState.fromUnit } ?: units.firstOrNull() ?: return
+
+        val fromUnit = units.find { it.id == currentState.fromUnit } ?: units.firstOrNull() ?: return
 
         val baseValue = convertToBase(input, fromUnit, category)
 
         val results = units.map { toUnit ->
             val convertedValue = convertFromBase(baseValue, toUnit, category)
             ConversionResult(
+                unitId = toUnit.id,
                 unitName = toUnit.name,
                 value = formatValue(convertedValue),
                 symbol = toUnit.symbol,
@@ -334,13 +337,11 @@ class UnitConverterViewModel @Inject constructor(
 
     private fun convertToBase(value: Double, unit: UnitInfo, category: UnitCategory): Double {
         return when (category) {
-            UnitCategory.TEMPERATURE -> {
-                when (unit.name) {
-                    "Celsius" -> value
-                    "Fahrenheit" -> (value - 32) * 5 / 9
-                    "Kelvin" -> value - 273.15
-                    else -> value
-                }
+            UnitCategory.TEMPERATURE -> when (unit.id) {
+                "celsius" -> value
+                "fahrenheit" -> (value - 32) * 5 / 9
+                "kelvin" -> value - 273.15
+                else -> value
             }
             UnitCategory.CURRENCY -> {
                 val rate = unit.rate ?: 1.0
@@ -352,17 +353,13 @@ class UnitConverterViewModel @Inject constructor(
 
     private fun convertFromBase(baseValue: Double, unit: UnitInfo, category: UnitCategory): Double {
         return when (category) {
-            UnitCategory.TEMPERATURE -> {
-                when (unit.name) {
-                    "Celsius" -> baseValue
-                    "Fahrenheit" -> (baseValue * 9 / 5) + 32
-                    "Kelvin" -> baseValue + 273.15
-                    else -> baseValue
-                }
+            UnitCategory.TEMPERATURE -> when (unit.id) {
+                "celsius" -> baseValue
+                "fahrenheit" -> (baseValue * 9 / 5) + 32
+                "kelvin" -> baseValue + 273.15
+                else -> baseValue
             }
-            UnitCategory.CURRENCY -> {
-                baseValue * (unit.rate ?: 1.0)
-            }
+            UnitCategory.CURRENCY -> baseValue * (unit.rate ?: 1.0)
             else -> baseValue * unit.factor
         }
     }

@@ -31,6 +31,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.IntOffset
@@ -39,12 +40,104 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
+import com.example.aioapp.R
 import com.example.aioapp.ui.components.AppTopAppBar
 import com.example.aioapp.ui.theme.LocalAppGradient
 import com.example.aioapp.ui.theme.RobotoMono
 import kotlinx.coroutines.Job
 import java.text.SimpleDateFormat
 import java.util.*
+
+@Composable
+fun resolveUnitName(unitId: String, defaultName: String): String {
+    val resId = getUnitNameResId(unitId)
+    return if (resId != null) stringResource(resId) else defaultName
+}
+
+@Composable
+fun UnitCategory.label(): String {
+    val resId = when (this) {
+        UnitCategory.MASS -> R.string.unit_cat_mass
+        UnitCategory.LENGTH -> R.string.unit_cat_length
+        UnitCategory.TEMPERATURE -> R.string.unit_cat_temperature
+        UnitCategory.SPEED -> R.string.unit_cat_speed
+        UnitCategory.VOLUME -> R.string.unit_cat_volume
+        UnitCategory.TIME -> R.string.unit_cat_time
+        UnitCategory.STORAGE -> R.string.unit_cat_storage
+        UnitCategory.ENERGY -> R.string.unit_cat_energy
+        UnitCategory.PRESSURE -> R.string.unit_cat_pressure
+        UnitCategory.ELECTRICAL -> R.string.unit_cat_electrical
+        UnitCategory.CURRENCY -> R.string.unit_cat_currency
+    }
+    return stringResource(resId)
+}
+
+fun getUnitNameResId(unitId: String): Int? = when (unitId.lowercase()) {
+    "kilogram" -> R.string.unit_kilogram
+    "gram" -> R.string.unit_gram
+    "milligram" -> R.string.unit_milligram
+    "pound" -> R.string.unit_pound
+    "ounce" -> R.string.unit_ounce
+    "meter" -> R.string.unit_meter
+    "kilometer" -> R.string.unit_kilometer
+    "centimeter" -> R.string.unit_centimeter
+    "millimeter" -> R.string.unit_millimeter
+    "mile" -> R.string.unit_mile
+    "yard" -> R.string.unit_yard
+    "foot" -> R.string.unit_foot
+    "inch" -> R.string.unit_inch
+    "celsius" -> R.string.unit_celsius
+    "fahrenheit" -> R.string.unit_fahrenheit
+    "kelvin" -> R.string.unit_kelvin
+    "meter_per_second" -> R.string.unit_meter_per_second
+    "kilometer_per_hour" -> R.string.unit_kilometer_per_hour
+    "mile_per_hour" -> R.string.unit_mile_per_hour
+    "knot" -> R.string.unit_knot
+    "foot_per_second" -> R.string.unit_foot_per_second
+    "liter" -> R.string.unit_liter
+    "milliliter" -> R.string.unit_milliliter
+    "cubic_meter" -> R.string.unit_cubic_meter
+    "gallon" -> R.string.unit_gallon
+    "quart" -> R.string.unit_quart
+    "pint" -> R.string.unit_pint
+    "cup" -> R.string.unit_cup
+    "second" -> R.string.unit_second
+    "millisecond" -> R.string.unit_millisecond
+    "minute" -> R.string.unit_minute
+    "hour" -> R.string.unit_hour
+    "day" -> R.string.unit_day
+    "week" -> R.string.unit_week
+    "byte" -> R.string.unit_byte
+    "kilobyte" -> R.string.unit_kilobyte
+    "megabyte" -> R.string.unit_megabyte
+    "gigabyte" -> R.string.unit_gigabyte
+    "terabyte" -> R.string.unit_terabyte
+    "joule" -> R.string.unit_joule
+    "kilojoule" -> R.string.unit_kilojoule
+    "calorie" -> R.string.unit_calorie
+    "kilocalorie" -> R.string.unit_kilocalorie
+    "watt_hour" -> R.string.unit_watt_hour
+    "kilowatt_hour" -> R.string.unit_kilowatt_hour
+    "pascal" -> R.string.unit_pascal
+    "kilopascal" -> R.string.unit_kilopascal
+    "bar" -> R.string.unit_bar
+    "psi" -> R.string.unit_psi
+    "atmosphere" -> R.string.unit_atmosphere
+    "ampere" -> R.string.unit_ampere
+    "milliampere" -> R.string.unit_milliampere
+    "microampere" -> R.string.unit_microampere
+    "volt" -> R.string.unit_volt
+    "ohm" -> R.string.unit_ohm
+    "usd" -> R.string.unit_usd
+    "eur" -> R.string.unit_eur
+    "ars" -> R.string.unit_ars
+    "clp" -> R.string.unit_clp
+    "uyu" -> R.string.unit_uyu
+    "brl" -> R.string.unit_brl
+    "jpy" -> R.string.unit_jpy
+    "cny" -> R.string.unit_cny
+    else -> null
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -78,7 +171,7 @@ fun UnitConverterScreen(
             AppTopAppBar(
                 title = {
                     Text(
-                        text = "Unit Converter",
+                        text = stringResource(R.string.feature_unit_converter),
                         style = MaterialTheme.typography.titleLarge,
                         fontFamily = RobotoMono,
                         fontWeight = FontWeight.Medium
@@ -86,7 +179,7 @@ fun UnitConverterScreen(
                 },
                 navigationIcon = {
                     IconButton(onClick = { navController.navigateUp() }) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.nav_back))
                     }
                 }
             )
@@ -127,11 +220,11 @@ fun UnitConverterScreen(
             ) {
                 UnitSelector(
                     modifier = Modifier.weight(1f),
-                    selectedUnit = uiState.fromUnit,
+                    selectedUnitId = uiState.fromUnit,
                     units = uiState.availableUnits,
                     gradientBrush = gradientBrush,
                     shape = textFieldShape,
-                    onUnitSelected = { 
+                    onUnitSelected = {
                         viewModel.onFromUnitChange(it)
                         focusManager.clearFocus()
                     }
@@ -140,12 +233,12 @@ fun UnitConverterScreen(
                 OutlinedTextField(
                     value = uiState.inputValue,
                     onValueChange = { viewModel.onInputChange(it) },
-                    placeholder = { 
+                    placeholder = {
                         Text(
-                            text = "Value", 
+                            text = stringResource(R.string.unit_converter_value_hint),
                             color = Color.Gray,
                             fontFamily = RobotoMono
-                        ) 
+                        )
                     },
                     modifier = Modifier
                         .weight(1f)
@@ -210,13 +303,13 @@ fun UnitConverterScreen(
                                 ) {
                                     Column(modifier = Modifier.weight(1f)) {
                                         Text(
-                                            text = result.unitName,
+                                            text = resolveUnitName(result.unitId, result.unitName),
                                             style = MaterialTheme.typography.bodyLarge,
                                             fontFamily = RobotoMono
                                         )
                                         if (targetCategory == UnitCategory.CURRENCY && result.rate != null) {
                                             Text(
-                                                text = "Rate: 1 USD = ${"%.4f".format(result.rate)} ${result.symbol}",
+                                                text = stringResource(R.string.unit_converter_rate_label, "%.4f".format(result.rate), result.symbol),
                                                 style = MaterialTheme.typography.bodySmall,
                                                 color = MaterialTheme.colorScheme.secondary,
                                                 fontFamily = RobotoMono,
@@ -253,7 +346,7 @@ fun UnitConverterScreen(
                             ) {
                                 val date = SimpleDateFormat("MMM dd, yyyy HH:mm", Locale.getDefault()).format(Date(uiState.lastUpdated!!))
                                 Text(
-                                    text = "Last updated: $date",
+                                    text = stringResource(R.string.unit_converter_last_updated, date),
                                     style = MaterialTheme.typography.labelSmall,
                                     color = Color.Gray,
                                     fontFamily = RobotoMono
@@ -304,7 +397,7 @@ fun UnitCategoryTabs(
                 onClick = { onCategorySelected(category) },
                 text = {
                     Text(
-                        text = category.name.lowercase().replaceFirstChar { it.uppercase() },
+                        text = category.label(),
                         fontFamily = RobotoMono,
                         fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
                         color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
@@ -342,7 +435,7 @@ class DragDropState(
         get() = draggingItemOffset
 
     private var initialItemOffset = 0
-    
+
     private var dragJob: Job? = null
 
     fun onDragStart(offset: androidx.compose.ui.geometry.Offset) {
@@ -363,7 +456,7 @@ class DragDropState(
 
     fun onDrag(offset: androidx.compose.ui.geometry.Offset) {
         draggingItemOffset += offset.y
-        
+
         val draggedItem = draggedIndex?.let { index ->
             lazyListState.layoutInfo.visibleItemsInfo.find { it.index == index }
         } ?: return
@@ -376,7 +469,7 @@ class DragDropState(
             .firstOrNull { item ->
                 val itemStart = item.offset
                 val itemEnd = item.offset + item.size
-                
+
                 if (draggingItemOffset > 0) {
                     // Dragging down
                     endOffset > itemEnd - (item.size / 2) && endOffset < itemEnd + (item.size / 2)
@@ -387,7 +480,7 @@ class DragDropState(
             }?.let { targetItem ->
                 val currentIndex = draggedItem.index
                 val targetIndex = targetItem.index
-                
+
                 onMove(currentIndex, targetIndex)
                 draggedIndex = targetIndex
                 draggingItemOffset -= (targetItem.offset - draggedItem.offset)
@@ -419,7 +512,7 @@ fun LazyItemScope.DraggableItem(
 ) {
     val dragging = index == dragDropState.draggedIndex
     val draggingOffset = if (dragging) dragDropState.itemOffset else 0f
-    
+
     Box(
         modifier = Modifier
             .animateItem(
@@ -441,13 +534,15 @@ fun LazyItemScope.DraggableItem(
 @Composable
 fun UnitSelector(
     modifier: Modifier = Modifier,
-    selectedUnit: String,
+    selectedUnitId: String,
     units: List<UnitInfo>,
     gradientBrush: Brush,
     shape: RoundedCornerShape,
     onUnitSelected: (String) -> Unit
 ) {
     var expanded by remember { mutableStateOf(false) }
+    val displayFallback = units.find { it.id == selectedUnitId }?.name ?: selectedUnitId
+    val displayName = resolveUnitName(selectedUnitId, displayFallback)
 
     ExposedDropdownMenuBox(
         expanded = expanded,
@@ -455,7 +550,7 @@ fun UnitSelector(
         modifier = modifier
     ) {
         OutlinedTextField(
-            value = selectedUnit,
+            value = displayName,
             onValueChange = {},
             readOnly = true,
             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
@@ -479,15 +574,15 @@ fun UnitSelector(
         ) {
             units.forEach { unit ->
                 DropdownMenuItem(
-                    text = { 
+                    text = {
                         Text(
-                            text = unit.name, 
+                            text = resolveUnitName(unit.id, unit.name),
                             fontFamily = RobotoMono,
                             style = MaterialTheme.typography.bodyMedium
-                        ) 
+                        )
                     },
                     onClick = {
-                        onUnitSelected(unit.name)
+                        onUnitSelected(unit.id)
                         expanded = false
                     },
                     contentPadding = ExposedDropdownMenuDefaults.ItemContentPadding
