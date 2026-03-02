@@ -2,8 +2,8 @@ package com.example.aioapp.core.model
 
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Note
-import androidx.compose.material.icons.filled.Calculate
 import androidx.compose.material.icons.filled.Folder
+import androidx.compose.material.icons.filled.SwapHoriz
 import androidx.compose.material.icons.filled.Timer
 import androidx.compose.ui.graphics.vector.ImageVector
 
@@ -31,7 +31,7 @@ val functionalities = listOf(
     ),
     Functionality(
         name = "Unit Converter",
-        icon = Icons.Default.Calculate,
+        icon = Icons.Default.SwapHoriz,
         route = "unitconverter"
     )
 )
