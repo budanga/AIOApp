@@ -99,7 +99,7 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.pointerInput(Unit) {
                         awaitEachGesture {
                             val down = awaitFirstDown(pass = PointerEventPass.Initial)
-                            gesturesEnabled = down.position.x < 80.dp.toPx()
+                            gesturesEnabled = down.position.x < 100.dp.toPx()
                             
                             // Wait for the gesture to complete before resetting gesturesEnabled to true.
                             // This ensures the NEXT gesture starts with gesturesEnabled = true.
