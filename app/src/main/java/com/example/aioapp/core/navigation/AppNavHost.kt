@@ -22,6 +22,8 @@ import com.example.aioapp.ui.settings.SettingsScreen
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.example.aioapp.ui.unitconverter.UnitConverterScreen
 import com.example.aioapp.ui.unitconverter.UnitConverterViewModel
+import com.example.aioapp.ui.truco.TrucoScreen
+import com.example.aioapp.ui.truco.TrucoViewModel
 
 @Composable
 fun AppNavHost(
@@ -69,6 +71,15 @@ fun AppNavHost(
             val unitConverterViewModel: UnitConverterViewModel = hiltViewModel()
             UnitConverterScreen(
                 viewModel = unitConverterViewModel,
+                padding = padding,
+                navController = navController
+            )
+        }
+
+        composable("truco") {
+            val trucoViewModel: TrucoViewModel = hiltViewModel()
+            TrucoScreen(
+                viewModel = trucoViewModel,
                 padding = padding,
                 navController = navController
             )

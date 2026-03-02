@@ -37,7 +37,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setTheme(R.style.Theme_AIOApp)
-        
+
         navigationIntent = intent
 
         setContent {
@@ -88,7 +88,7 @@ class MainActivity : ComponentActivity() {
                 ) {
                     Scaffold(
                         topBar = {
-                            if (currentScreen != "filemanager" && currentScreen != "notes" && currentScreen != "pomodoro") {
+                            if (currentScreen != "filemanager" && currentScreen != "notes" && currentScreen != "pomodoro" && currentScreen != "truco") {
                                 TopAppBar(currentScreen = currentScreen, navController = navController, drawerState = drawerState, scope = scope)
                             }
                         }

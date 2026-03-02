@@ -6,6 +6,7 @@ import com.example.aioapp.core.database.AppDatabase
 import com.example.aioapp.core.database.NoteDao
 import com.example.aioapp.core.database.CurrencyDao
 import com.example.aioapp.core.database.UnitOrderDao
+import com.example.aioapp.core.database.TrucoDao
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -25,8 +26,8 @@ object DatabaseModule {
             AppDatabase::class.java,
             "aio_database"
         )
-        .fallbackToDestructiveMigration(dropAllTables = true)
-        .build()
+            .fallbackToDestructiveMigration(dropAllTables = true)
+            .build()
     }
 
     @Provides
@@ -42,5 +43,10 @@ object DatabaseModule {
     @Provides
     fun provideUnitOrderDao(database: AppDatabase): UnitOrderDao {
         return database.unitOrderDao()
+    }
+
+    @Provides
+    fun provideTrucoDao(database: AppDatabase): TrucoDao {
+        return database.trucoDao()
     }
 }

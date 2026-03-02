@@ -2,6 +2,7 @@ package com.example.aioapp.core.model
 
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Note
+import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.SwapHoriz
 import androidx.compose.material.icons.filled.Timer
@@ -33,5 +34,10 @@ val functionalities = listOf(
         name = "Unit Converter",
         icon = Icons.Default.SwapHoriz,
         route = "unitconverter"
+    ),
+    Functionality(
+        name = "Truco",
+        icon = Icons.Default.EmojiEvents,
+        route = "truco"
     )
 )
