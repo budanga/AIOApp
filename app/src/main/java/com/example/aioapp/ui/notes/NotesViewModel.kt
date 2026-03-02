@@ -11,6 +11,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -25,14 +26,53 @@ class NotesViewModel @Inject constructor(
     private val _sortOrder = MutableStateFlow(NoteSortOrder.CREATION_DATE)
     val sortOrder: StateFlow<NoteSortOrder> = _sortOrder.asStateFlow()
 
+    private val _searchQuery = MutableStateFlow("")
+    val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
+
     @OptIn(ExperimentalCoroutinesApi::class)
-    val notes: StateFlow<List<Note>> = _sortOrder.flatMapLatest { order ->
+    private val _rawNotes: StateFlow<List<Note>> = _sortOrder.flatMapLatest { order ->
         repository.getNotes(order)
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5000),
         initialValue = emptyList()
     )
+
+    val notes: StateFlow<List<Note>> = combine(_rawNotes, _searchQuery) { notes, query ->
+        if (query.isBlank()) {
+            notes
+        } else {
+            notes.filter { note ->
+                note.title.contains(query, ignoreCase = true) ||
+                note.content.contains(query, ignoreCase = true)
+            }
+        }
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = emptyList()
+    )
+
+    fun onSearchQueryChange(query: String) {
+        _searchQuery.value = query
+    }
+
+    fun togglePin(note: Note) {
+        viewModelScope.launch {
+            repository.updatePinnedState(note.id, !note.isPinned)
+        }
+    }
+
+    fun togglePinForSelected(ids: Set<String>) {
+        viewModelScope.launch {
+            val selectedNotes = _rawNotes.value.filter { it.id in ids }
+            // If all selected are pinned, unpin them. Otherwise, pin them all.
+            val allPinned = selectedNotes.all { it.isPinned }
+            selectedNotes.forEach { note ->
+                repository.updatePinnedState(note.id, !allPinned)
+            }
+        }
+    }
 
     suspend fun addNote(title: String, content: String, color: Int): Boolean {
         if (!repository.isTitleUnique(title, null)) return false
@@ -42,6 +82,7 @@ class NotesViewModel @Inject constructor(
             title = title.trim(),
             content = content,
             color = color,
+            isPinned = false,
             createdAt = System.currentTimeMillis(),
             modifiedAt = System.currentTimeMillis()
         )
@@ -53,7 +94,7 @@ class NotesViewModel @Inject constructor(
     suspend fun updateNote(id: String, title: String, content: String): Boolean {
         if (!repository.isTitleUnique(title, id)) return false
 
-        val currentNote = notes.value.find { it.id == id } ?: return false
+        val currentNote = _rawNotes.value.find { it.id == id } ?: return false
         val updatedNote = currentNote.copy(
             title = title.trim(),
             content = content,

@@ -33,6 +33,10 @@ class NoteRepository @Inject constructor(
         noteDao.updateNote(note)
     }
 
+    suspend fun updatePinnedState(id: String, isPinned: Boolean) = withContext(Dispatchers.IO) {
+        noteDao.updatePinnedState(id, isPinned)
+    }
+
     suspend fun deleteNotes(ids: List<String>) = withContext(Dispatchers.IO) {
         noteDao.deleteNotes(ids)
     }
