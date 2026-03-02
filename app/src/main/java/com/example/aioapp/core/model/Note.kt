@@ -10,7 +10,8 @@ import androidx.room.PrimaryKey
     indices = [
         Index(value = ["title"]),
         Index(value = ["createdAt"]),
-        Index(value = ["modifiedAt"])
+        Index(value = ["modifiedAt"]),
+        Index(value = ["isPinned"])
     ]
 )
 data class Note(
@@ -20,6 +21,7 @@ data class Note(
     val title: String,
     val content: String,
     val color: Int,
+    val isPinned: Boolean = false,
     val createdAt: Long = System.currentTimeMillis(),
     val modifiedAt: Long = System.currentTimeMillis()
 )

@@ -10,13 +10,13 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface NoteDao {
-    @Query("SELECT * FROM notes ORDER BY title ASC")
+    @Query("SELECT * FROM notes ORDER BY isPinned DESC, title ASC")
     fun getAllNotesAlphabetical(): Flow<List<Note>>
 
-    @Query("SELECT * FROM notes ORDER BY createdAt DESC")
+    @Query("SELECT * FROM notes ORDER BY isPinned DESC, createdAt DESC")
     fun getAllNotesByCreationDate(): Flow<List<Note>>
 
-    @Query("SELECT * FROM notes ORDER BY modifiedAt DESC")
+    @Query("SELECT * FROM notes ORDER BY isPinned DESC, modifiedAt DESC")
     fun getAllNotesByModificationDate(): Flow<List<Note>>
 
     @Query("SELECT EXISTS(SELECT 1 FROM notes WHERE title = :title AND id != :excludeId)")
@@ -27,6 +27,9 @@ interface NoteDao {
 
     @Update
     suspend fun updateNote(note: Note)
+
+    @Query("UPDATE notes SET isPinned = :isPinned WHERE id = :id")
+    suspend fun updatePinnedState(id: String, isPinned: Boolean)
 
     @Query("DELETE FROM notes WHERE id IN (:ids)")
     suspend fun deleteNotes(ids: List<String>)
