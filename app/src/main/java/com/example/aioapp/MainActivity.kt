@@ -18,8 +18,16 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.example.aioapp.core.navigation.AppNavHost
@@ -64,8 +72,10 @@ class MainActivity : ComponentActivity() {
                 val navController = rememberNavController()
                 val backStackEntry by navController.currentBackStackEntryAsState()
                 val currentScreen = backStackEntry?.destination?.route ?: "home"
-                val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
+                 val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
+                var gesturesEnabled by remember { mutableStateOf(true) }
                 val scope = rememberCoroutineScope()
+                val density = LocalDensity.current
 
                 // Handle navigation from notification intent
                 LaunchedEffect(navigationIntent) {
@@ -82,9 +92,24 @@ class MainActivity : ComponentActivity() {
                     }
                 }
 
-                ModalNavigationDrawer(
+                 ModalNavigationDrawer(
                     drawerState = drawerState,
-                    drawerContent = { AppDrawer(navController = navController, drawerState = drawerState, scope = scope) }
+                    gesturesEnabled = gesturesEnabled || drawerState.currentValue != DrawerValue.Closed,
+                    drawerContent = { AppDrawer(navController = navController, drawerState = drawerState, scope = scope) },
+                    modifier = Modifier.pointerInput(Unit) {
+                        awaitEachGesture {
+                            val down = awaitFirstDown(pass = PointerEventPass.Initial)
+                            gesturesEnabled = down.position.x < 80.dp.toPx()
+                            
+                            // Wait for the gesture to complete before resetting gesturesEnabled to true.
+                            // This ensures the NEXT gesture starts with gesturesEnabled = true.
+                            while (true) {
+                                val event = awaitPointerEvent(PointerEventPass.Initial)
+                                if (event.changes.all { !it.pressed }) break
+                            }
+                            gesturesEnabled = true
+                        }
+                    }
                 ) {
                     Scaffold(
                         topBar = {
