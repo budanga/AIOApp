@@ -44,7 +44,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
-import androidx.compose.runtime.* 
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -109,7 +109,7 @@ fun HighlightedText(
 ) {
     val robotoMono = FontFamily(Font(R.font.roboto_mono_variable_font_wght))
     val highlightColor = LocalAppGradient.current.first().copy(alpha = 0.3f)
-    
+
     val displayText = remember(text, query, autoScrollToMatch) {
         if (autoScrollToMatch && query.isNotBlank()) {
             val index = text.indexOf(query, ignoreCase = true)
@@ -126,14 +126,14 @@ fun HighlightedText(
             var currentIndex = 0
             val lowerText = displayText.lowercase()
             val lowerQuery = query.lowercase()
-            
+
             while (currentIndex < displayText.length) {
                 val index = lowerText.indexOf(lowerQuery, currentIndex)
                 if (index == -1) {
                     append(displayText.substring(currentIndex))
                     break
                 }
-                
+
                 append(displayText.substring(currentIndex, index))
                 withStyle(style = SpanStyle(background = highlightColor, fontWeight = FontWeight.Bold)) {
                     append(displayText.substring(index, index + query.length))
@@ -142,7 +142,7 @@ fun HighlightedText(
             }
         }
     }
-    
+
     Text(
         text = annotatedString,
         style = style.copy(fontFamily = robotoMono),
@@ -169,6 +169,7 @@ fun NotesScreen(
     var selectedNoteIds by remember { mutableStateOf(setOf<String>()) }
     var viewingNoteId by remember { mutableStateOf<String?>(null) }
     val snackbarHostState = remember { SnackbarHostState() }
+    val searchFocusRequester = remember { FocusRequester() }
     val scope = rememberCoroutineScope()
 
     val isSelectionMode by remember { derivedStateOf { selectedNoteIds.isNotEmpty() } }
@@ -189,17 +190,23 @@ fun NotesScreen(
         }
     }
 
+    LaunchedEffect(isSearchExpanded) {
+        if (isSearchExpanded) {
+            searchFocusRequester.requestFocus()
+        }
+    }
+
     val homemadeApple = FontFamily(Font(R.font.homemade_apple))
     val robotoMono = FontFamily(Font(R.font.roboto_mono_variable_font_wght))
     val appGradientColors = LocalAppGradient.current
     val appGradient = Brush.horizontalGradient(colors = appGradientColors)
 
     Scaffold(
-        snackbarHost = { 
+        snackbarHost = {
             SnackbarHost(
                 hostState = snackbarHostState,
-                modifier = Modifier.imePadding() 
-            ) 
+                modifier = Modifier.imePadding()
+            )
         },
         topBar = {
             if (viewingNoteId == null) {
@@ -290,6 +297,7 @@ fun NotesScreen(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(horizontal = 16.dp, vertical = 8.dp)
+                                .focusRequester(searchFocusRequester)
                                 .border(1.5.dp, appGradient, RoundedCornerShape(8.dp)),
                             placeholder = { Text("Search notes...", fontFamily = robotoMono) },
                             leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
@@ -368,8 +376,8 @@ fun NotesScreen(
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
-                            Icons.Filled.Add, 
-                            contentDescription = "Add Note", 
+                            Icons.Filled.Add,
+                            contentDescription = "Add Note",
                             tint = Color.White,
                             modifier = Modifier.size(28.dp)
                         )
@@ -379,7 +387,7 @@ fun NotesScreen(
         },
         containerColor = MaterialTheme.colorScheme.background
     ) { innerPadding ->
-        Box(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
+        Box(modifier = Modifier.fillMaxSize()) {
             AnimatedContent(
                 targetState = viewingNoteId,
                 transitionSpec = {
@@ -393,7 +401,12 @@ fun NotesScreen(
                         if (notes.isNotEmpty()) {
                             LazyColumn(
                                 modifier = Modifier.fillMaxSize(),
-                                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                                contentPadding = PaddingValues(
+                                    start = 16.dp,
+                                    top = 8.dp + innerPadding.calculateTopPadding(),
+                                    end = 16.dp,
+                                    bottom = 8.dp + innerPadding.calculateBottomPadding()
+                                ),
                                 verticalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
                                 items(notes, key = { it.id }) {
@@ -422,7 +435,7 @@ fun NotesScreen(
                             }
                         } else {
                             Column(
-                                modifier = Modifier.fillMaxSize().padding(32.dp),
+                                modifier = Modifier.fillMaxSize().padding(innerPadding).padding(32.dp),
                                 horizontalAlignment = Alignment.CenterHorizontally,
                                 verticalArrangement = Arrangement.Center
                             ) {
@@ -444,7 +457,7 @@ fun NotesScreen(
                             viewModel = viewModel,
                             onDismiss = { viewingNoteId = null },
                             appGradient = appGradient,
-                            onUniqueError = { 
+                            onUniqueError = {
                                 scope.launch {
                                     snackbarHostState.showSnackbar("Note title must be unique")
                                 }
@@ -499,6 +512,7 @@ fun NoteItem(
     val isLightNote = baseColor.luminance() > 0.5f
     val contentColor = if (isLightNote) Color.Black else Color.White
     val appGradientColors = LocalAppGradient.current
+    val selectionGradient = Brush.horizontalGradient(colors = appGradientColors)
     val robotoMono = FontFamily(Font(R.font.roboto_mono_variable_font_wght))
 
     Card(
@@ -506,16 +520,10 @@ fun NoteItem(
             .fillMaxWidth()
             .combinedClickable(onClick = onClick, onLongClick = onLongClick)
             .then(
-                if (note.isPinned) {
+                if (isSelected) {
                     Modifier.border(
-                        1.dp,
-                        Brush.horizontalGradient(appGradientColors),
-                        RoundedCornerShape(12.dp)
-                    )
-                } else if (isSelected) {
-                    Modifier.border(
-                        2.dp,
-                        MaterialTheme.colorScheme.primary,
+                        1.5.dp,
+                        selectionGradient,
                         RoundedCornerShape(12.dp)
                     )
                 } else Modifier
@@ -534,21 +542,32 @@ fun NoteItem(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     if (note.isPinned) {
-                        Icon(
-                            imageVector = Icons.Default.PushPin,
-                            contentDescription = "Pinned",
-                            tint = appGradientColors.first(),
-                            modifier = Modifier.size(16.dp)
-                        )
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text(
-                            "PINNED",
-                            style = MaterialTheme.typography.labelSmall.copy(
-                                fontFamily = robotoMono,
-                                fontWeight = FontWeight.Bold
-                            ),
-                            color = appGradientColors.first()
-                        )
+                        Surface(
+                            color = contentColor.copy(alpha = 0.15f),
+                            shape = RoundedCornerShape(4.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.PushPin,
+                                    contentDescription = "Pinned",
+                                    tint = contentColor.copy(alpha = 0.8f),
+                                    modifier = Modifier.size(14.dp)
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(
+                                    text = "PINNED",
+                                    style = MaterialTheme.typography.labelSmall.copy(
+                                        fontFamily = robotoMono,
+                                        fontWeight = FontWeight.Bold,
+                                        letterSpacing = 0.5.sp
+                                    ),
+                                    color = contentColor.copy(alpha = 0.8f)
+                                )
+                            }
+                        }
                         Spacer(modifier = Modifier.width(12.dp))
                     }
                 }
@@ -558,7 +577,7 @@ fun NoteItem(
                     color = contentColor.copy(alpha = 0.6f)
                 )
             }
-            
+
             if (note.title.isNotBlank()) {
                 Spacer(modifier = Modifier.height(8.dp))
                 HighlightedText(
@@ -624,11 +643,11 @@ fun ViewEditNoteScreen(
 
     Scaffold(
         modifier = Modifier.fillMaxSize().background(noteGradient),
-        snackbarHost = { 
+        snackbarHost = {
             SnackbarHost(
                 hostState = snackbarHostState,
                 modifier = Modifier.imePadding()
-            ) 
+            )
         },
         topBar = { },
         floatingActionButton = {
@@ -759,7 +778,7 @@ fun ViewEditNoteScreen(
                                 .border(0.5.dp, bentoBorderColor, RoundedCornerShape(16.dp)),
                             shape = RoundedCornerShape(16.dp),
                             colors = CardDefaults.cardColors(containerColor = bentoContainerColor.copy(alpha = bentoContainerColor.alpha * 0.8f)))
-                         {
+                        {
                             TextField(
                                 value = content,
                                 onValueChange = { content = it },
@@ -792,15 +811,15 @@ fun ViewEditNoteScreen(
                     }
                 }
             }
-            
+
             Spacer(modifier = Modifier.height(24.dp))
-            
+
             Text(
                 text = "Created: $dateString",
                 style = MaterialTheme.typography.labelMedium,
                 color = contentColor.copy(alpha = 0.6f)
             )
-            
+
             Spacer(modifier = Modifier.height(120.dp))
         }
     }
@@ -902,7 +921,7 @@ fun AddNoteDialog(
                                     color = if (selectedColor == color) {
                                         MaterialTheme.colorScheme.primary
                                     } else {
-                                        MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f) 
+                                        MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f)
                                     },
                                     shape = CircleShape
                                 )
