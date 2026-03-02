@@ -21,6 +21,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.res.stringResource
 import androidx.navigation.NavController
 import com.example.aioapp.R
 import com.example.aioapp.ui.theme.LocalAppGradient
@@ -65,35 +66,31 @@ fun TopAppBar(
                 Text(
                     text = "AIOApp",
                     style = TextStyle(
-                        brush = Brush.horizontalGradient(
-                            colors = gradientColors
-                        ),
+                        brush = Brush.horizontalGradient(colors = gradientColors),
                         fontFamily = FontFamily(Font(R.font.bbhbogle_regular)),
                         fontSize = 40.sp
                     )
                 )
             } else {
                 val title = when (currentScreen) {
-                    "filemanager" -> "File Manager"
-                    "pomodoro" -> "Pomodoro"
-                    "notes" -> "Notes"
-                    "unitconverter" -> "Unit Converter"
-                    else -> currentScreen.replaceFirstChar { it.uppercase() }
+                    "filemanager"   -> stringResource(R.string.feature_file_manager)
+                    "pomodoro"      -> stringResource(R.string.feature_pomodoro)
+                    "notes"        -> stringResource(R.string.feature_notes)
+                    "unitconverter" -> stringResource(R.string.feature_unit_converter)
+                    "settings"     -> stringResource(R.string.settings_title)
+                    else           -> currentScreen.replaceFirstChar { it.uppercase() }
                 }
-                Text(
-                    text = title,
-                    fontFamily = RobotoMono
-                )
+                Text(text = title, fontFamily = RobotoMono)
             }
         },
         navigationIcon = {
             if (navController.previousBackStackEntry != null) {
                 IconButton(onClick = { navController.navigateUp() }) {
-                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.nav_back))
                 }
             } else {
                 IconButton(onClick = { scope.launch { drawerState.open() } }) {
-                    Icon(Icons.Filled.Menu, contentDescription = "Menu")
+                    Icon(Icons.Filled.Menu, contentDescription = stringResource(R.string.nav_menu))
                 }
             }
         },

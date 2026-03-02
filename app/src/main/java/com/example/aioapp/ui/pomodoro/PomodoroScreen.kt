@@ -14,15 +14,24 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
+import com.example.aioapp.R
 import com.example.aioapp.core.model.PomodoroMode
 import com.example.aioapp.ui.components.AppTopAppBar
 import com.example.aioapp.ui.theme.LocalAppGradient
 import com.example.aioapp.ui.theme.RobotoMono
+
+@Composable
+private fun PomodoroMode.label(): String = when (this) {
+    PomodoroMode.WORK        -> stringResource(R.string.pomodoro_mode_work)
+    PomodoroMode.SHORT_BREAK -> stringResource(R.string.pomodoro_mode_short_break)
+    PomodoroMode.LONG_BREAK  -> stringResource(R.string.pomodoro_mode_long_break)
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -39,7 +48,7 @@ fun PomodoroScreen(
             AppTopAppBar(
                 title = {
                     Text(
-                        text = "Pomodoro",
+                        text = stringResource(R.string.feature_pomodoro),
                         style = MaterialTheme.typography.titleLarge,
                         fontFamily = RobotoMono,
                         fontWeight = FontWeight.Medium
@@ -47,7 +56,7 @@ fun PomodoroScreen(
                 },
                 navigationIcon = {
                     IconButton(onClick = { navController.navigateUp() }) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.nav_back))
                     }
                 }
             )
@@ -73,7 +82,7 @@ fun PomodoroScreen(
                         shape = SegmentedButtonDefaults.itemShape(index = index, count = PomodoroMode.entries.size)
                     ) {
                         Text(
-                            text = mode.name.replace("_", " ").lowercase().replaceFirstChar { it.uppercase() },
+                            text = mode.label(),
                             style = MaterialTheme.typography.bodySmall,
                             fontFamily = RobotoMono
                         )
@@ -96,7 +105,6 @@ fun PomodoroScreen(
                         radius = size.minDimension / 2,
                         style = Stroke(width = 12.dp.toPx())
                     )
-                    
                     // Gradient Progress
                     drawArc(
                         brush = Brush.sweepGradient(
@@ -108,7 +116,7 @@ fun PomodoroScreen(
                         style = Stroke(width = 12.dp.toPx(), cap = StrokeCap.Round)
                     )
                 }
-                
+
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(
                         text = formatTime(uiState.timeLeft),
@@ -120,7 +128,7 @@ fun PomodoroScreen(
                         )
                     )
                     Text(
-                        text = uiState.currentMode.name.replace("_", " "),
+                        text = uiState.currentMode.label(),
                         style = MaterialTheme.typography.labelLarge,
                         color = MaterialTheme.colorScheme.secondary,
                         fontFamily = RobotoMono
@@ -134,7 +142,6 @@ fun PomodoroScreen(
                 modifier = Modifier.fillMaxWidth().padding(bottom = 32.dp),
                 horizontalArrangement = Arrangement.SpaceEvenly
             ) {
-                // Gradient Button for Start/Pause with Ripple effect
                 Surface(
                     modifier = Modifier
                         .width(140.dp)
@@ -152,7 +159,7 @@ fun PomodoroScreen(
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
-                            text = if (uiState.isRunning) "Pause" else "Start",
+                            text = if (uiState.isRunning) stringResource(R.string.pomodoro_pause) else stringResource(R.string.pomodoro_start),
                             style = MaterialTheme.typography.titleMedium,
                             color = Color.White,
                             fontFamily = RobotoMono
@@ -169,7 +176,7 @@ fun PomodoroScreen(
                     )
                 ) {
                     Text(
-                        "Reset",
+                        stringResource(R.string.pomodoro_reset),
                         style = MaterialTheme.typography.titleMedium,
                         color = MaterialTheme.colorScheme.onBackground,
                         fontFamily = RobotoMono

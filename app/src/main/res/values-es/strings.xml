@@ -1,0 +1,151 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">AIO App</string>
+    <string name="home_title">Inicio</string>
+    <string name="settings_title">Ajustes</string>
+
+    <!-- Idioma -->
+    <string name="language_selection">Idioma</string>
+    <string name="language_english">English</string>
+    <string name="language_spanish">Español</string>
+    <string name="language_system">System</string>
+
+    <!-- Tema -->
+    <string name="theme_title">Tema</string>
+    <string name="theme_system">System</string>
+    <string name="theme_light">Modo claro</string>
+    <string name="theme_dark">Modo oscuro</string>
+
+    <!-- Navegación / común -->
+    <string name="nav_back">Atrás</string>
+    <string name="nav_menu">Menú</string>
+    <string name="nav_settings">Ajustes</string>
+
+    <!-- Nombres de funciones (cuadrícula principal + cajón) -->
+    <string name="feature_file_manager">Gestor de archivos</string>
+    <string name="feature_notes">Notas</string>
+    <string name="feature_pomodoro">Pomodoro</string>
+    <string name="feature_unit_converter">Conversor de unidades</string>
+    <string name="feature_truco">Truco</string>
+
+    <!-- Pomodoro -->
+    <string name="pomodoro_start">Iniciar</string>
+    <string name="pomodoro_pause">Pausar</string>
+    <string name="pomodoro_reset">Reiniciar</string>
+    <string name="pomodoro_mode_work">Trabajo</string>
+    <string name="pomodoro_mode_short_break">Pausa corta</string>
+    <string name="pomodoro_mode_long_break">Pausa larga</string>
+
+    <!-- Conversor de unidades -->
+    <string name="unit_converter_value_hint">Valor</string>
+    <string name="unit_converter_rate_label">Tasa: 1 USD = %1$s %2$s</string>
+    <string name="unit_converter_last_updated">Actualizado: %1$s</string>
+
+    <!-- Truco -->
+    <string name="truco_15_points">15 Puntos</string>
+    <string name="truco_30_points">30 Puntos</string>
+    <string name="truco_history_title">Historial</string>
+    <string name="truco_history_empty">Aún no hay partidas jugadas.</string>
+    <string name="truco_history_clear">BORRAR TODO</string>
+    <string name="truco_history_close">CERRAR</string>
+    <string name="truco_winner_label">¡GANADOR!</string>
+    <string name="truco_play_again">JUGAR DE NUEVO</string>
+    <string name="truco_mode_label">Modo: %1$d pts</string>
+    <string name="truco_won_label">%1$s GANÓ</string>
+    <string name="truco_history_icon">Historial</string>
+    <string name="truco_reset_icon">Reiniciar</string>
+    <string name="truco_decrement">Decrementar</string>
+    <string name="truco_increment">Incrementar</string>
+
+    <!-- Notas -->
+    <string name="notes_pinned">FIJADA</string>
+    <string name="notes_created">Creada: %1$s</string>
+
+    <!-- Categorías de Unidades -->
+    <string name="unit_cat_mass">Masa</string>
+    <string name="unit_cat_length">Longitud</string>
+    <string name="unit_cat_temperature">Temperatura</string>
+    <string name="unit_cat_speed">Velocidad</string>
+    <string name="unit_cat_volume">Volumen</string>
+    <string name="unit_cat_time">Tiempo</string>
+    <string name="unit_cat_storage">Almacenamiento</string>
+    <string name="unit_cat_energy">Energía</string>
+    <string name="unit_cat_pressure">Presión</string>
+    <string name="unit_cat_electrical">Eléctrica</string>
+    <string name="unit_cat_currency">Moneda</string>
+
+    <!-- Unidades -->
+    <string name="unit_kilogram">Kilogramo</string>
+    <string name="unit_gram">Gramo</string>
+    <string name="unit_milligram">Miligramo</string>
+    <string name="unit_pound">Libra</string>
+    <string name="unit_ounce">Onza</string>
+
+    <string name="unit_meter">Metro</string>
+    <string name="unit_kilometer">Kilómetro</string>
+    <string name="unit_centimeter">Centímetro</string>
+    <string name="unit_millimeter">Milímetro</string>
+    <string name="unit_mile">Milla</string>
+    <string name="unit_yard">Yarda</string>
+    <string name="unit_foot">Pie</string>
+    <string name="unit_inch">Pulgada</string>
+
+    <string name="unit_celsius">Celsius</string>
+    <string name="unit_fahrenheit">Fahrenheit</string>
+    <string name="unit_kelvin">Kelvin</string>
+
+    <string name="unit_meter_per_second">Metro/segundo</string>
+    <string name="unit_kilometer_per_hour">Kilómetro/hora</string>
+    <string name="unit_mile_per_hour">Milla/hora</string>
+    <string name="unit_knot">Nudo</string>
+    <string name="unit_foot_per_second">Pie/segundo</string>
+
+    <string name="unit_liter">Litro</string>
+    <string name="unit_milliliter">Mililitro</string>
+    <string name="unit_cubic_meter">Metro cúbico</string>
+    <string name="unit_gallon">Galón</string>
+    <string name="unit_quart">Cuarto</string>
+    <string name="unit_pint">Pinta</string>
+    <string name="unit_cup">Taza</string>
+
+    <string name="unit_second">Segundo</string>
+    <string name="unit_millisecond">Milisegundo</string>
+    <string name="unit_minute">Minuto</string>
+    <string name="unit_hour">Hora</string>
+    <string name="unit_day">Día</string>
+    <string name="unit_week">Semana</string>
+
+    <string name="unit_byte">Byte</string>
+    <string name="unit_kilobyte">Kilobyte</string>
+    <string name="unit_megabyte">Megabyte</string>
+    <string name="unit_gigabyte">Gigabyte</string>
+    <string name="unit_terabyte">Terabyte</string>
+
+    <string name="unit_joule">Julio</string>
+    <string name="unit_kilojoule">Kilojulio</string>
+    <string name="unit_calorie">Caloría</string>
+    <string name="unit_kilocalorie">Kilocaloría</string>
+    <string name="unit_watt_hour">Vatio-hora</string>
+    <string name="unit_kilowatt_hour">Kilovatio-hora</string>
+
+    <string name="unit_pascal">Pascal</string>
+    <string name="unit_kilopascal">Kilopascal</string>
+    <string name="unit_bar">Bar</string>
+    <string name="unit_psi">PSI</string>
+    <string name="unit_atmosphere">Atmósfera</string>
+
+    <string name="unit_ampere">Amperio</string>
+    <string name="unit_milliampere">Miliamperio</string>
+    <string name="unit_microampere">Microamperio</string>
+    <string name="unit_volt">Voltio</string>
+    <string name="unit_ohm">Ohmio</string>
+
+    <string name="unit_usd">Dólar Estadounidense</string>
+    <string name="unit_eur">Euro</string>
+    <string name="unit_ars">Peso Argentino</string>
+    <string name="unit_clp">Peso Chileno</string>
+    <string name="unit_uyu">Peso Uruguayo</string>
+    <string name="unit_brl">Real Brasileño</string>
+    <string name="unit_jpy">Yen Japonés</string>
+    <string name="unit_cny">Yuan Chino</string>
+</resources>

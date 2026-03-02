@@ -7,37 +7,18 @@ import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.SwapHoriz
 import androidx.compose.material.icons.filled.Timer
 import androidx.compose.ui.graphics.vector.ImageVector
+import com.example.aioapp.R
 
 data class Functionality(
-    val name: String,
+    val nameResId: Int,
     val icon: ImageVector,
     val route: String
 )
 
 val functionalities = listOf(
-    Functionality(
-        name = "File Manager",
-        icon = Icons.Default.Folder,
-        route = "filemanager"
-    ),
-    Functionality(
-        name = "Notes",
-        icon = Icons.AutoMirrored.Filled.Note,
-        route = "notes"
-    ),
-    Functionality(
-        name = "Pomodoro",
-        icon = Icons.Default.Timer,
-        route = "pomodoro"
-    ),
-    Functionality(
-        name = "Unit Converter",
-        icon = Icons.Default.SwapHoriz,
-        route = "unitconverter"
-    ),
-    Functionality(
-        name = "Truco",
-        icon = Icons.Default.EmojiEvents,
-        route = "truco"
-    )
+    Functionality(R.string.feature_file_manager, Icons.Default.Folder, "filemanager"),
+    Functionality(R.string.feature_notes, Icons.AutoMirrored.Filled.Note, "notes"),
+    Functionality(R.string.feature_pomodoro, Icons.Default.Timer, "pomodoro"),
+    Functionality(R.string.feature_unit_converter, Icons.Default.SwapHoriz, "unitconverter"),
+    Functionality(R.string.feature_truco, Icons.Default.EmojiEvents, "truco")
 )

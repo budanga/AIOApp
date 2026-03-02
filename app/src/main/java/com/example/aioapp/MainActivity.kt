@@ -4,7 +4,7 @@ import android.Manifest
 import android.content.Intent
 import android.os.Build
 import android.os.Bundle
-import androidx.activity.ComponentActivity
+import androidx.appcompat.app.AppCompatActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
@@ -37,7 +37,7 @@ import com.example.aioapp.ui.theme.AIOAppTheme
 import dagger.hilt.android.AndroidEntryPoint
 
 @AndroidEntryPoint
-class MainActivity : ComponentActivity() {
+class MainActivity : AppCompatActivity() {
 
     private val viewModel: MainViewModel by viewModels()
     private var navigationIntent by mutableStateOf<Intent?>(null)
@@ -54,7 +54,6 @@ class MainActivity : ComponentActivity() {
             val useDarkTheme = when (theme) {
                 "Dark" -> true
                 "Light" -> false
-                "System" -> systemDarkTheme
                 else -> systemDarkTheme
             }
 
@@ -72,7 +71,7 @@ class MainActivity : ComponentActivity() {
                 val navController = rememberNavController()
                 val backStackEntry by navController.currentBackStackEntryAsState()
                 val currentScreen = backStackEntry?.destination?.route ?: "home"
-                 val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
+                val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
                 var gesturesEnabled by remember { mutableStateOf(true) }
                 val scope = rememberCoroutineScope()
                 val density = LocalDensity.current
@@ -92,7 +91,7 @@ class MainActivity : ComponentActivity() {
                     }
                 }
 
-                 ModalNavigationDrawer(
+                ModalNavigationDrawer(
                     drawerState = drawerState,
                     gesturesEnabled = gesturesEnabled || drawerState.currentValue != DrawerValue.Closed,
                     drawerContent = { AppDrawer(navController = navController, drawerState = drawerState, scope = scope) },
@@ -100,7 +99,7 @@ class MainActivity : ComponentActivity() {
                         awaitEachGesture {
                             val down = awaitFirstDown(pass = PointerEventPass.Initial)
                             gesturesEnabled = down.position.x < 100.dp.toPx()
-                            
+
                             // Wait for the gesture to complete before resetting gesturesEnabled to true.
                             // This ensures the NEXT gesture starts with gesturesEnabled = true.
                             while (true) {
@@ -118,7 +117,7 @@ class MainActivity : ComponentActivity() {
                             }
                         }
                     ) { padding ->
-                        AppNavHost(navController = navController, viewModel = viewModel, padding = padding, drawerState = drawerState)
+                        AppNavHost(navController = navController, padding = padding, drawerState = drawerState)
                     }
                 }
             }
