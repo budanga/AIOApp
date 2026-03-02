@@ -122,6 +122,7 @@ fun NotesScreen(
     }
 
     val homemadeApple = FontFamily(Font(R.font.homemade_apple))
+    val robotoMono = FontFamily(Font(R.font.roboto_mono_variable_font_wght))
     val appGradientColors = LocalAppGradient.current
     val appGradient = Brush.horizontalGradient(colors = appGradientColors)
 
@@ -214,7 +215,7 @@ fun NotesScreen(
                                 Text(
                                     text = if (isSelectionMode) "${selectedNoteIds.size} Selected" else "Notes",
                                     color = MaterialTheme.colorScheme.onSurface,
-                                    style = MaterialTheme.typography.titleLarge
+                                    style = MaterialTheme.typography.titleLarge.copy(fontFamily = robotoMono)
                                 )
                             },
                             navigationIcon = {
