@@ -3,6 +3,7 @@ package com.example.aioapp.ui.notes
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.background
@@ -253,7 +254,7 @@ fun NotesScreen(
                                 }) {
                                     Icon(Icons.Default.Delete, contentDescription = "Delete", tint = Color.Red)
                                 }
-                            } else {
+                            } else if (!showAddDialog) {
                                 IconButton(onClick = { isSearchExpanded = !isSearchExpanded }) {
                                     Icon(
                                         imageVector = if (isSearchExpanded) Icons.Default.SearchOff else Icons.Default.Search,
@@ -287,7 +288,7 @@ fun NotesScreen(
                         )
                     )
                     AnimatedVisibility(
-                        visible = isSearchExpanded,
+                        visible = isSearchExpanded && !showAddDialog,
                         enter = expandVertically() + fadeIn(),
                         exit = shrinkVertically() + fadeOut()
                     ) {
@@ -518,18 +519,11 @@ fun NoteItem(
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .combinedClickable(onClick = onClick, onLongClick = onLongClick)
-            .then(
-                if (isSelected) {
-                    Modifier.border(
-                        1.5.dp,
-                        selectionGradient,
-                        RoundedCornerShape(12.dp)
-                    )
-                } else Modifier
-            ),
-        colors = CardDefaults.cardColors(containerColor = baseColor.copy(alpha = if (isSelected) 0.7f else 1f)),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+            .combinedClickable(onClick = onClick, onLongClick = onLongClick),
+        shape = RoundedCornerShape(12.dp),
+        border = if (isSelected) BorderStroke(1.5.dp, selectionGradient) else null,
+        colors = CardDefaults.cardColors(containerColor = baseColor),
+        elevation = CardDefaults.cardElevation(defaultElevation = if (isSelected) 0.dp else 2.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(
@@ -666,6 +660,7 @@ fun ViewEditNoteScreen(
 
             Box(
                 modifier = Modifier
+                    .imePadding()
                     .size(56.dp)
                     .graphicsLayer(scaleX = scale, scaleY = scale)
                     .shadow(if (isPressed) 4.dp else 12.dp, CircleShape)
@@ -677,6 +672,12 @@ fun ViewEditNoteScreen(
                         indication = LocalIndication.current
                     ) {
                         if (isEditing) {
+                            if (title.isBlank()) {
+                                scope.launch {
+                                    snackbarHostState.showSnackbar("Note title cannot be empty")
+                                }
+                                return@clickable
+                            }
                             scope.launch {
                                 if (viewModel.updateNote(note.id, title, content)) {
                                     isEditing = false
