@@ -26,6 +26,8 @@
             android:exported="true"
             android:theme="@style/Theme.App.Starting"
             android:windowSoftInputMode="adjustResize">
+            <meta-data    android:name="flutter_embedding_updater_res_throttle"
+                android:value="false" />
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
