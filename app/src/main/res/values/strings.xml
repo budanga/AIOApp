@@ -103,6 +103,7 @@
     <string name="unit_cat_pressure">Pressure</string>
     <string name="unit_cat_electrical">Electrical</string>
     <string name="unit_cat_currency">Currency</string>
+    <string name="unit_cat_numbers">Numbers</string>
 
     <!-- Units -->
     <string name="unit_kilogram">Kilogram</string>
@@ -178,4 +179,9 @@
     <string name="unit_brl">Brazilian Real</string>
     <string name="unit_jpy">Japanese Yen</string>
     <string name="unit_cny">Chinese Yuan</string>
+    <string name="unit_decimal">Decimal</string>
+    <string name="unit_binary">Binary</string>
+    <string name="unit_octal">Octal</string>
+    <string name="unit_hexadecimal">Hexadecimal</string>
+    <string name="unit_base_n">Base N</string>
 </resources>

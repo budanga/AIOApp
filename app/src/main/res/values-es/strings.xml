@@ -106,6 +106,7 @@
     <string name="unit_cat_currency">Moneda</string>
 
     <!-- Unidades -->
+    <string name="unit_cat_numbers">Números</string>
     <string name="unit_kilogram">Kilogramo</string>
     <string name="unit_gram">Gramo</string>
     <string name="unit_milligram">Miligramo</string>
@@ -179,4 +180,9 @@
     <string name="unit_brl">Real Brasileño</string>
     <string name="unit_jpy">Yen Japonés</string>
     <string name="unit_cny">Yuan Chino</string>
+    <string name="unit_decimal">Decimal</string>
+    <string name="unit_binary">Binario</string>
+    <string name="unit_octal">Octal</string>
+    <string name="unit_hexadecimal">Hexadecimal</string>
+    <string name="unit_base_n">Base N</string>
 </resources>
