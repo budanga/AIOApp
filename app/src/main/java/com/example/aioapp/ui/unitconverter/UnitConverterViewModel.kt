@@ -12,7 +12,7 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 enum class UnitCategory {
-    MASS, LENGTH, TEMPERATURE, SPEED, VOLUME, TIME, STORAGE, ENERGY, PRESSURE, ELECTRICAL, CURRENCY
+    MASS, LENGTH, TEMPERATURE, SPEED, VOLUME, TIME, STORAGE, ENERGY, PRESSURE, ELECTRICAL, CURRENCY, NUMBERS
 }
 
 data class ConversionResult(
@@ -29,7 +29,8 @@ data class UnitConverterUiState(
     val availableUnits: List<UnitInfo> = emptyList(),
     val results: List<ConversionResult> = emptyList(),
     val lastUpdated: Long? = null,
-    val errorMessage: String? = null
+    val errorMessage: String? = null,
+    val customBase: String = "32"
 )
 
 data class UnitInfo(
@@ -154,6 +155,13 @@ class UnitConverterViewModel @Inject constructor(
             UnitInfo("Microampere", "µA", 1000000.0),
             UnitInfo("Volt", "V", 1.0),
             UnitInfo("Ohm", "Ω", 1.0)
+        ),
+        UnitCategory.NUMBERS to listOf(
+            UnitInfo("Decimal", "Dec", 10.0),
+            UnitInfo("Binary", "Bin", 2.0),
+            UnitInfo("Octal", "Oct", 8.0),
+            UnitInfo("Hexadecimal", "Hex", 16.0),
+            UnitInfo("Base N", "Base N", 32.0)
         )
     )
 
@@ -267,6 +275,11 @@ class UnitConverterViewModel @Inject constructor(
         _uiState.update { it.copy(fromUnit = unitName) }
         performConversion()
     }
+    
+    fun onCustomBaseChange(base: String) {
+        _uiState.update { it.copy(customBase = base) }
+        performConversion()
+    }
 
     fun moveUnit(fromIndex: Int, toIndex: Int) {
         val currentUnits = _uiState.value.availableUnits.toMutableList()
@@ -309,7 +322,7 @@ class UnitConverterViewModel @Inject constructor(
 
     private fun performConversion() {
         val currentState = _uiState.value
-        val input = currentState.inputValue.toDoubleOrNull() ?: 0.0
+        val inputStr = currentState.inputValue
         val category = currentState.selectedCategory
         val units = currentState.availableUnits
         
@@ -317,6 +330,48 @@ class UnitConverterViewModel @Inject constructor(
         
         val fromUnit = units.find { it.name == currentState.fromUnit } ?: units.firstOrNull() ?: return
 
+        if (category == UnitCategory.NUMBERS) {
+            if (inputStr.isEmpty()) {
+                val results = units.map { u -> ConversionResult(u.name, "0", u.symbol) }
+                _uiState.update { it.copy(results = results) }
+                return
+            }
+
+            val fromRadix = when (fromUnit.name) {
+                "Binary" -> 2
+                "Octal" -> 8
+                "Hexadecimal" -> 16
+                "Base N" -> currentState.customBase.toIntOrNull()?.coerceIn(2, 36) ?: 10
+                else -> 10
+            }
+
+            val decimalValue = try {
+                inputStr.toLong(fromRadix)
+            } catch (e: Exception) {
+                null
+            }
+
+            if (decimalValue != null) {
+                val results = units.map { toUnit ->
+                    val toRadix = when (toUnit.name) {
+                        "Binary" -> 2
+                        "Octal" -> 8
+                        "Hexadecimal" -> 16
+                        "Base N" -> currentState.customBase.toIntOrNull()?.coerceIn(2, 36) ?: 10
+                        else -> 10
+                    }
+                    ConversionResult(
+                        unitName = if (toUnit.name == "Base N") "Base ${currentState.customBase}" else toUnit.name,
+                        value = try { decimalValue.toString(toRadix).uppercase() } catch (e: Exception) { "Error" },
+                        symbol = if (toUnit.name == "Base N") "B${currentState.customBase}" else toUnit.symbol
+                    )
+                }
+                _uiState.update { it.copy(results = results) }
+            }
+            return
+        }
+
+        val input = inputStr.toDoubleOrNull() ?: 0.0
         val baseValue = convertToBase(input, fromUnit, category)
 
         val results = units.map { toUnit ->

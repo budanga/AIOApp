@@ -33,6 +33,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -150,7 +151,15 @@ fun UnitConverterScreen(
                     modifier = Modifier
                         .weight(1f)
                         .border(1.5.dp, gradientBrush, textFieldShape),
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    keyboardOptions = KeyboardOptions(
+                        keyboardType = if (uiState.selectedCategory == UnitCategory.NUMBERS && 
+                            (uiState.fromUnit == "Hexadecimal" || 
+                             (uiState.fromUnit == "Base N" && (uiState.customBase.toIntOrNull() ?: 0) > 10))) {
+                            KeyboardType.Text
+                        } else {
+                            KeyboardType.Number
+                        }
+                    ),
                     singleLine = true,
                     textStyle = LocalTextStyle.current.copy(fontFamily = RobotoMono),
                     shape = textFieldShape,
@@ -161,6 +170,53 @@ fun UnitConverterScreen(
                         unfocusedContainerColor = Color.Transparent
                     )
                 )
+            }
+
+            if (uiState.selectedCategory == UnitCategory.NUMBERS) {
+                Spacer(modifier = Modifier.height(12.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .border(1.5.dp, gradientBrush, textFieldShape)
+                            .padding(horizontal = 12.dp, vertical = 12.dp)
+                    ) {
+                        Text(
+                            text = "Base N (2-36)",
+                            color = MaterialTheme.colorScheme.primary,
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontFamily = RobotoMono,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+
+                    OutlinedTextField(
+                        value = uiState.customBase,
+                        onValueChange = { 
+                            if (it.isEmpty() || (it.toIntOrNull() ?: 0) <= 36) {
+                                viewModel.onCustomBaseChange(it) 
+                            }
+                        },
+                        placeholder = { Text("Base", color = Color.Gray, fontFamily = RobotoMono) },
+                        modifier = Modifier
+                            .width(100.dp)
+                            .border(1.5.dp, gradientBrush, textFieldShape),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        singleLine = true,
+                        textStyle = LocalTextStyle.current.copy(fontFamily = RobotoMono),
+                        shape = textFieldShape,
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = Color.Transparent,
+                            unfocusedBorderColor = Color.Transparent,
+                            focusedContainerColor = Color.Transparent,
+                            unfocusedContainerColor = Color.Transparent
+                        )
+                    )
+                }
             }
 
             Spacer(modifier = Modifier.height(24.dp))
@@ -208,7 +264,11 @@ fun UnitConverterScreen(
                                     horizontalArrangement = Arrangement.SpaceBetween,
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    Column(modifier = Modifier.weight(1f)) {
+                                    Column(
+                                        modifier = Modifier
+                                            .widthIn(max = 140.dp)
+                                            .wrapContentHeight()
+                                    ) {
                                         Text(
                                             text = result.unitName,
                                             style = MaterialTheme.typography.bodyLarge,
@@ -225,18 +285,30 @@ fun UnitConverterScreen(
                                         }
                                     }
 
-                                    Row(verticalAlignment = Alignment.Bottom) {
+                                    Spacer(modifier = Modifier.width(8.dp))
+
+                                    Row(
+                                        modifier = Modifier.weight(1f),
+                                        horizontalArrangement = Arrangement.End,
+                                        verticalAlignment = Alignment.Bottom
+                                    ) {
                                         Text(
                                             text = result.value,
-                                            style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
-                                            fontFamily = RobotoMono
+                                            style = MaterialTheme.typography.titleLarge.copy(
+                                                fontWeight = FontWeight.Bold,
+                                                fontSize = if (result.value.length > 20) 16.sp else 20.sp
+                                            ),
+                                            fontFamily = RobotoMono,
+                                            textAlign = TextAlign.End,
+                                            modifier = Modifier.weight(1f, fill = false)
                                         )
                                         Spacer(modifier = Modifier.width(4.dp))
                                         Text(
                                             text = result.symbol,
                                             style = MaterialTheme.typography.bodySmall,
                                             color = MaterialTheme.colorScheme.secondary,
-                                            fontFamily = RobotoMono
+                                            fontFamily = RobotoMono,
+                                            modifier = Modifier.align(Alignment.Bottom)
                                         )
                                     }
                                 }
