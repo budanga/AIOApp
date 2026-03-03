@@ -29,7 +29,7 @@
     <string name="feature_payment_comparator">Payment Comparator</string>
 
     <!-- Payment Comparator -->
-    <string name="payment_comparator_inputs_title">Loan Details</string>
+    <string name="payment_comparator_inputs_title">Payment Details</string>
     <string name="payment_comparator_price">Product price</string>
     <string name="payment_comparator_installments">Installments</string>
     <string name="payment_comparator_installments_value">%1$d installments</string>

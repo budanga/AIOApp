@@ -16,7 +16,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -26,24 +25,17 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExposedDropdownMenuBox
-import androidx.compose.material3.ExposedDropdownMenuDefaults
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ExposedDropdownMenuAnchorType
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
@@ -60,14 +52,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.example.aioapp.R
 import com.example.aioapp.ui.components.AppTopAppBar
@@ -303,11 +293,11 @@ private fun InputSection(state: PaymentComparatorUiState, viewModel: PaymentComp
 
 @Composable
 private fun InstallmentChip(
+    modifier: Modifier = Modifier,
     n: Int? = null,
     label: String? = null,
     isSelected: Boolean,
     onClick: () -> Unit,
-    modifier: Modifier = Modifier
 ) {
     val gradientColors = LocalAppGradient.current
     val appGradient = Brush.horizontalGradient(gradientColors)
@@ -321,7 +311,7 @@ private fun InstallmentChip(
                 if (isSelected) Modifier.background(appGradient)
                 else Modifier
                     .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
-                    .border(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.2f), RoundedCornerShape(12.dp))
+                    .border(2.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.2f), RoundedCornerShape(12.dp))
             )
             .clickable(onClick = onClick),
         contentAlignment = Alignment.Center
@@ -343,7 +333,7 @@ private fun NominalResultCard(result: PaymentComparisonResult) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .border(1.dp, cardBorder, RoundedCornerShape(16.dp)),
+            .border(2.dp, cardBorder, RoundedCornerShape(16.dp)),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.6f))
     ) {
@@ -377,7 +367,7 @@ private fun RealResultCard(result: PaymentComparisonResult) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .border(1.dp, cardBorder, RoundedCornerShape(16.dp)),
+            .border(2.dp, cardBorder, RoundedCornerShape(16.dp)),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.6f))
     ) {
@@ -427,26 +417,26 @@ private fun VerdictBanner(advantageous: Boolean, inflationAdjusted: Boolean) {
         color = color.copy(alpha = 0.1f),
         modifier = Modifier
             .fillMaxWidth()
-            .border(1.dp, bannerBorder, RoundedCornerShape(16.dp))
+            .border(2.dp, bannerBorder, RoundedCornerShape(16.dp))
     ) {
         Row(
-            modifier = Modifier.padding(16.dp),
+            modifier = Modifier.padding(vertical = 20.dp, horizontal = 16.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
+            horizontalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             Box(
                 modifier = Modifier
-                    .size(40.dp)
+                    .size(48.dp)
                     .background(color.copy(alpha = 0.2f), CircleShape)
-                    .border(1.dp, color.copy(alpha = 0.5f), CircleShape),
+                    .border(2.5.dp, color.copy(alpha = 0.5f), CircleShape),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(icon, contentDescription = null, tint = color, modifier = Modifier.size(24.dp))
+                Icon(icon, contentDescription = null, tint = color, modifier = Modifier.size(28.dp))
             }
             Column {
                 Text(
                     stringResource(textRes),
-                    style = MaterialTheme.typography.titleSmall,
+                    style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     color = color,
                     fontFamily = RobotoMono
@@ -454,7 +444,7 @@ private fun VerdictBanner(advantageous: Boolean, inflationAdjusted: Boolean) {
                 if (inflationAdjusted) {
                     Text(
                         stringResource(R.string.payment_comparator_verdict_inflation_basis),
-                        style = MaterialTheme.typography.bodySmall,
+                        style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         fontFamily = RobotoMono
                     )
@@ -478,8 +468,9 @@ private fun BreakdownSection(
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .border(1.dp, cardBorder, RoundedCornerShape(16.dp))
-            .animateContentSize(),
+            .border(2.dp, cardBorder, RoundedCornerShape(16.dp))
+            .animateContentSize()
+            .clickable(onClick = onToggle),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.6f))
     ) {
@@ -609,7 +600,7 @@ private fun ResultRow(
                     .border(1.dp, highlightBorder, RoundedCornerShape(12.dp))
                 else Modifier
             )
-            .padding(horizontal = if (isHighlighted) 12.dp else 0.dp, vertical = if (isHighlighted) 10.dp else 4.dp),
+            .padding(horizontal = 12.dp, vertical = if (isHighlighted) 10.dp else 4.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -618,14 +609,17 @@ private fun ResultRow(
             style = MaterialTheme.typography.bodyMedium,
             color = if (isHighlighted) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
             fontFamily = RobotoMono,
-            fontWeight = if (isHighlighted) FontWeight.Bold else FontWeight.Normal
+            fontWeight = if (isHighlighted) FontWeight.Bold else FontWeight.Normal,
+            modifier = Modifier.weight(1f)
         )
+        Spacer(modifier = Modifier.width(8.dp))
         Text(
             text = value,
             style = MaterialTheme.typography.bodyMedium,
             fontWeight = FontWeight.Bold,
             color = if (isHighlighted) MaterialTheme.colorScheme.onSurface else valueColor,
-            fontFamily = RobotoMono
+            fontFamily = RobotoMono,
+            maxLines = 1
         )
     }
 }

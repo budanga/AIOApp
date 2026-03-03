@@ -30,7 +30,7 @@
     <string name="feature_payment_comparator">Comparador de pagos</string>
 
     <!-- Comparador de pagos -->
-    <string name="payment_comparator_inputs_title">Datos del préstamo</string>
+    <string name="payment_comparator_inputs_title">Datos del pago</string>
     <string name="payment_comparator_price">Precio del producto</string>
     <string name="payment_comparator_installments">Cuotas</string>
     <string name="payment_comparator_installments_value">%1$d cuotas</string>
@@ -42,6 +42,7 @@
     <string name="payment_comparator_inflation">Inflación mensual estimada (%) — opcional</string>
     <string name="payment_comparator_error_price">Ingresá un precio válido y positivo</string>
     <string name="payment_comparator_error_tna">Ingresá una tasa válida no negativa</string>
+    <string name="payment_comparator_error_installments">Ingresá una cantidad válida de cuotas</string>
     <string name="payment_comparator_nominal_title">Análisis nominal</string>
     <string name="payment_comparator_installment_amount">Valor de la cuota</string>
     <string name="payment_comparator_total_nominal">Costo total nominal</string>
