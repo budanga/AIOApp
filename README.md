@@ -138,7 +138,7 @@ Run tests with:
 
 ## 📸 Screenshots
 
-```markdown
-![Home Screen](screenshots/home.png)
-![Notes Screen](screenshots/notes.png)
-```
+<div style="display: flex; gap: 10px;">
+  <img src="./screenshots/home.png" width="300" style="height:650px; object-fit: cover;"/>
+  <img src="./screenshots/notes.png" width="300" style="height:650px; object-fit: cover;"/>
+</div>
