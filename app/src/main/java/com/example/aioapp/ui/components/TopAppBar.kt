@@ -73,12 +73,13 @@ fun TopAppBar(
                 )
             } else {
                 val title = when (currentScreen) {
-                    "filemanager"   -> stringResource(R.string.feature_file_manager)
-                    "pomodoro"      -> stringResource(R.string.feature_pomodoro)
-                    "notes"        -> stringResource(R.string.feature_notes)
-                    "unitconverter" -> stringResource(R.string.feature_unit_converter)
-                    "settings"     -> stringResource(R.string.settings_title)
-                    else           -> currentScreen.replaceFirstChar { it.uppercase() }
+                    "filemanager"        -> stringResource(R.string.feature_file_manager)
+                    "pomodoro"           -> stringResource(R.string.feature_pomodoro)
+                    "notes"             -> stringResource(R.string.feature_notes)
+                    "unitconverter"      -> stringResource(R.string.feature_unit_converter)
+                    "settings"          -> stringResource(R.string.settings_title)
+                    "paymentcomparator" -> stringResource(R.string.feature_payment_comparator)
+                    else                -> currentScreen.replaceFirstChar { it.uppercase() }
                 }
                 Text(text = title, fontFamily = RobotoMono)
             }

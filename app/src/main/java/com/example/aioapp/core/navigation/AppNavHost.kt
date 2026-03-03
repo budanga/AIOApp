@@ -22,6 +22,8 @@ import com.example.aioapp.ui.settings.SettingsScreen
 import com.example.aioapp.ui.settings.SettingsViewModel
 import com.example.aioapp.ui.unitconverter.UnitConverterScreen
 import com.example.aioapp.ui.unitconverter.UnitConverterViewModel
+import com.example.aioapp.ui.paymentcomparator.PaymentComparatorScreen
+import com.example.aioapp.ui.paymentcomparator.PaymentComparatorViewModel
 import com.example.aioapp.ui.truco.TrucoScreen
 import com.example.aioapp.ui.truco.TrucoViewModel
 
@@ -79,6 +81,15 @@ fun AppNavHost(
             val trucoViewModel: TrucoViewModel = hiltViewModel()
             TrucoScreen(
                 viewModel = trucoViewModel,
+                padding = padding,
+                navController = navController
+            )
+        }
+
+        composable("paymentcomparator") {
+            val paymentComparatorViewModel: PaymentComparatorViewModel = hiltViewModel()
+            PaymentComparatorScreen(
+                viewModel = paymentComparatorViewModel,
                 padding = padding,
                 navController = navController
             )
