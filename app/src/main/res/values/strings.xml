@@ -27,6 +27,7 @@
     <string name="feature_unit_converter">Unit Converter</string>
     <string name="feature_truco">Truco</string>
     <string name="feature_payment_comparator">Payment Comparator</string>
+    <string name="feature_minesweeper">Minesweeper</string>
 
     <!-- Payment Comparator -->
     <string name="payment_comparator_inputs_title">Payment Details</string>
@@ -184,4 +185,25 @@
     <string name="unit_octal">Octal</string>
     <string name="unit_hexadecimal">Hexadecimal</string>
     <string name="unit_base_n">Base N</string>
+
+    <!-- Minesweeper -->
+    <string name="ms_new_game">New Game</string>
+    <string name="ms_continue">Continue</string>
+    <string name="ms_difficulty_select">Difficulty</string>
+    <string name="ms_beginner">Beginner (%1$dx%2$d)</string>
+    <string name="ms_easy">Easy (%1$dx%2$d)</string>
+    <string name="ms_intermediate">Intermediate (%1$dx%2$d)</string>
+    <string name="ms_advanced">Advanced (%1$dx%2$d)</string>
+    <string name="ms_custom">Custom</string>
+    <string name="ms_width">Width: %1$d</string>
+    <string name="ms_height">Height: %1$d</string>
+    <string name="ms_mines">Mines: %1$d</string>
+    <string name="ms_back">Back</string>
+    <string name="ms_cancel">Cancel</string>
+    <string name="ms_timer_desc">Time</string>
+    <string name="ms_mines_left_desc">Mines Left</string>
+    <string name="ms_pause">PAUSED</string>
+    <string name="ms_won">YOU WON!</string>
+    <string name="ms_lost">YOU LOST!</string>
+    <string name="ms_return_to_menu">Return to menu</string>
 </resources>

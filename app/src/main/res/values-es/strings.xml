@@ -185,4 +185,25 @@
     <string name="unit_octal">Octal</string>
     <string name="unit_hexadecimal">Hexadecimal</string>
     <string name="unit_base_n">Base N</string>
+
+    <!-- Buscaminas -->
+    <string name="ms_new_game">Nuevo Juego</string>
+    <string name="ms_continue">Continuar</string>
+    <string name="ms_difficulty_select">Dificultad</string>
+    <string name="ms_beginner">Principiante (%1$dx%2$d)</string>
+    <string name="ms_easy">Fácil (%1$dx%2$d)</string>
+    <string name="ms_intermediate">Intermedio (%1$dx%2$d)</string>
+    <string name="ms_advanced">Avanzado (%1$dx%2$d)</string>
+    <string name="ms_custom">Personalizado</string>
+    <string name="ms_width">Ancho: %1$d</string>
+    <string name="ms_height">Largo: %1$d</string>
+    <string name="ms_mines">Minas: %1$d</string>
+    <string name="ms_back">Atrás</string>
+    <string name="ms_cancel">Cancelar</string>
+    <string name="ms_timer_desc">Tiempo</string>
+    <string name="ms_mines_left_desc">Minas restantes</string>
+    <string name="ms_pause">PAUSA</string>
+    <string name="ms_won">¡GANASTE!</string>
+    <string name="ms_lost">¡PERDISTE!</string>
+    <string name="ms_return_to_menu">Volver al menú</string>
 </resources>

@@ -5,6 +5,7 @@ import androidx.compose.material.icons.automirrored.filled.Note
 import androidx.compose.material.icons.filled.CreditScore
 import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material.icons.filled.Folder
+import androidx.compose.material.icons.filled.GridOn
 import androidx.compose.material.icons.filled.SwapHoriz
 import androidx.compose.material.icons.filled.Timer
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -22,5 +23,6 @@ val functionalities = listOf(
     Functionality(R.string.feature_pomodoro, Icons.Default.Timer, "pomodoro"),
     Functionality(R.string.feature_unit_converter, Icons.Default.SwapHoriz, "unitconverter"),
     Functionality(R.string.feature_truco, Icons.Default.EmojiEvents, "truco"),
-    Functionality(R.string.feature_payment_comparator, Icons.Default.CreditScore, "paymentcomparator")
+    Functionality(R.string.feature_payment_comparator, Icons.Default.CreditScore, "paymentcomparator"),
+    Functionality(R.string.feature_minesweeper, Icons.Default.GridOn, "minesweeper")
 )
