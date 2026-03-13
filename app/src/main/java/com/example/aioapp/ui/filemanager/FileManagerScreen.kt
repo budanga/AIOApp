@@ -121,8 +121,8 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.example.aioapp.R
-import com.example.aioapp.ui.components.AioTopBar
 import com.example.aioapp.ui.theme.LocalAppGradient
+import com.example.aioapp.ui.theme.RobotoMono
 import kotlinx.coroutines.flow.collectLatest
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -152,7 +152,6 @@ fun FileManagerScreen(
 
     val appGradientColors = LocalAppGradient.current
     val appGradient = remember(appGradientColors) { Brush.horizontalGradient(colors = appGradientColors) }
-    val electrolize = FontFamily(Font(R.font.electrolize_regular))
 
     val fullPath = remember(currentDirectory) {
         currentDirectory?.let { uri ->
@@ -306,7 +305,7 @@ fun FileManagerScreen(
                 }
             }
         ) { padding ->
-            Box(modifier = Modifier.padding(padding).fillMaxSize()) {
+            Box(modifier = Modifier.padding(padding)) {
                 if (currentDirectory != null) {
                     if (isSearching) {
                         SearchResultsList(
@@ -387,7 +386,7 @@ fun FileManagerScreen(
                     onDismiss = { showCreateFileDialog = false },
                     onCreate = viewModel::createFile,
                     appGradient = appGradient,
-                    titleFontFamily = electrolize
+                    titleFontFamily = RobotoMono
                 )
             }
         }
@@ -405,7 +404,7 @@ fun FileManagerScreen(
                     onDismiss = { showCreateFolderDialog = false },
                     onCreate = viewModel::createFolder,
                     appGradient = appGradient,
-                    titleFontFamily = electrolize
+                    titleFontFamily = RobotoMono
                 )
             }
         }
@@ -483,23 +482,23 @@ fun SelectionTopAppBar(
     onCut: () -> Unit,
     onDelete: () -> Unit
 ) {
-    AioTopBar(
+    TopAppBar(
         windowInsets = WindowInsets.statusBars,
-        title = { Text("$selectedCount Selected") },
+        title = { Text("$selectedCount Selected", fontFamily = RobotoMono) },
         navigationIcon = {
             IconButton(onClick = onClearSelection) {
-                Icon(Icons.Default.Close, contentDescription = "Cancel", modifier = Modifier.size(28.dp))
+                Icon(Icons.Default.Close, contentDescription = "Cancel")
             }
         },
         actions = {
             IconButton(onClick = onCopy) {
-                Icon(Icons.Default.ContentCopy, contentDescription = "Copy", modifier = Modifier.size(28.dp))
+                Icon(Icons.Default.ContentCopy, contentDescription = "Copy")
             }
             IconButton(onClick = onCut) {
-                Icon(Icons.Default.ContentCut, contentDescription = "Cut", modifier = Modifier.size(28.dp))
+                Icon(Icons.Default.ContentCut, contentDescription = "Cut")
             }
             IconButton(onClick = onDelete) {
-                Icon(Icons.Default.Delete, contentDescription = "Delete", modifier = Modifier.size(28.dp))
+                Icon(Icons.Default.Delete, contentDescription = "Delete")
             }
         },
         colors = TopAppBarDefaults.topAppBarColors(
@@ -518,7 +517,7 @@ fun SearchTopAppBar(
     val focusRequester = remember { FocusRequester() }
     val focusManager = LocalFocusManager.current
 
-    AioTopBar(
+    TopAppBar(
         windowInsets = WindowInsets.statusBars,
         title = {
             TextField(
@@ -541,7 +540,7 @@ fun SearchTopAppBar(
                 trailingIcon = {
                     if (query.isNotEmpty()) {
                         IconButton(onClick = { onQueryChange("") }) {
-                            Icon(Icons.Default.Clear, contentDescription = "Clear search", modifier = Modifier.size(28.dp))
+                            Icon(Icons.Default.Clear, contentDescription = "Clear search")
                         }
                     }
                 }
@@ -549,11 +548,7 @@ fun SearchTopAppBar(
         },
         navigationIcon = {
             IconButton(onClick = onCloseSearch) {
-                Icon(
-                    Icons.AutoMirrored.Filled.ArrowBack, 
-                    contentDescription = "Back",
-                    modifier = Modifier.size(28.dp)
-                )
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
             }
         },
         colors = TopAppBarDefaults.topAppBarColors(
@@ -806,19 +801,18 @@ fun FileManagerTopAppBar(
     var showSortMenu by remember { mutableStateOf(false) }
 
     Column(modifier = Modifier.fillMaxWidth()) {
-        AioTopBar(
+        CenterAlignedTopAppBar(
             windowInsets = WindowInsets.statusBars,
             title = {
                 Text(
                     text = "File Manager",
-                    style = MaterialTheme.typography.titleLarge.copy(
-                        fontFamily = FontFamily(Font(R.font.roboto_mono_variable_font_wght))
-                    )
+                    style = MaterialTheme.typography.titleLarge,
+                    fontFamily = RobotoMono
                 )
             },
             navigationIcon = {
                 IconButton(onClick = onNavigateUp) {
-                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", modifier = Modifier.size(28.dp))
+                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                 }
             },
             colors = TopAppBarDefaults.topAppBarColors(
@@ -849,17 +843,17 @@ fun FileManagerTopAppBar(
             
             Row(verticalAlignment = Alignment.CenterVertically) {
                 IconButton(onClick = onShowSearch) {
-                    Icon(Icons.Default.Search, contentDescription = "Search", modifier = Modifier.size(28.dp))
+                    Icon(Icons.Default.Search, contentDescription = "Search")
                 }
                 IconButton(onClick = onPaste, enabled = !isClipboardEmpty) {
-                    Icon(Icons.Default.ContentPaste, contentDescription = "Paste", modifier = Modifier.size(28.dp))
+                    Icon(Icons.Default.ContentPaste, contentDescription = "Paste")
                 }
                 IconButton(onClick = onShowCreateFolderDialog) {
-                    Icon(Icons.Default.CreateNewFolder, contentDescription = "Create folder", modifier = Modifier.size(28.dp))
+                    Icon(Icons.Default.CreateNewFolder, contentDescription = "Create folder")
                 }
                 Box {
                     IconButton(onClick = { showSortMenu = true }) {
-                        Icon(Icons.AutoMirrored.Filled.Sort, contentDescription = "Sort", modifier = Modifier.size(28.dp))
+                        Icon(Icons.AutoMirrored.Filled.Sort, contentDescription = "Sort")
                     }
                     DropdownMenu(expanded = showSortMenu, onDismissRequest = { showSortMenu = false }) {
                         DropdownMenuItem(text = { Text("Name (A-Z)") }, onClick = { onSetSortOrder(SortOrder.NAME_AZ); showSortMenu = false })

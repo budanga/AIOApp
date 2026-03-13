@@ -1,151 +1,144 @@
-# AIOApp
-
-**AIOApp** is an Android application written entirely in **Kotlin**, designed as a modular **all‑in‑one hub** where multiple utilities and features can coexist inside a single app.
-
-The goal is simple: one app, many tools, clean architecture.
+# 📱 AIOApp
+AIOApp is a modular Android application that integrates multiple productivity and utility tools into a single, scalable project.
 
 ---
 
-## Table of Contents
+## ✨ Features
 
-* [About](#about)
-* [Features](#features)
-* [Tech Stack](#tech-stack)
-* [Project Structure](#project-structure)
-* [Getting Started](#getting-started)
-* [Requirements](#requirements)
-* [Installation](#installation)
-* [Roadmap](#roadmap)
-* [Contributing](#contributing)
-* [License](#license)
+### 📝 Notes Manager
+- Create, edit, and delete notes
+- Local persistence using Room
+- MVVM architecture
 
----
+### ⏱ Pomodoro Timer
+- Customizable Pomodoro sessions
+- Foreground Service support for background execution
+- State handled via ViewModel
 
-## About
+### 💱 Currency Converter
+- Real-time exchange rates via external API
+- Retrofit + Gson integration
+- Repository pattern for data abstraction
 
-AIOApp (All‑In‑One App) is a personal and experimental project focused on learning, scaling, and experimenting with Android development using modern tools and best practices.
+### 📐 Unit Converter
+- Convert between multiple measurement units
+- Persistent unit order customization
 
-Rather than creating multiple small apps, AIOApp groups different functionalities into independent modules under a single codebase, allowing easy expansion over time.
+### 💳 Payment Comparator
+- Compare different payment options
+- Calculate final costs and differences
 
----
+### 🗂 File Manager
+- File browsing using Android DocumentFile API
+- Scoped storage compatible
 
-## Features
+### 🃏 Truco Point Tracker
+- Track scores for Truco games
+- Persistent game state stored locally
 
-* 100% **Kotlin**
-* **Jetpack Compose** UI
-* Modular and scalable architecture
-* Navigation handled via a centralized NavHost
-* Clean separation between UI, domain, and data layers
-* Designed to grow with new tools and mini‑apps
-
-*Current and planned modules may include:*
-
-* File manager
-* Utility tools
-* Experimental features
-* Personal productivity helpers
+### ⚙️ Settings
+- User preferences stored using DataStore
+- Multi-language support (English / Spanish)
 
 ---
 
-## Tech Stack
+## 🏗 Architecture
 
-* **Kotlin**
-* **Android SDK**
-* **Jetpack Compose**
-* **Navigation Compose**
-* **Gradle (Kotlin DSL compatible)**
+This project follows modern Android architecture guidelines:
 
----
-
-## Project Structure
-
-```
-AIOApp/
-├── core/          # Core utilities, navigation, shared logic
-└── ui/            # Screens and UI components
-    ├── home/
-    ├── filemanager/
-    └── ...
-```
-
-The structure is intentionally flexible to allow new modules without rewriting existing ones.
+- MVVM (Model–View–ViewModel)
+- Repository Pattern
+- Dependency Injection with Hilt
+- Single-Activity architecture
+- Navigation Compose
+- Separation of concerns
 
 ---
 
-## Getting Started
+## 🧩 Tech Stack
 
-Follow these steps to run the project locally.
+| Category | Technology |
+|----------|------------|
+| Language | Kotlin 2.0 |
+| UI | Jetpack Compose |
+| Architecture | MVVM |
+| Database | Room |
+| Networking | Retrofit + Gson |
+| Dependency Injection | Hilt |
+| Navigation | Navigation Compose |
+| Preferences | DataStore |
+| Image Loading | Coil |
+| Build System | Gradle (KTS) |
 
 ---
 
-## Requirements
+## 📦 Configuration
 
-* **Android Studio** (latest recommended)
-* **Android SDK** (API level according to the project configuration)
-* **Kotlin** 1.x
-* **Gradle** (handled automatically by Android Studio)
+| Property | Value |
+|----------|-------|
+| Min SDK | 26 |
+| Target SDK | 36 |
+| Compile SDK | 36 |
+| Java Version | 11 |
 
 ---
 
-## Installation
+## 🚀 Getting Started
 
-1. Clone the repository:
+### 1️⃣ Clone the repository
 
 ```bash
 git clone https://github.com/LautaroBudin/AIOApp.git
 ```
 
-2. Open the project in **Android Studio**
+### 2️⃣ Open in Android Studio
 
-3. Let Gradle sync and download dependencies
+- Android Studio Hedgehog or newer recommended
+- Sync Gradle
 
-4. Run the app on an emulator or physical device
+### 3️⃣ Build & Run
 
----
-
-## Roadmap
-
-Planned improvements and ideas:
-
-* Expand the file manager module
-* Add more independent utilities
-* Improve UI consistency and theming
-* Introduce persistent storage where needed
-* Improve testing coverage
-
-This roadmap is intentionally flexible and may change as the project evolves.
+Run the app on:
+- Emulator (API 26+)
+- Physical Android device
 
 ---
 
-## Contributing
+## 🌍 Localization
 
-Contributions are welcome.
+Supported languages:
+- English
+- Spanish
 
-If you want to contribute:
+Localization is handled using Android resource qualifiers:
 
-1. Fork the repository
-2. Create a new branch:
-
-```bash
-git checkout -b feature/your-feature-name
+```
+values/
+values-es/
 ```
 
-3. Commit your changes:
+---
+
+## 🧪 Testing
+
+Includes:
+
+- Unit tests
+- Android instrumentation tests
+- Hilt testing support
+
+Run tests with:
 
 ```bash
-git commit -m "Describe your changes clearly"
+./gradlew test
+./gradlew connectedAndroidTest
 ```
 
-4. Push your branch and open a Pull Request
-
 ---
 
-## License
+## 📸 Screenshots
 
-This project is currently **unlicensed**.
-
-You are free to explore the code for learning purposes. A license may be added in the future.
-
----
-
-If you find bugs, have ideas, or want to discuss improvements, feel free to open an issue.
+<div style="display: flex; gap: 10px;">
+  <img src="./screenshots/home.png" width="300" style="height:650px; object-fit: cover;"/>
+  <img src="./screenshots/notes.png" width="300" style="height:650px; object-fit: cover;"/>
+</div>

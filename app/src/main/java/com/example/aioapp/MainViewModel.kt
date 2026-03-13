@@ -1,49 +1,46 @@
 package com.example.aioapp
 
-import android.app.Application
-import android.content.Context
-import androidx.datastore.preferences.core.edit
-import androidx.datastore.preferences.core.emptyPreferences
-import androidx.datastore.preferences.core.stringPreferencesKey
-import androidx.datastore.preferences.preferencesDataStore
-import androidx.lifecycle.AndroidViewModel
+
+import androidx.appcompat.app.AppCompatDelegate
+import androidx.core.os.LocaleListCompat
+import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.aioapp.core.datastore.UserPreferencesRepository
+import com.example.aioapp.core.model.AppLanguage
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.catch
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
-import java.io.IOException
 import javax.inject.Inject
 
-private val Context.dataStore by preferencesDataStore("settings")
-private val THEME_KEY = stringPreferencesKey("theme")
-
 @HiltViewModel
-class MainViewModel @Inject constructor(application: Application) : AndroidViewModel(application) {
+class MainViewModel @Inject constructor(
+    private val userPreferencesRepository: UserPreferencesRepository
+) : ViewModel() {
 
-    val theme = getApplication<Application>().dataStore.data
-        .catch { exception ->
-            if (exception is IOException) {
-                emit(emptyPreferences())
-            } else {
-                throw exception
-            }
-        }
-        .map {
-            it[THEME_KEY] ?: "System"
-        }
+    val theme = userPreferencesRepository.themeFlow
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5000),
             initialValue = "System"
         )
 
-    fun setTheme(themeName: String) {
+    val language = userPreferencesRepository.languageFlow
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = AppLanguage.System
+        )
+
+    init {
+        // Apply locale immediately on each emission so it is set on first launch,
+        // after process death, and on change — without relying on recomposition.
         viewModelScope.launch {
-            getApplication<Application>().dataStore.edit { preferences ->
-                preferences[THEME_KEY] = themeName
+            userPreferencesRepository.languageFlow.collect { language ->
+                val localeTag = if (language == AppLanguage.System) "" else language.tag
+                AppCompatDelegate.setApplicationLocales(
+                    LocaleListCompat.forLanguageTags(localeTag)
+                )
             }
         }
     }

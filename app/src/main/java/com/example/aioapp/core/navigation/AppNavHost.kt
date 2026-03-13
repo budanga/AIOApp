@@ -8,11 +8,10 @@ import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.material3.DrawerState
 import androidx.compose.runtime.Composable
-import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
-import com.example.aioapp.MainViewModel
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.example.aioapp.ui.filemanager.FileManagerScreen
 import com.example.aioapp.ui.home.HomeScreen
 import com.example.aioapp.ui.notes.NotesScreen
@@ -20,11 +19,17 @@ import com.example.aioapp.ui.notes.NotesViewModel
 import com.example.aioapp.ui.pomodoro.PomodoroScreen
 import com.example.aioapp.ui.pomodoro.PomodoroViewModel
 import com.example.aioapp.ui.settings.SettingsScreen
+import com.example.aioapp.ui.settings.SettingsViewModel
+import com.example.aioapp.ui.unitconverter.UnitConverterScreen
+import com.example.aioapp.ui.unitconverter.UnitConverterViewModel
+import com.example.aioapp.ui.paymentcomparator.PaymentComparatorScreen
+import com.example.aioapp.ui.paymentcomparator.PaymentComparatorViewModel
+import com.example.aioapp.ui.truco.TrucoScreen
+import com.example.aioapp.ui.truco.TrucoViewModel
 
 @Composable
 fun AppNavHost(
     navController: NavHostController,
-    viewModel: MainViewModel,
     padding: PaddingValues,
     drawerState: DrawerState
 ) {
@@ -37,7 +42,7 @@ fun AppNavHost(
         popExitTransition = { fadeOut(animationSpec = tween(300)) + scaleOut(targetScale = 0.92f, animationSpec = tween(300)) }
     ) {
         composable("home") {
-            HomeScreen(navController = navController, drawerState = drawerState)
+            HomeScreen(padding = padding, navController = navController)
         }
 
         composable("filemanager") {
@@ -58,17 +63,41 @@ fun AppNavHost(
             val pomodoroViewModel: PomodoroViewModel = hiltViewModel()
             PomodoroScreen(
                 viewModel = pomodoroViewModel,
-                navController = navController,
-                drawerState = drawerState
+                padding = padding,
+                navController = navController
+            )
+        }
+
+        composable("unitconverter") {
+            val unitConverterViewModel: UnitConverterViewModel = hiltViewModel()
+            UnitConverterScreen(
+                viewModel = unitConverterViewModel,
+                padding = padding,
+                navController = navController
+            )
+        }
+
+        composable("truco") {
+            val trucoViewModel: TrucoViewModel = hiltViewModel()
+            TrucoScreen(
+                viewModel = trucoViewModel,
+                padding = padding,
+                navController = navController
+            )
+        }
+
+        composable("paymentcomparator") {
+            val paymentComparatorViewModel: PaymentComparatorViewModel = hiltViewModel()
+            PaymentComparatorScreen(
+                viewModel = paymentComparatorViewModel,
+                padding = padding,
+                navController = navController
             )
         }
 
         composable("settings") {
-            SettingsScreen(
-                viewModel = viewModel,
-                navController = navController,
-                drawerState = drawerState
-            )
+            val settingsViewModel: SettingsViewModel = hiltViewModel()
+            SettingsScreen(viewModel = settingsViewModel, padding = padding)
         }
     }
 }

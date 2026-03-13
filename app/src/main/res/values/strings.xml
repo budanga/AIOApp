@@ -1,3 +1,187 @@
 <resources>
     <string name="app_name">AIO App</string>
+    <string name="home_title">Home</string>
+    <string name="settings_title">Settings</string>
+
+    <!-- Language -->
+    <string name="language_selection">Language</string>
+    <string name="language_english">English</string>
+    <string name="language_spanish">Español</string>
+    <string name="language_system">System</string>
+
+    <!-- Theme -->
+    <string name="theme_title">Theme</string>
+    <string name="theme_system">System</string>
+    <string name="theme_light">Light mode</string>
+    <string name="theme_dark">Dark mode</string>
+
+    <!-- Navigation / common -->
+    <string name="nav_back">Back</string>
+    <string name="nav_menu">Menu</string>
+    <string name="nav_settings">Settings</string>
+
+    <!-- Feature names (home grid + drawer) -->
+    <string name="feature_file_manager">File Manager</string>
+    <string name="feature_notes">Notes</string>
+    <string name="feature_pomodoro">Pomodoro</string>
+    <string name="feature_unit_converter">Unit Converter</string>
+    <string name="feature_truco">Truco</string>
+    <string name="feature_payment_comparator">Payment Comparator</string>
+
+    <!-- Payment Comparator -->
+    <string name="payment_comparator_inputs_title">Payment Details</string>
+    <string name="payment_comparator_price">Product price</string>
+    <string name="payment_comparator_installments">Installments</string>
+    <string name="payment_comparator_installments_value">%1$d installments</string>
+    <string name="payment_comparator_installments_other">Other</string>
+    <string name="payment_comparator_quantity">Quantity</string>
+    <string name="payment_comparator_confirm">Confirm</string>
+    <string name="payment_comparator_cancel">Cancel</string>
+    <string name="payment_comparator_tna">Annual interest rate — TNA (%)</string>
+    <string name="payment_comparator_inflation">Monthly inflation rate (%) — optional</string>
+    <string name="payment_comparator_error_price">Enter a valid positive price</string>
+    <string name="payment_comparator_error_tna">Enter a valid non-negative rate</string>
+    <string name="payment_comparator_error_installments">Enter a valid number of installments</string>
+    <string name="payment_comparator_nominal_title">Nominal Analysis</string>
+    <string name="payment_comparator_installment_amount">Installment amount</string>
+    <string name="payment_comparator_total_nominal">Total nominal cost</string>
+    <string name="payment_comparator_surcharge">Financing surcharge</string>
+    <string name="payment_comparator_tea">Effective annual rate (TEA)</string>
+    <string name="payment_comparator_real_title">Inflation-Adjusted Analysis</string>
+    <string name="payment_comparator_real_total">Total real cost</string>
+    <string name="payment_comparator_real_surcharge">Real surcharge vs cash price</string>
+    <string name="payment_comparator_verdict_advantageous">Financing is advantageous</string>
+    <string name="payment_comparator_verdict_single_cheaper">Single payment is cheaper</string>
+    <string name="payment_comparator_verdict_inflation_basis">Based on inflation-adjusted present value</string>
+    <string name="payment_comparator_breakdown_title">Payment Breakdown</string>
+    <string name="payment_comparator_breakdown_month">Mo.</string>
+    <string name="payment_comparator_breakdown_nominal">Nominal</string>
+    <string name="payment_comparator_breakdown_real">Real (PV)</string>
+
+    <!-- Pomodoro -->
+    <string name="pomodoro_start">Start</string>
+    <string name="pomodoro_pause">Pause</string>
+    <string name="pomodoro_reset">Reset</string>
+    <string name="pomodoro_mode_work">Work</string>
+    <string name="pomodoro_mode_short_break">Short break</string>
+    <string name="pomodoro_mode_long_break">Long break</string>
+
+    <!-- Unit Converter -->
+    <string name="unit_converter_value_hint">Value</string>
+    <string name="unit_converter_rate_label">Rate: 1 USD = %1$s %2$s</string>
+    <string name="unit_converter_last_updated">Last updated: %1$s</string>
+
+    <!-- Truco -->
+    <string name="truco_15_points">15 Points</string>
+    <string name="truco_30_points">30 Points</string>
+    <string name="truco_history_title">Game History</string>
+    <string name="truco_history_empty">No games played yet.</string>
+    <string name="truco_history_clear">CLEAR ALL</string>
+    <string name="truco_history_close">CLOSE</string>
+    <string name="truco_winner_label">¡WINNER!</string>
+    <string name="truco_play_again">PLAY AGAIN</string>
+    <string name="truco_mode_label">Mode: %1$d pts</string>
+    <string name="truco_won_label">%1$s WON</string>
+    <string name="truco_history_icon">History</string>
+    <string name="truco_reset_icon">Reset</string>
+    <string name="truco_decrement">Decrement</string>
+    <string name="truco_increment">Increment</string>
+
+    <!-- Notes -->
+    <string name="notes_pinned">PINNED</string>
+    <string name="notes_created">Created: %1$s</string>
+
+    <!-- Unit Categories -->
+    <string name="unit_cat_mass">Mass</string>
+    <string name="unit_cat_length">Length</string>
+    <string name="unit_cat_temperature">Temperature</string>
+    <string name="unit_cat_speed">Speed</string>
+    <string name="unit_cat_volume">Volume</string>
+    <string name="unit_cat_time">Time</string>
+    <string name="unit_cat_storage">Storage</string>
+    <string name="unit_cat_energy">Energy</string>
+    <string name="unit_cat_pressure">Pressure</string>
+    <string name="unit_cat_electrical">Electrical</string>
+    <string name="unit_cat_currency">Currency</string>
+    <string name="unit_cat_numbers">Numbers</string>
+
+    <!-- Units -->
+    <string name="unit_kilogram">Kilogram</string>
+    <string name="unit_gram">Gram</string>
+    <string name="unit_milligram">Milligram</string>
+    <string name="unit_pound">Pound</string>
+    <string name="unit_ounce">Ounce</string>
+
+    <string name="unit_meter">Meter</string>
+    <string name="unit_kilometer">Kilometer</string>
+    <string name="unit_centimeter">Centimeter</string>
+    <string name="unit_millimeter">Millimeter</string>
+    <string name="unit_mile">Mile</string>
+    <string name="unit_yard">Yard</string>
+    <string name="unit_foot">Foot</string>
+    <string name="unit_inch">Inch</string>
+
+    <string name="unit_celsius">Celsius</string>
+    <string name="unit_fahrenheit">Fahrenheit</string>
+    <string name="unit_kelvin">Kelvin</string>
+
+    <string name="unit_meter_per_second">Meter/second</string>
+    <string name="unit_kilometer_per_hour">Kilometer/hour</string>
+    <string name="unit_mile_per_hour">Mile/hour</string>
+    <string name="unit_knot">Knot</string>
+    <string name="unit_foot_per_second">Foot/second</string>
+
+    <string name="unit_liter">Liter</string>
+    <string name="unit_milliliter">Milliliter</string>
+    <string name="unit_cubic_meter">Cubic meter</string>
+    <string name="unit_gallon">Gallon</string>
+    <string name="unit_quart">Quart</string>
+    <string name="unit_pint">Pint</string>
+    <string name="unit_cup">Cup</string>
+
+    <string name="unit_second">Second</string>
+    <string name="unit_millisecond">Millisecond</string>
+    <string name="unit_minute">Minute</string>
+    <string name="unit_hour">Hour</string>
+    <string name="unit_day">Day</string>
+    <string name="unit_week">Week</string>
+
+    <string name="unit_byte">Byte</string>
+    <string name="unit_kilobyte">Kilobyte</string>
+    <string name="unit_megabyte">Megabyte</string>
+    <string name="unit_gigabyte">Gigabyte</string>
+    <string name="unit_terabyte">Terabyte</string>
+
+    <string name="unit_joule">Joule</string>
+    <string name="unit_kilojoule">Kilojoule</string>
+    <string name="unit_calorie">Calorie</string>
+    <string name="unit_kilocalorie">Kilocalorie</string>
+    <string name="unit_watt_hour">Watt-hour</string>
+    <string name="unit_kilowatt_hour">Kilowatt-hour</string>
+
+    <string name="unit_pascal">Pascal</string>
+    <string name="unit_kilopascal">Kilopascal</string>
+    <string name="unit_bar">Bar</string>
+    <string name="unit_psi">PSI</string>
+    <string name="unit_atmosphere">Atmosphere</string>
+
+    <string name="unit_ampere">Ampere</string>
+    <string name="unit_milliampere">Milliampere</string>
+    <string name="unit_microampere">Microampere</string>
+    <string name="unit_volt">Volt</string>
+    <string name="unit_ohm">Ohm</string>
+
+    <string name="unit_usd">US Dollar</string>
+    <string name="unit_eur">Euro</string>
+    <string name="unit_ars">Argentine Peso</string>
+    <string name="unit_clp">Chilean Peso</string>
+    <string name="unit_uyu">Uruguayan Peso</string>
+    <string name="unit_brl">Brazilian Real</string>
+    <string name="unit_jpy">Japanese Yen</string>
+    <string name="unit_cny">Chinese Yuan</string>
+    <string name="unit_decimal">Decimal</string>
+    <string name="unit_binary">Binary</string>
+    <string name="unit_octal">Octal</string>
+    <string name="unit_hexadecimal">Hexadecimal</string>
+    <string name="unit_base_n">Base N</string>
 </resources>
