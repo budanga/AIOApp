@@ -30,6 +30,7 @@
     <string name="feature_payment_comparator">Comparador de pagos</string>
 
     <!-- Comparador de pagos -->
+    <string name="feature_minesweeper">Buscaminas</string>
     <string name="payment_comparator_inputs_title">Datos del pago</string>
     <string name="payment_comparator_price">Precio del producto</string>
     <string name="payment_comparator_installments">Cuotas</string>
