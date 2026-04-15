@@ -25,6 +25,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.drawText
@@ -37,6 +39,10 @@ import com.example.aioapp.R
 import com.example.aioapp.ui.components.AioTopBar
 import com.example.aioapp.ui.components.DefaultNavigationIcon
 import com.example.aioapp.ui.theme.LocalAppGradient
+import android.os.Vibrator
+import android.os.VibrationEffect
+import android.os.Build
+import androidx.compose.ui.platform.LocalContext
 
 @Composable
 fun MinesweeperScreen(
@@ -222,6 +228,7 @@ fun GameBoardView(viewModel: MinesweeperViewModel, appGradient: Brush, onReturnT
     val isFlagMode by viewModel.isFlagMode.collectAsState()
     val timeElapsed by viewModel.timeElapsed.collectAsState()
     val minesRemaining by viewModel.minesRemaining.collectAsState()
+    val vibrationsEnabled by viewModel.vibrationsEnabled.collectAsState()
     
     Column(modifier = Modifier.fillMaxSize()) {
         Card(
@@ -256,6 +263,27 @@ fun GameBoardView(viewModel: MinesweeperViewModel, appGradient: Brush, onReturnT
                             contentDescription = "Toggle Mode"
                         )
                     }
+
+                    IconButton(onClick = { viewModel.toggleVibrations() }) {
+                        val iconColor = if (vibrationsEnabled) LocalContentColor.current else LocalContentColor.current.copy(alpha = 0.38f)
+                        Box(contentAlignment = Alignment.Center, modifier = Modifier.size(24.dp)) {
+                            Icon(
+                                Icons.Default.Vibration,
+                                contentDescription = "Toggle Vibrations",
+                                tint = iconColor
+                            )
+                            if (!vibrationsEnabled) {
+                                Canvas(modifier = Modifier.fillMaxSize()) {
+                                    drawLine(
+                                        color = iconColor,
+                                        start = Offset(0f, 0f),
+                                        end = Offset(size.width, size.height),
+                                        strokeWidth = 2.dp.toPx()
+                                    )
+                                }
+                            }
+                        }
+                    }
                     
                     IconButton(onClick = onReturnToMenu) {
                         Icon(Icons.Default.Home, contentDescription = "Menu")
@@ -276,7 +304,9 @@ fun GameBoardView(viewModel: MinesweeperViewModel, appGradient: Brush, onReturnT
                 difficulty = difficulty,
                 gameState = gameState,
                 onClick = { x, y -> viewModel.onCellClicked(x, y) },
-                onLongClick = { x, y -> viewModel.onCellLongClicked(x, y) }
+                onLongClick = { x, y -> viewModel.onCellLongClicked(x, y) },
+                isFlagMode = isFlagMode,
+                vibrationsEnabled = vibrationsEnabled
             )
             
             if (gameState == GameState.Paused) {
@@ -303,13 +333,29 @@ fun InteractiveMinesweeperBoard(
     difficulty: Difficulty,
     gameState: GameState,
     onClick: (Int, Int) -> Unit,
-    onLongClick: (Int, Int) -> Unit
+    onLongClick: (Int, Int) -> Unit,
+    isFlagMode: Boolean = false,
+    vibrationsEnabled: Boolean = true
 ) {
+    val context = LocalContext.current
+    val vibrator = remember { context.getSystemService(android.content.Context.VIBRATOR_SERVICE) as Vibrator }
+    
+    val triggerVibration = {
+        if (vibrationsEnabled) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                vibrator.vibrate(VibrationEffect.createOneShot(30, VibrationEffect.DEFAULT_AMPLITUDE))
+            } else {
+                @Suppress("DEPRECATION")
+                vibrator.vibrate(30)
+            }
+        }
+    }
     var scale by remember { mutableFloatStateOf(1f) }
     var viewOffset by remember { mutableStateOf(Offset.Zero) }
     val textMeasurer = rememberTextMeasurer()
     val cellSizeDp = 30.dp
     val density = androidx.compose.ui.platform.LocalDensity.current
+    val haptic = LocalHapticFeedback.current
     val cellSize = with(density) { cellSizeDp.toPx() }
     
     BoxWithConstraints(
@@ -321,7 +367,7 @@ fun InteractiveMinesweeperBoard(
                     viewOffset += pan
                 }
             }
-            .pointerInput(difficulty, gameState, scale, viewOffset) {
+            .pointerInput(difficulty, gameState, scale, viewOffset, vibrationsEnabled) {
                 if (gameState != GameState.Playing) return@pointerInput
                 detectTapGestures(
                     onTap = { pressPos ->
@@ -337,6 +383,10 @@ fun InteractiveMinesweeperBoard(
                             val col = (localX / cellSize).toInt()
                             val row = (localY / cellSize).toInt()
                             if (col in 0 until difficulty.columns && row in 0 until difficulty.rows) {
+                                val index = row * difficulty.columns + col
+                                if (isFlagMode && index in cells.indices && !cells[index].isRevealed) {
+                                    triggerVibration()
+                                }
                                 onClick(col, row)
                             }
                         }
@@ -354,6 +404,10 @@ fun InteractiveMinesweeperBoard(
                             val col = (localX / cellSize).toInt()
                             val row = (localY / cellSize).toInt()
                             if (col in 0 until difficulty.columns && row in 0 until difficulty.rows) {
+                                val index = row * difficulty.columns + col
+                                if (index in cells.indices && !cells[index].isRevealed) {
+                                    triggerVibration()
+                                }
                                 onLongClick(col, row)
                             }
                         }
