@@ -318,6 +318,7 @@ fun GameBoardView(viewModel: MinesweeperViewModel, appGradient: Brush, onReturnT
                 WinLossOverlay(
                     hasWon = gameState == GameState.Won,
                     onReturn = onReturnToMenu,
+                    onRestart = { viewModel.startNewGame(difficulty) },
                     appGradient = appGradient
                 )
             }
@@ -556,7 +557,25 @@ data class ExplosionPiece(
 )
 
 @Composable
-fun WinLossOverlay(hasWon: Boolean, onReturn: () -> Unit, appGradient: Brush) {
+fun WinLossOverlay(
+    hasWon: Boolean, 
+    onReturn: () -> Unit, 
+    onRestart: () -> Unit, 
+    appGradient: Brush
+) {
+    var showUi by remember { mutableStateOf(hasWon) }
+    val explosionProgress = remember { Animatable(0f) }
+    
+    LaunchedEffect(hasWon) {
+        if (!hasWon) {
+            explosionProgress.animateTo(
+                targetValue = 1f,
+                animationSpec = tween(1200, easing = FastOutSlowInEasing)
+            )
+            showUi = true
+        }
+    }
+
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -566,35 +585,82 @@ fun WinLossOverlay(hasWon: Boolean, onReturn: () -> Unit, appGradient: Brush) {
     ) {
         if (hasWon) {
             MinesweeperExplosionConfetti()
+        } else if (explosionProgress.value < 1f) {
+            Canvas(modifier = Modifier.fillMaxSize()) {
+                val maxRadius = kotlin.math.hypot(size.width.toDouble(), size.height.toDouble()).toFloat()
+                val currentRadius = maxRadius * explosionProgress.value
+                val alpha = (1f - explosionProgress.value).coerceIn(0f, 1f)
+                val color = when {
+                    explosionProgress.value < 0.2f -> Color.White
+                    explosionProgress.value < 0.4f -> Color.Yellow
+                    explosionProgress.value < 0.7f -> Color(0xFFFF5722) // Orange
+                    else -> Color.Red
+                }
+                
+                drawCircle(
+                    color = color.copy(alpha = alpha),
+                    radius = currentRadius,
+                    center = Offset(size.width / 2, size.height / 2)
+                )
+                if (explosionProgress.value > 0.1f) {
+                     drawCircle(
+                        color = Color.DarkGray.copy(alpha = alpha * 0.8f),
+                        radius = currentRadius * 0.8f,
+                        center = Offset(size.width / 2, size.height / 2)
+                    )
+                }
+                if (explosionProgress.value > 0.2f) {
+                     drawCircle(
+                        color = Color.Black.copy(alpha = alpha * 0.6f),
+                        radius = currentRadius * 0.5f,
+                        center = Offset(size.width / 2, size.height / 2)
+                    )
+                }
+            }
         }
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
-        ) {
-            val scale by animateFloatAsState(
-                targetValue = 1.1f,
-                animationSpec = infiniteRepeatable(tween(1000), RepeatMode.Reverse),
-                label = "scale"
-            )
-            
-            Text(
-                text = if (hasWon) stringResource(R.string.ms_won) else stringResource(R.string.ms_lost),
-                color = if (hasWon) Color.Green else Color.Red,
-                fontSize = 54.sp,
-                fontWeight = FontWeight.Black,
-                modifier = Modifier.graphicsLayer(scaleX = scale, scaleY = scale)
-            )
-            Spacer(modifier = Modifier.height(48.dp))
-            Button(
-                onClick = onReturn,
-                modifier = Modifier
-                    .fillMaxWidth(0.7f)
-                    .height(56.dp)
-                    .clip(RoundedCornerShape(28.dp))
-                    .background(appGradient),
-                colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent)
+
+        if (showUi) {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
             ) {
-                Text(stringResource(R.string.ms_return_to_menu), fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                val scale by animateFloatAsState(
+                    targetValue = 1.1f,
+                    animationSpec = infiniteRepeatable(tween(1000), RepeatMode.Reverse),
+                    label = "scale"
+                )
+                
+                Text(
+                    text = if (hasWon) stringResource(R.string.ms_won) else stringResource(R.string.ms_lost),
+                    color = if (hasWon) Color.Green else Color.Red,
+                    fontSize = 54.sp,
+                    fontWeight = FontWeight.Black,
+                    modifier = Modifier.graphicsLayer(scaleX = scale, scaleY = scale)
+                )
+                Spacer(modifier = Modifier.height(48.dp))
+                Button(
+                    onClick = onRestart,
+                    modifier = Modifier
+                        .fillMaxWidth(0.7f)
+                        .height(56.dp)
+                        .clip(RoundedCornerShape(28.dp))
+                        .background(appGradient),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent)
+                ) {
+                    Text(stringResource(R.string.ms_new_game), fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                }
+                Spacer(modifier = Modifier.height(16.dp))
+                Button(
+                    onClick = onReturn,
+                    modifier = Modifier
+                        .fillMaxWidth(0.7f)
+                        .height(56.dp)
+                        .clip(RoundedCornerShape(28.dp))
+                        .background(appGradient),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent)
+                ) {
+                    Text(stringResource(R.string.ms_return_to_menu), fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                }
             }
         }
     }
