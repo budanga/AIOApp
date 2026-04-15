@@ -34,6 +34,9 @@ class MinesweeperViewModel @Inject constructor(
     private val _isFlagMode = MutableStateFlow(false)
     val isFlagMode: StateFlow<Boolean> = _isFlagMode.asStateFlow()
 
+    private val _vibrationsEnabled = MutableStateFlow(true)
+    val vibrationsEnabled: StateFlow<Boolean> = _vibrationsEnabled.asStateFlow()
+
     private var isFirstClick = true
     private var timerJob: Job? = null
 
@@ -50,6 +53,12 @@ class MinesweeperViewModel @Inject constructor(
                     _gameState.value = if (saved.gameState == GameState.Playing) GameState.Paused else saved.gameState
                     isFirstClick = saved.isFirstClick
                 }
+            }
+        }
+        
+        viewModelScope.launch {
+            repository.vibrationsEnabledFlow.collect {
+                _vibrationsEnabled.value = it
             }
         }
     }
@@ -232,6 +241,12 @@ class MinesweeperViewModel @Inject constructor(
     
     fun toggleFlagMode() {
         _isFlagMode.value = !_isFlagMode.value
+    }
+
+    fun toggleVibrations() {
+        viewModelScope.launch {
+            repository.setVibrationsEnabled(!_vibrationsEnabled.value)
+        }
     }
 
     fun pauseGame() {

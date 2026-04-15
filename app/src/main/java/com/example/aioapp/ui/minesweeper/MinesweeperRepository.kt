@@ -3,6 +3,7 @@ package com.example.aioapp.ui.minesweeper
 import android.content.Context
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
@@ -30,6 +31,7 @@ class MinesweeperRepository @Inject constructor(
 ) {
     private val GSON = Gson()
     private val SAVED_GAME_KEY = stringPreferencesKey("saved_game")
+    private val VIBRATIONS_ENABLED_KEY = booleanPreferencesKey("vibrations_enabled")
 
     val savedGameFlow: Flow<SavedGame?> = context.minesweeperDataStore.data.map { preferences ->
         val json = preferences[SAVED_GAME_KEY]
@@ -54,6 +56,16 @@ class MinesweeperRepository @Inject constructor(
     suspend fun clearSavedGame() {
         context.minesweeperDataStore.edit { preferences ->
             preferences.remove(SAVED_GAME_KEY)
+        }
+    }
+
+    val vibrationsEnabledFlow: Flow<Boolean> = context.minesweeperDataStore.data.map { preferences ->
+        preferences[VIBRATIONS_ENABLED_KEY] ?: true
+    }
+
+    suspend fun setVibrationsEnabled(enabled: Boolean) {
+        context.minesweeperDataStore.edit { preferences ->
+            preferences[VIBRATIONS_ENABLED_KEY] = enabled
         }
     }
 }
