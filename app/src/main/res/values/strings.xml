@@ -26,6 +26,32 @@
     <string name="feature_pomodoro">Pomodoro</string>
     <string name="feature_unit_converter">Unit Converter</string>
     <string name="feature_truco">Truco</string>
+    <string name="feature_payment_comparator">Payment Comparator</string>
+
+    <!-- Payment Comparator -->
+    <string name="payment_comparator_inputs_title">Loan Details</string>
+    <string name="payment_comparator_price">Product price</string>
+    <string name="payment_comparator_installments">Installments</string>
+    <string name="payment_comparator_installments_value">%1$d installments</string>
+    <string name="payment_comparator_tna">Annual interest rate — TNA (%)</string>
+    <string name="payment_comparator_inflation">Monthly inflation rate (%) — optional</string>
+    <string name="payment_comparator_error_price">Enter a valid positive price</string>
+    <string name="payment_comparator_error_tna">Enter a valid non-negative rate</string>
+    <string name="payment_comparator_nominal_title">Nominal Analysis</string>
+    <string name="payment_comparator_installment_amount">Installment amount</string>
+    <string name="payment_comparator_total_nominal">Total nominal cost</string>
+    <string name="payment_comparator_surcharge">Financing surcharge</string>
+    <string name="payment_comparator_tea">Effective annual rate (TEA)</string>
+    <string name="payment_comparator_real_title">Inflation-Adjusted Analysis</string>
+    <string name="payment_comparator_real_total">Total real cost (today\'s money)</string>
+    <string name="payment_comparator_real_surcharge">Real surcharge vs cash price</string>
+    <string name="payment_comparator_verdict_advantageous">Financing is advantageous</string>
+    <string name="payment_comparator_verdict_single_cheaper">Single payment is cheaper</string>
+    <string name="payment_comparator_verdict_inflation_basis">Based on inflation-adjusted present value</string>
+    <string name="payment_comparator_breakdown_title">Payment Breakdown</string>
+    <string name="payment_comparator_breakdown_month">Mo.</string>
+    <string name="payment_comparator_breakdown_nominal">Nominal</string>
+    <string name="payment_comparator_breakdown_real">Real (PV)</string>
 
     <!-- Pomodoro -->
     <string name="pomodoro_start">Start</string>
