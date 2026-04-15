@@ -201,4 +201,30 @@
     <string name="ms_won">YOU WON!</string>
     <string name="ms_lost">YOU LOST!</string>
     <string name="ms_return_to_menu">Return to menu</string>
+
+    <!-- BBQ Calculator -->
+    <string name="feature_bbq">BBQ Calculator</string>
+    <string name="bbq_participants">Participants</string>
+    <string name="bbq_men">Men</string>
+    <string name="bbq_women">Women</string>
+    <string name="bbq_children">Children</string>
+    <string name="bbq_food">Food Options</string>
+    <string name="bbq_food_meat">Meat</string>
+    <string name="bbq_food_bread">Bread</string>
+    <string name="bbq_food_salad">Salad</string>
+    <string name="bbq_food_coal">Coal</string>
+    <string name="bbq_drinks">Drinks</string>
+    <string name="bbq_drinks_soda">Soda</string>
+    <string name="bbq_drinks_beer">Beer</string>
+    <string name="bbq_drinks_wine">Wine</string>
+    <string name="bbq_results">Results</string>
+    <string name="bbq_expense_divider">Expense Splitter</string>
+    <string name="bbq_total_cost">Total Cost</string>
+    <string name="bbq_cost_per_adult">Cost per Adult: %1$s</string>
+    <string name="bbq_results_meat">%.1f kg</string>
+    <string name="bbq_results_bread">%d units</string>
+    <string name="bbq_results_coal">%.1f kg</string>
+    <string name="bbq_results_drinks">%.1f L</string>
+    <string name="bbq_results_salad">Salad</string>
+    <string name="bbq_results_salad_desc">Ready to serve</string>
 </resources>

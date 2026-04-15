@@ -202,4 +202,30 @@
     <string name="ms_won">¡GANASTE!</string>
     <string name="ms_lost">¡PERDISTE!</string>
     <string name="ms_return_to_menu">Volver al menú</string>
+
+    <!-- Calculadora de Asado -->
+    <string name="feature_bbq">Calculadora de Asado</string>
+    <string name="bbq_participants">Participantes</string>
+    <string name="bbq_men">Hombres</string>
+    <string name="bbq_women">Mujeres</string>
+    <string name="bbq_children">Niños</string>
+    <string name="bbq_food">Opciones de Comida</string>
+    <string name="bbq_food_meat">Carne</string>
+    <string name="bbq_food_bread">Pan</string>
+    <string name="bbq_food_salad">Ensalada</string>
+    <string name="bbq_food_coal">Carbón</string>
+    <string name="bbq_drinks">Bebida</string>
+    <string name="bbq_drinks_soda">Gaseosa</string>
+    <string name="bbq_drinks_beer">Cerveza</string>
+    <string name="bbq_drinks_wine">Vino</string>
+    <string name="bbq_results">Resultados</string>
+    <string name="bbq_expense_divider">Divisor de Gastos</string>
+    <string name="bbq_total_cost">Costo Total</string>
+    <string name="bbq_cost_per_adult">Costo por Adulto: %1$s</string>
+    <string name="bbq_results_meat">%.1f kg</string>
+    <string name="bbq_results_bread">%d unidades</string>
+    <string name="bbq_results_coal">%.1f kg</string>
+    <string name="bbq_results_drinks">%.1f L</string>
+    <string name="bbq_results_salad">Ensalada</string>
+    <string name="bbq_results_salad_desc">Lista para servir</string>
 </resources>
