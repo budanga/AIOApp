@@ -15,12 +15,12 @@ import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
@@ -49,7 +49,7 @@ class MainActivity : AppCompatActivity() {
         navigationIntent = intent
 
         setContent {
-            val theme by viewModel.theme.collectAsState()
+            val theme by viewModel.theme.collectAsStateWithLifecycle()
             val systemDarkTheme = isSystemInDarkTheme()
             val useDarkTheme = when (theme) {
                 "Dark" -> true

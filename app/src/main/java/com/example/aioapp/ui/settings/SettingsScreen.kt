@@ -11,7 +11,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -28,8 +28,8 @@ fun SettingsScreen(
     viewModel: SettingsViewModel = hiltViewModel(),
     padding: PaddingValues
 ) {
-    val currentTheme by viewModel.theme.collectAsState()
-    val currentLanguage by viewModel.language.collectAsState()
+    val currentTheme by viewModel.theme.collectAsStateWithLifecycle()
+    val currentLanguage by viewModel.language.collectAsStateWithLifecycle()
 
     Column(modifier = Modifier.padding(padding)) {
         Spacer(modifier = Modifier.height(8.dp))

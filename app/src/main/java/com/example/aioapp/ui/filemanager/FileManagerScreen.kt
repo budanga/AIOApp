@@ -108,6 +108,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -132,19 +133,19 @@ fun FileManagerScreen(
     viewModel: FileManagerViewModel = viewModel(),
     theme: String = "System"
 ) {
-    val currentDirectory by viewModel.currentDirectory.collectAsState()
-    val canNavigateUp by viewModel.canNavigateUp.collectAsState()
-    val isRefreshing by viewModel.isRefreshing.collectAsState()
-    val searchQuery by viewModel.searchQuery.collectAsState()
-    val isSearching by viewModel.isSearching.collectAsState()
-    val searchResults by viewModel.searchResults.collectAsState()
-    val selectedItems by viewModel.selectedItems.collectAsState()
+    val currentDirectory by viewModel.currentDirectory.collectAsStateWithLifecycle()
+    val canNavigateUp by viewModel.canNavigateUp.collectAsStateWithLifecycle()
+    val isRefreshing by viewModel.isRefreshing.collectAsStateWithLifecycle()
+    val searchQuery by viewModel.searchQuery.collectAsStateWithLifecycle()
+    val isSearching by viewModel.isSearching.collectAsStateWithLifecycle()
+    val searchResults by viewModel.searchResults.collectAsStateWithLifecycle()
+    val selectedItems by viewModel.selectedItems.collectAsStateWithLifecycle()
     
     var showCreateFileDialog by remember { mutableStateOf(false) }
     var showCreateFolderDialog by remember { mutableStateOf(false) }
     val context = LocalContext.current
-    val clipboardItem by viewModel.clipboardItem.collectAsState()
-    val cutItemUris by viewModel.cutItemUris.collectAsState()
+    val clipboardItem by viewModel.clipboardItem.collectAsStateWithLifecycle()
+    val cutItemUris by viewModel.cutItemUris.collectAsStateWithLifecycle()
     var showDeleteConfirmationDialog by remember { mutableStateOf(false) }
     var showFullPath by remember { mutableStateOf(false) }
     var infoItem by remember { mutableStateOf<Any?>(null) }
@@ -644,9 +645,9 @@ fun DirectoryContent(
     appGradient: Brush,
     onShowInfo: (Any) -> Unit
 ) {
-    val directories by viewModel.sortedDirectories.collectAsState()
-    val files by viewModel.sortedFiles.collectAsState()
-    val sortOrder by viewModel.sortOrder.collectAsState()
+    val directories by viewModel.sortedDirectories.collectAsStateWithLifecycle()
+    val files by viewModel.sortedFiles.collectAsStateWithLifecycle()
+    val sortOrder by viewModel.sortOrder.collectAsStateWithLifecycle()
     val listState = rememberLazyListState()
 
     LaunchedEffect(sortOrder) {

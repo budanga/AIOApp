@@ -74,6 +74,7 @@ import com.example.aioapp.R
 import com.example.aioapp.core.model.Note
 import com.example.aioapp.core.model.NoteSortOrder
 import com.example.aioapp.ui.theme.*
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
@@ -121,26 +122,28 @@ fun HighlightedText(
         } else text
     }
 
-    val annotatedString = buildAnnotatedString {
-        if (query.isBlank() || !displayText.contains(query, ignoreCase = true)) {
-            append(displayText)
-        } else {
-            var currentIndex = 0
-            val lowerText = displayText.lowercase()
-            val lowerQuery = query.lowercase()
+    val annotatedString = remember(displayText, query, highlightColor) {
+        buildAnnotatedString {
+            if (query.isBlank() || !displayText.contains(query, ignoreCase = true)) {
+                append(displayText)
+            } else {
+                var currentIndex = 0
+                val lowerText = displayText.lowercase()
+                val lowerQuery = query.lowercase()
 
-            while (currentIndex < displayText.length) {
-                val index = lowerText.indexOf(lowerQuery, currentIndex)
-                if (index == -1) {
-                    append(displayText.substring(currentIndex))
-                    break
-                }
+                while (currentIndex < displayText.length) {
+                    val index = lowerText.indexOf(lowerQuery, currentIndex)
+                    if (index == -1) {
+                        append(displayText.substring(currentIndex))
+                        break
+                    }
 
-                append(displayText.substring(currentIndex, index))
-                withStyle(style = SpanStyle(background = highlightColor, fontWeight = FontWeight.Bold)) {
-                    append(displayText.substring(index, index + query.length))
+                    append(displayText.substring(currentIndex, index))
+                    withStyle(style = SpanStyle(background = highlightColor, fontWeight = FontWeight.Bold)) {
+                        append(displayText.substring(index, index + query.length))
+                    }
+                    currentIndex = index + query.length
                 }
-                currentIndex = index + query.length
             }
         }
     }
@@ -163,8 +166,8 @@ fun NotesScreen(
     navController: NavController,
     drawerState: DrawerState
 ) {
-    val notes by viewModel.notes.collectAsState()
-    val searchQuery by viewModel.searchQuery.collectAsState()
+    val notes by viewModel.notes.collectAsStateWithLifecycle()
+    val searchQuery by viewModel.searchQuery.collectAsStateWithLifecycle()
     var showAddDialog by remember { mutableStateOf(false) }
     var showSortMenu by remember { mutableStateOf(false) }
     var isSearchExpanded by remember { mutableStateOf(false) }
