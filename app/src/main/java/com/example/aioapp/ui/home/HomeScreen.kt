@@ -34,16 +34,54 @@ import androidx.navigation.NavController
 import com.example.aioapp.core.model.Functionality
 import com.example.aioapp.core.model.functionalities
 
+import androidx.compose.material3.DrawerState
+import androidx.compose.material3.Scaffold
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.Font
+import androidx.compose.ui.text.font.FontFamily
+import com.example.aioapp.ui.components.AioTopBar
+import com.example.aioapp.ui.components.DefaultNavigationIcon
+import com.example.aioapp.ui.theme.LocalAppGradient
+import androidx.compose.ui.unit.sp
+import com.example.aioapp.R
+
 @Composable
-fun HomeScreen(padding: PaddingValues, navController: NavController) {
-    LazyVerticalGrid(
-        columns = GridCells.Fixed(2),
-        modifier = Modifier.padding(padding).fillMaxSize(),
-        contentPadding = PaddingValues(16.dp)
-    ) {
-        itemsIndexed(functionalities) { index, functionality ->
-            FunctionalityItem(functionality = functionality, index = index) {
-                navController.navigate(functionality.route)
+fun HomeScreen(navController: NavController, drawerState: DrawerState) {
+    val gradientColors = LocalAppGradient.current
+    val scope = rememberCoroutineScope()
+
+    Scaffold(
+        topBar = {
+            AioTopBar(
+                title = {
+                    Text(
+                        text = "AIOApp",
+                        style = TextStyle(
+                            brush = Brush.horizontalGradient(
+                                colors = gradientColors
+                            ),
+                            fontFamily = FontFamily(Font(R.font.bbhbogle_regular)),
+                            fontSize = 40.sp
+                        )
+                    )
+                },
+                navigationIcon = {
+                    DefaultNavigationIcon(navController, drawerState, scope)
+                }
+            )
+        }
+    ) { padding ->
+        LazyVerticalGrid(
+            columns = GridCells.Fixed(2),
+            modifier = Modifier.padding(padding).fillMaxSize(),
+            contentPadding = PaddingValues(16.dp)
+        ) {
+            itemsIndexed(functionalities) { index, functionality ->
+                FunctionalityItem(functionality = functionality, index = index) {
+                    navController.navigate(functionality.route)
+                }
             }
         }
     }

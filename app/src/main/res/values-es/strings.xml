@@ -30,26 +30,22 @@
     <string name="feature_payment_comparator">Comparador de pagos</string>
 
     <!-- Comparador de pagos -->
+    <string name="feature_minesweeper">Buscaminas</string>
     <string name="payment_comparator_inputs_title">Datos del pago</string>
     <string name="payment_comparator_price">Precio del producto</string>
     <string name="payment_comparator_installments">Cuotas</string>
     <string name="payment_comparator_installments_value">%1$d cuotas</string>
-    <string name="payment_comparator_installments_other">Otro</string>
-    <string name="payment_comparator_quantity">Cantidad</string>
-    <string name="payment_comparator_confirm">Confirmar</string>
-    <string name="payment_comparator_cancel">Cancelar</string>
     <string name="payment_comparator_tna">Tasa nominal anual — TNA (%)</string>
     <string name="payment_comparator_inflation">Inflación mensual estimada (%) — opcional</string>
     <string name="payment_comparator_error_price">Ingresá un precio válido y positivo</string>
     <string name="payment_comparator_error_tna">Ingresá una tasa válida no negativa</string>
-    <string name="payment_comparator_error_installments">Ingresá una cantidad válida de cuotas</string>
     <string name="payment_comparator_nominal_title">Análisis nominal</string>
     <string name="payment_comparator_installment_amount">Valor de la cuota</string>
     <string name="payment_comparator_total_nominal">Costo total nominal</string>
     <string name="payment_comparator_surcharge">Recargo por financiación</string>
     <string name="payment_comparator_tea">Tasa efectiva anual (TEA)</string>
     <string name="payment_comparator_real_title">Análisis ajustado por inflación</string>
-    <string name="payment_comparator_real_total">Costo real total</string>
+    <string name="payment_comparator_real_total">Costo real total (en dinero de hoy)</string>
     <string name="payment_comparator_real_surcharge">Recargo real vs. pago contado</string>
     <string name="payment_comparator_verdict_advantageous">Financiarse es conveniente</string>
     <string name="payment_comparator_verdict_single_cheaper">El pago contado es más barato</string>
@@ -185,4 +181,51 @@
     <string name="unit_octal">Octal</string>
     <string name="unit_hexadecimal">Hexadecimal</string>
     <string name="unit_base_n">Base N</string>
+
+    <!-- Buscaminas -->
+    <string name="ms_new_game">Nuevo Juego</string>
+    <string name="ms_continue">Continuar</string>
+    <string name="ms_difficulty_select">Dificultad</string>
+    <string name="ms_beginner">Principiante (%1$dx%2$d)</string>
+    <string name="ms_easy">Fácil (%1$dx%2$d)</string>
+    <string name="ms_intermediate">Intermedio (%1$dx%2$d)</string>
+    <string name="ms_advanced">Avanzado (%1$dx%2$d)</string>
+    <string name="ms_custom">Personalizado</string>
+    <string name="ms_width">Ancho: %1$d</string>
+    <string name="ms_height">Largo: %1$d</string>
+    <string name="ms_mines">Minas: %1$d</string>
+    <string name="ms_back">Atrás</string>
+    <string name="ms_cancel">Cancelar</string>
+    <string name="ms_timer_desc">Tiempo</string>
+    <string name="ms_mines_left_desc">Minas restantes</string>
+    <string name="ms_pause">PAUSA</string>
+    <string name="ms_won">¡GANASTE!</string>
+    <string name="ms_lost">¡PERDISTE!</string>
+    <string name="ms_return_to_menu">Volver al menú</string>
+
+    <!-- Calculadora de Asado -->
+    <string name="feature_bbq">Calculadora de Asado</string>
+    <string name="bbq_participants">Participantes</string>
+    <string name="bbq_men">Hombres</string>
+    <string name="bbq_women">Mujeres</string>
+    <string name="bbq_children">Niños</string>
+    <string name="bbq_food">Opciones de Comida</string>
+    <string name="bbq_food_meat">Carne</string>
+    <string name="bbq_food_bread">Pan</string>
+    <string name="bbq_food_salad">Ensalada</string>
+    <string name="bbq_food_coal">Carbón</string>
+    <string name="bbq_drinks">Bebida</string>
+    <string name="bbq_drinks_soda">Gaseosa</string>
+    <string name="bbq_drinks_beer">Cerveza</string>
+    <string name="bbq_drinks_wine">Vino</string>
+    <string name="bbq_results">Resultados</string>
+    <string name="bbq_expense_divider">Divisor de Gastos</string>
+    <string name="bbq_total_cost">Costo Total</string>
+    <string name="bbq_cost_per_adult">Costo por Adulto: %1$s</string>
+    <string name="bbq_results_meat">%.1f kg</string>
+    <string name="bbq_results_bread">%d unidades</string>
+    <string name="bbq_results_coal">%.1f kg</string>
+    <string name="bbq_results_drinks">%.1f L</string>
+    <string name="bbq_results_salad">Ensalada</string>
+    <string name="bbq_results_salad_desc">Lista para servir</string>
 </resources>

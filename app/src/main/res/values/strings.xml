@@ -27,28 +27,24 @@
     <string name="feature_unit_converter">Unit Converter</string>
     <string name="feature_truco">Truco</string>
     <string name="feature_payment_comparator">Payment Comparator</string>
+    <string name="feature_minesweeper">Minesweeper</string>
 
     <!-- Payment Comparator -->
-    <string name="payment_comparator_inputs_title">Payment Details</string>
+    <string name="payment_comparator_inputs_title">Loan Details</string>
     <string name="payment_comparator_price">Product price</string>
     <string name="payment_comparator_installments">Installments</string>
     <string name="payment_comparator_installments_value">%1$d installments</string>
-    <string name="payment_comparator_installments_other">Other</string>
-    <string name="payment_comparator_quantity">Quantity</string>
-    <string name="payment_comparator_confirm">Confirm</string>
-    <string name="payment_comparator_cancel">Cancel</string>
     <string name="payment_comparator_tna">Annual interest rate — TNA (%)</string>
     <string name="payment_comparator_inflation">Monthly inflation rate (%) — optional</string>
     <string name="payment_comparator_error_price">Enter a valid positive price</string>
     <string name="payment_comparator_error_tna">Enter a valid non-negative rate</string>
-    <string name="payment_comparator_error_installments">Enter a valid number of installments</string>
     <string name="payment_comparator_nominal_title">Nominal Analysis</string>
     <string name="payment_comparator_installment_amount">Installment amount</string>
     <string name="payment_comparator_total_nominal">Total nominal cost</string>
     <string name="payment_comparator_surcharge">Financing surcharge</string>
     <string name="payment_comparator_tea">Effective annual rate (TEA)</string>
     <string name="payment_comparator_real_title">Inflation-Adjusted Analysis</string>
-    <string name="payment_comparator_real_total">Total real cost</string>
+    <string name="payment_comparator_real_total">Total real cost (today\'s money)</string>
     <string name="payment_comparator_real_surcharge">Real surcharge vs cash price</string>
     <string name="payment_comparator_verdict_advantageous">Financing is advantageous</string>
     <string name="payment_comparator_verdict_single_cheaper">Single payment is cheaper</string>
@@ -184,4 +180,51 @@
     <string name="unit_octal">Octal</string>
     <string name="unit_hexadecimal">Hexadecimal</string>
     <string name="unit_base_n">Base N</string>
+
+    <!-- Minesweeper -->
+    <string name="ms_new_game">New Game</string>
+    <string name="ms_continue">Continue</string>
+    <string name="ms_difficulty_select">Difficulty</string>
+    <string name="ms_beginner">Beginner (%1$dx%2$d)</string>
+    <string name="ms_easy">Easy (%1$dx%2$d)</string>
+    <string name="ms_intermediate">Intermediate (%1$dx%2$d)</string>
+    <string name="ms_advanced">Advanced (%1$dx%2$d)</string>
+    <string name="ms_custom">Custom</string>
+    <string name="ms_width">Width: %1$d</string>
+    <string name="ms_height">Height: %1$d</string>
+    <string name="ms_mines">Mines: %1$d</string>
+    <string name="ms_back">Back</string>
+    <string name="ms_cancel">Cancel</string>
+    <string name="ms_timer_desc">Time</string>
+    <string name="ms_mines_left_desc">Mines Left</string>
+    <string name="ms_pause">PAUSED</string>
+    <string name="ms_won">YOU WON!</string>
+    <string name="ms_lost">YOU LOST!</string>
+    <string name="ms_return_to_menu">Return to menu</string>
+
+    <!-- BBQ Calculator -->
+    <string name="feature_bbq">BBQ Calculator</string>
+    <string name="bbq_participants">Participants</string>
+    <string name="bbq_men">Men</string>
+    <string name="bbq_women">Women</string>
+    <string name="bbq_children">Children</string>
+    <string name="bbq_food">Food Options</string>
+    <string name="bbq_food_meat">Meat</string>
+    <string name="bbq_food_bread">Bread</string>
+    <string name="bbq_food_salad">Salad</string>
+    <string name="bbq_food_coal">Coal</string>
+    <string name="bbq_drinks">Drinks</string>
+    <string name="bbq_drinks_soda">Soda</string>
+    <string name="bbq_drinks_beer">Beer</string>
+    <string name="bbq_drinks_wine">Wine</string>
+    <string name="bbq_results">Results</string>
+    <string name="bbq_expense_divider">Expense Splitter</string>
+    <string name="bbq_total_cost">Total Cost</string>
+    <string name="bbq_cost_per_adult">Cost per Adult: %1$s</string>
+    <string name="bbq_results_meat">%.1f kg</string>
+    <string name="bbq_results_bread">%d units</string>
+    <string name="bbq_results_coal">%.1f kg</string>
+    <string name="bbq_results_drinks">%.1f L</string>
+    <string name="bbq_results_salad">Salad</string>
+    <string name="bbq_results_salad_desc">Ready to serve</string>
 </resources>

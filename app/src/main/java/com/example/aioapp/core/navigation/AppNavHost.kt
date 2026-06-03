@@ -26,6 +26,10 @@ import com.example.aioapp.ui.paymentcomparator.PaymentComparatorScreen
 import com.example.aioapp.ui.paymentcomparator.PaymentComparatorViewModel
 import com.example.aioapp.ui.truco.TrucoScreen
 import com.example.aioapp.ui.truco.TrucoViewModel
+import com.example.aioapp.ui.minesweeper.MinesweeperScreen
+import com.example.aioapp.ui.minesweeper.MinesweeperViewModel
+import com.example.aioapp.ui.bbq.BBQScreen
+import com.example.aioapp.ui.bbq.BBQViewModel
 
 @Composable
 fun AppNavHost(
@@ -42,7 +46,7 @@ fun AppNavHost(
         popExitTransition = { fadeOut(animationSpec = tween(300)) + scaleOut(targetScale = 0.92f, animationSpec = tween(300)) }
     ) {
         composable("home") {
-            HomeScreen(padding = padding, navController = navController)
+            HomeScreen(navController = navController, drawerState = drawerState)
         }
 
         composable("filemanager") {
@@ -92,6 +96,24 @@ fun AppNavHost(
                 viewModel = paymentComparatorViewModel,
                 padding = padding,
                 navController = navController
+            )
+        }
+
+        composable("minesweeper") {
+            val minesweeperViewModel: MinesweeperViewModel = hiltViewModel()
+            MinesweeperScreen(
+                viewModel = minesweeperViewModel,
+                navController = navController,
+                drawerState = drawerState
+            )
+        }
+
+        composable("bbq") {
+            val bbqViewModel: BBQViewModel = hiltViewModel()
+            BBQScreen(
+                viewModel = bbqViewModel,
+                navController = navController,
+                padding = padding
             )
         }
 

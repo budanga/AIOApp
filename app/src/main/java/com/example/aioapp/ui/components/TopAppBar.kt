@@ -31,12 +31,13 @@ import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AppTopAppBar(
+fun AioTopBar(
     title: @Composable () -> Unit,
     navigationIcon: @Composable () -> Unit,
     modifier: Modifier = Modifier,
     actions: @Composable RowScope.() -> Unit = {},
-    colors: TopAppBarColors = TopAppBarDefaults.topAppBarColors()
+    colors: TopAppBarColors = TopAppBarDefaults.topAppBarColors(),
+    windowInsets: WindowInsets = WindowInsets.statusBars
 ) {
     CenterAlignedTopAppBar(
         modifier = modifier,
@@ -44,8 +45,51 @@ fun AppTopAppBar(
         navigationIcon = navigationIcon,
         actions = actions,
         colors = colors,
-        windowInsets = WindowInsets.statusBars
+        windowInsets = windowInsets
     )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun AppTopAppBar(
+    title: @Composable () -> Unit,
+    navigationIcon: @Composable () -> Unit,
+    modifier: Modifier = Modifier,
+    actions: @Composable RowScope.() -> Unit = {},
+    colors: TopAppBarColors = TopAppBarDefaults.topAppBarColors(),
+    windowInsets: WindowInsets = WindowInsets.statusBars
+) {
+    AioTopBar(
+        title = title,
+        navigationIcon = navigationIcon,
+        modifier = modifier,
+        actions = actions,
+        colors = colors,
+        windowInsets = windowInsets
+    )
+}
+
+@Composable
+fun DefaultNavigationIcon(
+    navController: NavController,
+    drawerState: DrawerState,
+    scope: CoroutineScope
+) {
+    if (navController.previousBackStackEntry != null) {
+        IconButton(onClick = { navController.navigateUp() }) {
+            Icon(
+                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                contentDescription = stringResource(R.string.nav_back)
+            )
+        }
+    } else {
+        IconButton(onClick = { scope.launch { drawerState.open() } }) {
+            Icon(
+                imageVector = Icons.Filled.Menu,
+                contentDescription = stringResource(R.string.nav_menu)
+            )
+        }
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -60,7 +104,7 @@ fun TopAppBar(
 ) {
     val gradientColors = LocalAppGradient.current
 
-    CenterAlignedTopAppBar(
+    AioTopBar(
         title = {
             if (currentScreen == "home") {
                 Text(
@@ -85,15 +129,7 @@ fun TopAppBar(
             }
         },
         navigationIcon = {
-            if (navController.previousBackStackEntry != null) {
-                IconButton(onClick = { navController.navigateUp() }) {
-                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.nav_back))
-                }
-            } else {
-                IconButton(onClick = { scope.launch { drawerState.open() } }) {
-                    Icon(Icons.Filled.Menu, contentDescription = stringResource(R.string.nav_menu))
-                }
-            }
+            DefaultNavigationIcon(navController, drawerState, scope)
         },
         actions = actions,
         colors = colors
