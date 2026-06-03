@@ -153,18 +153,18 @@ class UnitConverterViewModel @Inject constructor(
             UnitInfo("atmosphere", "Atmosphere", "atm", 9.86923e-6)
         ),
         UnitCategory.ELECTRICAL to listOf(
-            UnitInfo("Ampere", "A", 1.0),
-            UnitInfo("Milliampere", "mA", 1000.0),
-            UnitInfo("Microampere", "µA", 1000000.0),
-            UnitInfo("Volt", "V", 1.0),
-            UnitInfo("Ohm", "Ω", 1.0)
+            UnitInfo("ampere", "Ampere", "A", 1.0),
+            UnitInfo("milliampere", "Milliampere", "mA", 1000.0),
+            UnitInfo("microampere", "Microampere", "µA", 1000000.0),
+            UnitInfo("volt", "Volt", "V", 1.0),
+            UnitInfo("ohm", "Ohm", "Ω", 1.0)
         ),
         UnitCategory.NUMBERS to listOf(
-            UnitInfo("Decimal", "Dec", 10.0),
-            UnitInfo("Binary", "Bin", 2.0),
-            UnitInfo("Octal", "Oct", 8.0),
-            UnitInfo("Hexadecimal", "Hex", 16.0),
-            UnitInfo("Base N", "Base N", 32.0)
+            UnitInfo("decimal", "Decimal", "Dec", 10.0),
+            UnitInfo("binary", "Binary", "Bin", 2.0),
+            UnitInfo("octal", "Octal", "Oct", 8.0),
+            UnitInfo("hexadecimal", "Hexadecimal", "Hex", 16.0),
+            UnitInfo("base_n", "Base N", "Base N", 32.0)
         )
     )
 
@@ -282,11 +282,6 @@ class UnitConverterViewModel @Inject constructor(
         _uiState.update { it.copy(customBase = base) }
         performConversion()
     }
-    
-    fun onCustomBaseChange(base: String) {
-        _uiState.update { it.copy(customBase = base) }
-        performConversion()
-    }
 
     fun moveUnit(fromIndex: Int, toIndex: Int) {
         val currentUnits = _uiState.value.availableUnits.toMutableList()
@@ -339,7 +334,7 @@ class UnitConverterViewModel @Inject constructor(
 
         if (category == UnitCategory.NUMBERS) {
             if (inputStr.isEmpty()) {
-                val results = units.map { u -> ConversionResult(u.name, "0", u.symbol) }
+                val results = units.map { u -> ConversionResult(u.id, u.name, "0", u.symbol) }
                 _uiState.update { it.copy(results = results) }
                 return
             }
@@ -368,6 +363,7 @@ class UnitConverterViewModel @Inject constructor(
                         else -> 10
                     }
                     ConversionResult(
+                        unitId = toUnit.id,
                         unitName = if (toUnit.name == "Base N") "Base ${currentState.customBase}" else toUnit.name,
                         value = try { decimalValue.toString(toRadix).uppercase() } catch (e: Exception) { "Error" },
                         symbol = if (toUnit.name == "Base N") "B${currentState.customBase}" else toUnit.symbol
