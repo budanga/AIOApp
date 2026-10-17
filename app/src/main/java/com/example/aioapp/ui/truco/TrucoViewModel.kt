@@ -35,6 +35,16 @@ data class TrucoUiState(
 ) {
     val nosPoints: Int get() = if (maxPoints == 15) nosPoints15 else nosPoints30
     val ellosPoints: Int get() = if (maxPoints == 15) ellosPoints15 else ellosPoints30
+
+    /** Recomputes [isGameOver] and [winner] from the points of the active mode. */
+    fun withGameStatus(): TrucoUiState = copy(
+        isGameOver = nosPoints >= maxPoints || ellosPoints >= maxPoints,
+        winner = when {
+            nosPoints >= maxPoints -> "Nos"
+            ellosPoints >= maxPoints -> "Ellos"
+            else -> null
+        }
+    )
 }
 
 @HiltViewModel
@@ -58,7 +68,7 @@ class TrucoViewModel @Inject constructor(
                         nosPoints30 = prefs[NOS_POINTS_30_KEY] ?: 0,
                         ellosPoints30 = prefs[ELLOS_POINTS_30_KEY] ?: 0,
                         maxPoints = prefs[MAX_POINTS_KEY] ?: 30
-                    ) }
+                    ).withGameStatus() }
                 }
         }
 
@@ -157,22 +167,8 @@ class TrucoViewModel @Inject constructor(
     }
 
     fun setMaxPoints(points: Int) {
-        _uiState.update { state ->
-            // Check if the game being switched TO is already over
-            val nos = if (points == 15) state.nosPoints15 else state.nosPoints30
-            val ellos = if (points == 15) state.ellosPoints15 else state.ellosPoints30
-            val isOver = nos >= points || ellos >= points
-
-            state.copy(
-                maxPoints = points,
-                isGameOver = isOver,
-                winner = when {
-                    nos >= points -> "Nos"
-                    ellos >= points -> "Ellos"
-                    else -> null
-                }
-            )
-        }
+        // Check if the game being switched TO is already over
+        _uiState.update { state -> state.copy(maxPoints = points).withGameStatus() }
         persistState()
     }
 

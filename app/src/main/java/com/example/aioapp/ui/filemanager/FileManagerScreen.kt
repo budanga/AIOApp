@@ -42,6 +42,7 @@ import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
@@ -61,6 +62,7 @@ import androidx.compose.material.icons.filled.ContentPaste
 import androidx.compose.material.icons.filled.CreateNewFolder
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Folder
+import androidx.compose.material.icons.filled.FolderOpen
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.AlertDialog
@@ -94,6 +96,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -104,6 +107,7 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
@@ -121,6 +125,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+import androidx.compose.ui.res.stringResource
 import com.example.aioapp.R
 import com.example.aioapp.ui.theme.LocalAppGradient
 import com.example.aioapp.ui.theme.RobotoMono
@@ -190,6 +195,11 @@ fun FileManagerScreen(
         onResult = { _ ->
             viewModel.checkPermissionsAndLoad()
         }
+    )
+
+    val legacyPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestMultiplePermissions(),
+        onResult = { _ -> viewModel.checkPermissionsAndLoad() }
     )
 
     LaunchedEffect(viewModel.toastMessage) {
@@ -334,7 +344,7 @@ fun FileManagerScreen(
                             }
                             launcher.launch(intent)
                         } else {
-                            Toast.makeText(context, "All files access is required.", Toast.LENGTH_LONG).show()
+                            legacyPermissionLauncher.launch(LEGACY_STORAGE_PERMISSIONS)
                         }
                     }
                 }
@@ -527,7 +537,7 @@ fun SearchTopAppBar(
                 modifier = Modifier
                     .fillMaxWidth()
                     .focusRequester(focusRequester),
-                placeholder = { Text("Search files & folders...") },
+                placeholder = { Text(stringResource(R.string.search_hint)) },
                 singleLine = true,
                 colors = TextFieldDefaults.colors(
                     focusedContainerColor = Color.Transparent,
@@ -645,19 +655,80 @@ fun DirectoryContent(
     appGradient: Brush,
     onShowInfo: (Any) -> Unit
 ) {
-    val directories by viewModel.sortedDirectories.collectAsStateWithLifecycle()
-    val files by viewModel.sortedFiles.collectAsStateWithLifecycle()
+    val listing by viewModel.listing.collectAsStateWithLifecycle()
     val sortOrder by viewModel.sortOrder.collectAsStateWithLifecycle()
-    val listState = rememberLazyListState()
+    val folderStateHolder = rememberSaveableStateHolder()
 
-    LaunchedEffect(sortOrder) {
-        listState.scrollToItem(0)
+    // One saved state per folder, keyed by the folder the items belong to (not the one being opened),
+    // so a new folder starts at the top and going back restores where you were.
+    folderStateHolder.SaveableStateProvider(listing.directory.toString()) {
+        val listState = rememberLazyListState()
+        var appliedSortOrder by rememberSaveable { mutableStateOf(sortOrder) }
+
+        // Only jump to the top when the order actually changes, not when a folder's saved scroll is restored
+        LaunchedEffect(sortOrder) {
+            if (sortOrder != appliedSortOrder) {
+                appliedSortOrder = sortOrder
+                listState.scrollToItem(0)
+            }
+        }
+
+        FolderList(
+            listing = listing,
+            listState = listState,
+            viewModel = viewModel,
+            selectedItems = selectedItems,
+            cutItemUris = cutItemUris,
+            appGradient = appGradient,
+            onShowInfo = onShowInfo
+        )
     }
+}
+
+@Composable
+private fun FolderList(
+    listing: DirectoryListing,
+    listState: LazyListState,
+    viewModel: FileManagerViewModel,
+    selectedItems: Set<Uri>,
+    cutItemUris: Set<Uri>,
+    appGradient: Brush,
+    onShowInfo: (Any) -> Unit
+) {
+    val directories = listing.directories
+    val files = listing.files
+    // directory == null means nothing has been listed yet, which is not the same as an empty folder
+    val isEmptyFolder = listing.directory != null && directories.isEmpty() && files.isEmpty()
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         state = listState
     ) {
+        if (isEmptyFolder) {
+            // Kept inside the list so pull-to-refresh still works in empty folders
+            item(key = "empty") {
+                Column(
+                    modifier = Modifier
+                        .fillParentMaxSize()
+                        .padding(32.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.FolderOpen,
+                        contentDescription = null,
+                        modifier = Modifier.size(64.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Text(
+                        text = stringResource(R.string.file_manager_empty_folder),
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        }
         items(directories, key = { it.uri }) { dir ->
             DirectoryItem(
                 directory = dir, 
@@ -689,6 +760,11 @@ fun DirectoryContent(
     }
 }
 
+/** Slightly darker than the list background, in both light and dark themes. */
+@Composable
+private fun selectedItemColor(): Color =
+    Color.Black.copy(alpha = if (MaterialTheme.colorScheme.background.luminance() > 0.5f) 0.08f else 0.3f)
+
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun DirectoryItem(
@@ -705,7 +781,7 @@ fun DirectoryItem(
             .padding(horizontal = 4.dp, vertical = 2.dp)
             .alpha(if (isCut) 0.5f else 1f),
         shape = RoundedCornerShape(12.dp),
-        color = Color.Transparent,
+        color = if (isSelected) selectedItemColor() else Color.Transparent,
         border = if (isSelected) BorderStroke(2.dp, appGradient) else null
     ) {
         ListItem(
@@ -750,7 +826,7 @@ fun FileItem(
             .padding(horizontal = 4.dp, vertical = 2.dp)
             .alpha(if (isCut) 0.5f else 1f),
         shape = RoundedCornerShape(12.dp),
-        color = Color.Transparent,
+        color = if (isSelected) selectedItemColor() else Color.Transparent,
         border = if (isSelected) BorderStroke(2.dp, appGradient) else null
     ) {
         ListItem(

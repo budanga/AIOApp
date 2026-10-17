@@ -19,3 +19,10 @@
 # If you keep the line number information, uncomment this to
 # hide the original source file name.
 #-renamesourcefileattribute SourceFile
+# Minesweeper saves games as JSON with Gson 2.8.5, which ships no R8 rules.
+# Keep generic signatures (List<Cell>) and field names so saved games deserialize, also across updates.
+-keepattributes Signature
+-keepclassmembers class com.example.aioapp.ui.minesweeper.SavedGame { <fields>; }
+-keepclassmembers class com.example.aioapp.ui.minesweeper.Cell { <fields>; }
+-keepclassmembers class com.example.aioapp.ui.minesweeper.Difficulty { <fields>; }
+-keep enum com.example.aioapp.ui.minesweeper.GameState { *; }

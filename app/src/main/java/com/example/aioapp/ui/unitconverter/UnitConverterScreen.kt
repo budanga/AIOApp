@@ -128,8 +128,6 @@ fun getUnitNameResId(unitId: String): Int? = when (unitId.lowercase()) {
     "ampere" -> R.string.unit_ampere
     "milliampere" -> R.string.unit_milliampere
     "microampere" -> R.string.unit_microampere
-    "volt" -> R.string.unit_volt
-    "ohm" -> R.string.unit_ohm
     "usd" -> R.string.unit_usd
     "eur" -> R.string.unit_eur
     "ars" -> R.string.unit_ars
@@ -251,9 +249,8 @@ fun UnitConverterScreen(
                         .weight(1f)
                         .border(1.5.dp, gradientBrush, textFieldShape),
                     keyboardOptions = KeyboardOptions(
-                        keyboardType = if (uiState.selectedCategory == UnitCategory.NUMBERS && 
-                            (uiState.fromUnit == "Hexadecimal" || 
-                             (uiState.fromUnit == "Base N" && (uiState.customBase.toIntOrNull() ?: 0) > 10))) {
+                        keyboardType = if (uiState.selectedCategory == UnitCategory.NUMBERS &&
+                            radixFor(uiState.fromUnit, uiState.customBase) > 10) {
                             KeyboardType.Text
                         } else {
                             KeyboardType.Number

@@ -43,6 +43,16 @@ kotlin {
     jvmToolchain(11)
 }
 
+composeCompiler {
+    // Default from Kotlin 2.0.20; lets composables with unstable params (lambdas capturing ViewModels) skip
+    enableStrongSkippingMode = true
+}
+
+ksp {
+    // Exported schemas are needed to write and test Room migrations
+    arg("room.schemaLocation", "$projectDir/schemas")
+}
+
 dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)

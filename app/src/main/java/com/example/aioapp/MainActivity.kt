@@ -112,7 +112,7 @@ class MainActivity : AppCompatActivity() {
                 ) {
                     Scaffold(
                         topBar = {
-                            if (currentScreen != "filemanager" && currentScreen != "notes" && currentScreen != "pomodoro" && currentScreen != "truco") {
+                            if (currentScreen !in screensWithOwnTopBar) {
                                 TopAppBar(currentScreen = currentScreen, navController = navController, drawerState = drawerState, scope = scope)
                             }
                         }
@@ -132,5 +132,10 @@ class MainActivity : AppCompatActivity() {
 
     companion object {
         const val ACTION_NAVIGATE_POMODORO = "com.example.aioapp.ACTION_NAVIGATE_POMODORO"
+
+        // Screens that draw their own top bar; the shared one would be drawn on top of it.
+        private val screensWithOwnTopBar = setOf(
+            "home", "filemanager", "notes", "pomodoro", "truco", "unitconverter", "minesweeper", "bbq"
+        )
     }
 }

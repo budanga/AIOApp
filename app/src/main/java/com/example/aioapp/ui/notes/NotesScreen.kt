@@ -46,6 +46,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -168,11 +169,11 @@ fun NotesScreen(
 ) {
     val notes by viewModel.notes.collectAsStateWithLifecycle()
     val searchQuery by viewModel.searchQuery.collectAsStateWithLifecycle()
-    var showAddDialog by remember { mutableStateOf(false) }
+    var showAddDialog by rememberSaveable { mutableStateOf(false) }
     var showSortMenu by remember { mutableStateOf(false) }
     var isSearchExpanded by remember { mutableStateOf(false) }
     var selectedNoteIds by remember { mutableStateOf(setOf<String>()) }
-    var viewingNoteId by remember { mutableStateOf<String?>(null) }
+    var viewingNoteId by rememberSaveable { mutableStateOf<String?>(null) }
     val snackbarHostState = remember { SnackbarHostState() }
     val searchFocusRequester = remember { FocusRequester() }
     val scope = rememberCoroutineScope()
@@ -304,7 +305,7 @@ fun NotesScreen(
                                 .padding(horizontal = 16.dp, vertical = 8.dp)
                                 .focusRequester(searchFocusRequester)
                                 .border(1.5.dp, appGradient, RoundedCornerShape(8.dp)),
-                            placeholder = { Text("Search notes...", fontFamily = robotoMono) },
+                            placeholder = { Text(stringResource(R.string.search_hint), fontFamily = robotoMono) },
                             leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
                             trailingIcon = {
                                 if (searchQuery.isNotEmpty()) {
@@ -611,9 +612,9 @@ fun ViewEditNoteScreen(
     appGradient: Brush,
     onUniqueError: () -> Unit
 ) {
-    var isEditing by remember { mutableStateOf(false) }
-    var title by remember { mutableStateOf(note.title) }
-    var content by remember { mutableStateOf(note.content) }
+    var isEditing by rememberSaveable(note.id) { mutableStateOf(false) }
+    var title by rememberSaveable(note.id) { mutableStateOf(note.title) }
+    var content by rememberSaveable(note.id) { mutableStateOf(note.content) }
     val dateFormat = remember { SimpleDateFormat("MMM d, yyyy", Locale.getDefault()) }
     val dateString = dateFormat.format(Date(note.createdAt))
     val scope = rememberCoroutineScope()
@@ -836,8 +837,8 @@ fun AddNoteDialog(
     onConfirm: (String, String, Int) -> Unit,
     appGradient: Brush
 ) {
-    var title by remember { mutableStateOf("") }
-    var content by remember { mutableStateOf("") }
+    var title by rememberSaveable { mutableStateOf("") }
+    var content by rememberSaveable { mutableStateOf("") }
     val colors = listOf(Color.White, Color(0xFFFFF9C4), Color(0xFFFFCCBC), Color(0xFFC8E6C9), Color(0xFFBBDEFB), Color(0xFFF8BBD0))
     var selectedColor by remember { mutableStateOf(colors[0]) }
     val focusRequester = remember { FocusRequester() }
