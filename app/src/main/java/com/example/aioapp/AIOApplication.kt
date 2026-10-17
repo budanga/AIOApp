@@ -25,9 +25,18 @@ class AIOApplication : Application() {
         val notificationManager: NotificationManager =
             getSystemService(NOTIFICATION_SERVICE) as NotificationManager
         notificationManager.createNotificationChannel(channel)
+
+        // Separate channel so the end-of-session alert can ring/vibrate while the ongoing one stays silent
+        val alertChannel = NotificationChannel(
+            POMODORO_ALERT_CHANNEL_ID,
+            getString(R.string.pomodoro_alert_channel_name),
+            NotificationManager.IMPORTANCE_HIGH
+        ).apply { enableVibration(true) }
+        notificationManager.createNotificationChannel(alertChannel)
     }
 
     companion object {
         const val POMODORO_CHANNEL_ID = "pomodoro_channel"
+        const val POMODORO_ALERT_CHANNEL_ID = "pomodoro_alert_channel"
     }
 }

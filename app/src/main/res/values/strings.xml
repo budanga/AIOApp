@@ -61,6 +61,9 @@
     <string name="pomodoro_mode_work">Work</string>
     <string name="pomodoro_mode_short_break">Short break</string>
     <string name="pomodoro_mode_long_break">Long break</string>
+    <string name="pomodoro_finished_title">Session finished</string>
+    <string name="pomodoro_finished_text">%1$s is over</string>
+    <string name="pomodoro_alert_channel_name">Pomodoro alerts</string>
 
     <!-- Unit Converter -->
     <string name="unit_converter_value_hint">Value</string>
@@ -164,8 +167,6 @@
     <string name="unit_ampere">Ampere</string>
     <string name="unit_milliampere">Milliampere</string>
     <string name="unit_microampere">Microampere</string>
-    <string name="unit_volt">Volt</string>
-    <string name="unit_ohm">Ohm</string>
 
     <string name="unit_usd">US Dollar</string>
     <string name="unit_eur">Euro</string>

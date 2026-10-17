@@ -46,6 +46,15 @@ data class UnitInfo(
     val displayOrder: Int = 0
 )
 
+/** Radix for a NUMBERS unit, keyed by [UnitInfo.id]. Non-numeric ids default to decimal. */
+fun radixFor(unitId: String, customBase: String): Int = when (unitId) {
+    "binary" -> 2
+    "octal" -> 8
+    "hexadecimal" -> 16
+    "base_n" -> customBase.toIntOrNull()?.coerceIn(2, 36) ?: 10
+    else -> 10
+}
+
 @OptIn(FlowPreview::class)
 @HiltViewModel
 class UnitConverterViewModel @Inject constructor(
@@ -155,9 +164,7 @@ class UnitConverterViewModel @Inject constructor(
         UnitCategory.ELECTRICAL to listOf(
             UnitInfo("ampere", "Ampere", "A", 1.0),
             UnitInfo("milliampere", "Milliampere", "mA", 1000.0),
-            UnitInfo("microampere", "Microampere", "µA", 1000000.0),
-            UnitInfo("volt", "Volt", "V", 1.0),
-            UnitInfo("ohm", "Ohm", "Ω", 1.0)
+            UnitInfo("microampere", "Microampere", "µA", 1000000.0)
         ),
         UnitCategory.NUMBERS to listOf(
             UnitInfo("decimal", "Decimal", "Dec", 10.0),
@@ -339,13 +346,7 @@ class UnitConverterViewModel @Inject constructor(
                 return
             }
 
-            val fromRadix = when (fromUnit.name) {
-                "Binary" -> 2
-                "Octal" -> 8
-                "Hexadecimal" -> 16
-                "Base N" -> currentState.customBase.toIntOrNull()?.coerceIn(2, 36) ?: 10
-                else -> 10
-            }
+            val fromRadix = radixFor(fromUnit.id, currentState.customBase)
 
             val decimalValue = try {
                 inputStr.toLong(fromRadix)
@@ -355,18 +356,12 @@ class UnitConverterViewModel @Inject constructor(
 
             if (decimalValue != null) {
                 val results = units.map { toUnit ->
-                    val toRadix = when (toUnit.name) {
-                        "Binary" -> 2
-                        "Octal" -> 8
-                        "Hexadecimal" -> 16
-                        "Base N" -> currentState.customBase.toIntOrNull()?.coerceIn(2, 36) ?: 10
-                        else -> 10
-                    }
+                    val toRadix = radixFor(toUnit.id, currentState.customBase)
                     ConversionResult(
                         unitId = toUnit.id,
-                        unitName = if (toUnit.name == "Base N") "Base ${currentState.customBase}" else toUnit.name,
+                        unitName = if (toUnit.id == "base_n") "Base ${currentState.customBase}" else toUnit.name,
                         value = try { decimalValue.toString(toRadix).uppercase() } catch (e: Exception) { "Error" },
-                        symbol = if (toUnit.name == "Base N") "B${currentState.customBase}" else toUnit.symbol
+                        symbol = if (toUnit.id == "base_n") "B${currentState.customBase}" else toUnit.symbol
                     )
                 }
                 _uiState.update { it.copy(results = results) }

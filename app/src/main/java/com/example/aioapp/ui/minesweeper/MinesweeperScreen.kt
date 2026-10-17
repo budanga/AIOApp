@@ -13,6 +13,10 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.activity.compose.LocalActivity
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -52,10 +56,16 @@ fun MinesweeperScreen(
     val scope = rememberCoroutineScope()
     val appGradient = Brush.horizontalGradient(LocalAppGradient.current)
     
-    var currentView by remember { mutableStateOf("Menu") } // Menu, DifficultySelect, CustomSelect, Game
+    var currentView by rememberSaveable { mutableStateOf("Menu") } // Menu, DifficultySelect, CustomSelect, Game
 
     val difficulty by viewModel.difficulty.collectAsState()
-    
+
+    // Stop the clock when the app goes to background or another screen covers this one (not on rotation)
+    val activity = LocalActivity.current
+    LifecycleEventEffect(Lifecycle.Event.ON_STOP) {
+        if (activity?.isChangingConfigurations != true) viewModel.pauseGame()
+    }
+
     // Handle system back button
     BackHandler(enabled = currentView != "Menu") {
         when (currentView) {

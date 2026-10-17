@@ -15,7 +15,7 @@ import com.example.aioapp.core.model.TrucoGame
         UnitOrder::class
     ],
     version = 5,
-    exportSchema = false
+    exportSchema = true
 )
 abstract class AppDatabase : RoomDatabase() {
     abstract fun noteDao(): NoteDao

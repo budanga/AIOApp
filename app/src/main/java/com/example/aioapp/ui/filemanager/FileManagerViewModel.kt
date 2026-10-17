@@ -1,17 +1,21 @@
 package com.example.aioapp.ui.filemanager
 
+import android.Manifest
 import android.app.Application
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.os.Environment
 import android.provider.DocumentsContract
 import android.text.format.Formatter
 import androidx.compose.runtime.Stable
+import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
 import androidx.documentfile.provider.DocumentFile
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -33,6 +37,12 @@ import java.nio.file.attribute.BasicFileAttributes
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+
+/** Runtime permissions needed below API 30, where all-files access does not exist. */
+val LEGACY_STORAGE_PERMISSIONS = arrayOf(
+    Manifest.permission.READ_EXTERNAL_STORAGE,
+    Manifest.permission.WRITE_EXTERNAL_STORAGE
+)
 
 @Stable
 data class FileData(
@@ -156,8 +166,17 @@ class FileManagerViewModel(application: Application) : AndroidViewModel(applicat
         _selectedItems.value = emptySet()
     }
 
+    private fun hasStorageAccess(): Boolean =
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            Environment.isExternalStorageManager()
+        } else {
+            LEGACY_STORAGE_PERMISSIONS.all {
+                ContextCompat.checkSelfPermission(getApplication(), it) == PackageManager.PERMISSION_GRANTED
+            }
+        }
+
     fun checkPermissionsAndLoad() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && Environment.isExternalStorageManager()) {
+        if (hasStorageAccess()) {
             if (_currentDirectory.value == null) {
                 val rootUri = Uri.fromFile(Environment.getExternalStorageDirectory())
                 _currentDirectory.value = rootUri
@@ -304,7 +323,9 @@ class FileManagerViewModel(application: Application) : AndroidViewModel(applicat
         }
         performFileOperation { directoryUri ->
             if (directoryUri.scheme == "file") {
-                File(directoryUri.path, fileName).createNewFile()
+                if (!File(directoryUri.path, fileName).createNewFile()) {
+                    showToast("A file named \"$fileName\" already exists.")
+                }
             } else {
                 DocumentFile.fromTreeUri(getApplication(), directoryUri)?.createFile("text/plain", fileName)
             }
@@ -679,8 +700,15 @@ class FileManagerViewModel(application: Application) : AndroidViewModel(applicat
         directoryLoadingJob?.cancel()
         sizeCalculationJob?.cancel()
         directoryLoadingJob = viewModelScope.launch {
-            withContext(Dispatchers.IO) {
-                operation(directoryUri)
+            try {
+                withContext(Dispatchers.IO) {
+                    operation(directoryUri)
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                // Invalid names, missing permission, full storage... must not crash the app
+                showToast("Operation failed: ${e.localizedMessage ?: e.javaClass.simpleName}")
             }
             invalidateCacheAndReload()
         }

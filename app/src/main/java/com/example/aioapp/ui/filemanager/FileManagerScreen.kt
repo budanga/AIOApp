@@ -192,6 +192,11 @@ fun FileManagerScreen(
         }
     )
 
+    val legacyPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestMultiplePermissions(),
+        onResult = { _ -> viewModel.checkPermissionsAndLoad() }
+    )
+
     LaunchedEffect(viewModel.toastMessage) {
         viewModel.toastMessage.collectLatest {
             Toast.makeText(context, it, Toast.LENGTH_SHORT).show()
@@ -334,7 +339,7 @@ fun FileManagerScreen(
                             }
                             launcher.launch(intent)
                         } else {
-                            Toast.makeText(context, "All files access is required.", Toast.LENGTH_LONG).show()
+                            legacyPermissionLauncher.launch(LEGACY_STORAGE_PERMISSIONS)
                         }
                     }
                 }

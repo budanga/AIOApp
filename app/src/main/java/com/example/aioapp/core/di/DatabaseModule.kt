@@ -26,7 +26,8 @@ object DatabaseModule {
             AppDatabase::class.java,
             "aio_database"
         )
-            .fallbackToDestructiveMigration(dropAllTables = true)
+            // Upgrades must ship a Migration: wiping user notes/history is only acceptable on downgrade.
+            .fallbackToDestructiveMigrationOnDowngrade(dropAllTables = true)
             .build()
     }
 
