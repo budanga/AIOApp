@@ -18,6 +18,8 @@ import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -27,16 +29,20 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.nio.file.Files
 import java.nio.file.attribute.BasicFileAttributes
-import java.text.SimpleDateFormat
-import java.util.Date
+import java.time.Instant
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 import java.util.Locale
+import java.util.concurrent.ConcurrentHashMap
 
 /** Runtime permissions needed below API 30, where all-files access does not exist. */
 val LEGACY_STORAGE_PERMISSIONS = arrayOf(
@@ -69,6 +75,12 @@ data class DirectoryData(
     val path: String = ""
 )
 
+data class DirectoryListing(
+    val directory: Uri? = null,
+    val directories: List<DirectoryData> = emptyList(),
+    val files: List<FileData> = emptyList()
+)
+
 sealed class SearchResult {
     data class File(val data: FileData) : SearchResult()
     data class Directory(val data: DirectoryData) : SearchResult()
@@ -92,23 +104,29 @@ enum class SortOrder {
 class FileManagerViewModel(application: Application) : AndroidViewModel(application) {
 
     companion object {
-        private val dateFormatter = SimpleDateFormat("MMM dd, yyyy", Locale.getDefault())
-        
+        // DateTimeFormatter is immutable and thread-safe; items are formatted on IO threads
+        private val dateFormatter = DateTimeFormatter.ofPattern("MMM dd, yyyy", Locale.getDefault())
+            .withZone(ZoneId.systemDefault())
+        private const val SIZE_PUBLISH_INTERVAL_MS = 300L
+
         fun formatDate(timestamp: Long): String {
-            return if (timestamp > 0) dateFormatter.format(Date(timestamp)) else ""
+            return if (timestamp > 0) dateFormatter.format(Instant.ofEpochMilli(timestamp)) else ""
         }
     }
 
-    private val directoryContentCache = mutableMapOf<Uri, Pair<List<DirectoryData>, List<FileData>>>()
-    private val directorySizeCache = mutableMapOf<Uri, Long>()
+    /** Attributes of a directory entry, read with a single stat call. */
+    private class EntryInfo(val isDirectory: Boolean, val size: Long, val lastModified: Long, val creationTime: Long)
+
+    private val directoryContentCache = ConcurrentHashMap<Uri, Pair<List<DirectoryData>, List<FileData>>>()
+    private val sizeCalculator = DirectorySizeCalculator()
     private var directoryLoadingJob: Job? = null
     private var searchJob: Job? = null
     private var sizeCalculationJob: Job? = null
 
     private val _directoryStack = MutableStateFlow<List<Uri>>(emptyList())
     private val _currentDirectory = MutableStateFlow<Uri?>(null)
-    private val _files = MutableStateFlow<List<FileData>>(emptyList())
-    private val _directories = MutableStateFlow<List<DirectoryData>>(emptyList())
+    // Folder and items in one state so the UI never pairs a folder with another folder's items
+    private val _listing = MutableStateFlow(DirectoryListing())
     private val _sortOrder = MutableStateFlow(SortOrder.NAME_AZ)
     private val _toastMessage = MutableSharedFlow<String>()
     private val _isRefreshing = MutableStateFlow(false)
@@ -140,13 +158,14 @@ class FileManagerViewModel(application: Application) : AndroidViewModel(applicat
         .map { if (it?.action == ClipboardAction.CUT) it.uris.toSet() else emptySet() }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptySet())
 
-    val sortedFiles: StateFlow<List<FileData>> = combine(_files, _sortOrder) { files, sortOrder ->
-        sortFiles(files, sortOrder)
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
-
-    val sortedDirectories: StateFlow<List<DirectoryData>> = combine(_directories, _sortOrder) { dirs, order ->
-        sortDirectories(dirs, order)
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+    /** Current folder contents, sorted off the main thread. */
+    val listing: StateFlow<DirectoryListing> = combine(_listing, _sortOrder) { listing, order ->
+        listing.copy(
+            directories = sortDirectories(listing.directories, order),
+            files = sortFiles(listing.files, order)
+        )
+    }.flowOn(Dispatchers.Default)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), DirectoryListing())
 
     init {
         checkPermissionsAndLoad()
@@ -310,7 +329,7 @@ class FileManagerViewModel(application: Application) : AndroidViewModel(applicat
         directoryLoadingJob = viewModelScope.launch {
             _isRefreshing.value = true
             directoryContentCache.remove(currentUri)
-            _directories.value.forEach { directorySizeCache.remove(it.uri) }
+            invalidateSizes(currentUri)
             loadDirectoryContentsInternal(currentUri)
             _isRefreshing.value = false
         }
@@ -435,7 +454,14 @@ class FileManagerViewModel(application: Application) : AndroidViewModel(applicat
             }
             _toastMessage.emit(message)
             if (success) {
-                if (itemToPaste.action == ClipboardAction.CUT) _clipboardItem.value = null
+                if (itemToPaste.action == ClipboardAction.CUT) {
+                    _clipboardItem.value = null
+                    // The source folders lost content too
+                    itemToPaste.uris.mapNotNull { it.path?.let(::File)?.parentFile }.distinct().forEach { parent ->
+                        directoryContentCache.remove(Uri.fromFile(parent))
+                        sizeCalculator.invalidate(parent.absolutePath)
+                    }
+                }
                 invalidateCacheAndReload()
             }
         }
@@ -471,9 +497,7 @@ class FileManagerViewModel(application: Application) : AndroidViewModel(applicat
     private suspend fun loadDirectoryContentsInternal(directoryUri: Uri) {
         directoryContentCache[directoryUri]?.let { (dirs, files) ->
             if (directoryUri == _currentDirectory.value) {
-                _directories.value = dirs
-                _files.value = files
-                startDirectorySizeCalculations(dirs.filter { it.size == 0L })
+                publishListing(directoryUri, dirs, files)
             }
             return
         }
@@ -493,18 +517,29 @@ class FileManagerViewModel(application: Application) : AndroidViewModel(applicat
         val file = File(directoryUri.path ?: "")
         if (!file.exists() || !file.isDirectory) return
 
-        val allFiles = try { file.listFiles()?.toList() ?: emptyList() } catch (e: Exception) { emptyList() }
-        val (directoryFiles, regularFiles) = allFiles.partition { it.isDirectory }
-
-        val directoryData = directoryFiles.map { createDirectoryData(it) }
-        val fileData = regularFiles.map { createFileData(it) }
+        val entries = try { file.listFiles() } catch (e: Exception) { null } ?: emptyArray()
+        val directoryData = ArrayList<DirectoryData>()
+        val fileData = ArrayList<FileData>()
+        for (entry in entries) {
+            val info = entryInfo(entry)
+            if (info.isDirectory) directoryData += createDirectoryData(entry, info)
+            else fileData += createFileData(entry, info)
+        }
 
         if (directoryUri == _currentDirectory.value) {
-            _directories.value = directoryData
-            _files.value = fileData
             directoryContentCache[directoryUri] = directoryData to fileData
-            startDirectorySizeCalculations(directoryData.filter { it.size == 0L })
+            publishListing(directoryUri, directoryData, fileData)
         }
+    }
+
+    /** Shows a listing with the latest known folder sizes and measures the folders still missing one. */
+    private fun publishListing(directoryUri: Uri, dirs: List<DirectoryData>, files: List<FileData>) {
+        val withSizes = dirs.map { dir ->
+            val size = cachedSizeOf(dir.uri) ?: return@map dir
+            dir.copy(size = size, formattedSize = formatSize(size))
+        }
+        _listing.value = DirectoryListing(directoryUri, withSizes, files)
+        startDirectorySizeCalculations(dirs.filter { cachedSizeOf(it.uri) == null })
     }
 
     private fun loadFromDocumentFile(directoryUri: Uri) {
@@ -512,8 +547,7 @@ class FileManagerViewModel(application: Application) : AndroidViewModel(applicat
         val documentFile = try { DocumentFile.fromTreeUri(context, directoryUri) } catch (e: Exception) { null }
         if (documentFile == null || !documentFile.isDirectory) {
             if (directoryUri == _currentDirectory.value) {
-                _files.value = emptyList()
-                _directories.value = emptyList()
+                _listing.value = DirectoryListing(directoryUri)
             }
             return
         }
@@ -521,14 +555,12 @@ class FileManagerViewModel(application: Application) : AndroidViewModel(applicat
         val allDocs = try { documentFile.listFiles().toList() } catch (e: Exception) { emptyList() }
         val (directoryDocs, fileDocs) = allDocs.partition { it.isDirectory }
 
-        val directoryData = directoryDocs.map { 
-            val cachedSize = directorySizeCache[it.uri] ?: 0L
-            val formattedSize = if (cachedSize > 0) Formatter.formatShortFileSize(getApplication(), cachedSize) else ""
+        val directoryData = directoryDocs.map {
             DirectoryData(
-                it.uri, 
-                it.name ?: "", 
-                cachedSize, 
-                formattedSize, 
+                it.uri,
+                it.name ?: "",
+                0L,
+                "",
                 it.lastModified(), 
                 formatDate(it.lastModified()), 
                 0L, 
@@ -538,8 +570,7 @@ class FileManagerViewModel(application: Application) : AndroidViewModel(applicat
         val fileData = mutableListOf<FileData>()
 
         if (directoryUri == _currentDirectory.value) {
-            _directories.value = directoryData
-            _files.value = emptyList()
+            _listing.value = DirectoryListing(directoryUri, directoryData)
         }
 
         fileDocs.chunked(30).forEach { chunk ->
@@ -559,117 +590,116 @@ class FileManagerViewModel(application: Application) : AndroidViewModel(applicat
             }
             fileData.addAll(fileDataChunk)
             if (directoryUri == _currentDirectory.value) {
-                _files.value += fileDataChunk
+                _listing.update { if (it.directory == directoryUri) it.copy(files = it.files + fileDataChunk) else it }
             }
         }
 
         if (directoryUri == _currentDirectory.value) {
             directoryContentCache[directoryUri] = directoryData to fileData
-            startDirectorySizeCalculations(directoryData.filter { it.size == 0L })
+            startDirectorySizeCalculations(directoryData)
         }
     }
 
-    private fun createFileData(file: File): FileData {
-        val creationTime = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            try {
-                Files.readAttributes(file.toPath(), BasicFileAttributes::class.java).creationTime().toMillis()
-            } catch (e: Exception) { 0L }
-        } else 0L
+    private fun entryInfo(file: File): EntryInfo = try {
+        val attrs = Files.readAttributes(file.toPath(), BasicFileAttributes::class.java)
+        EntryInfo(attrs.isDirectory, attrs.size(), attrs.lastModifiedTime().toMillis(), attrs.creationTime().toMillis())
+    } catch (e: Exception) {
+        // Broken links or unreadable entries: fall back to File, which reports zeros instead of throwing
+        EntryInfo(file.isDirectory, file.length(), file.lastModified(), 0L)
+    }
+
+    private fun formatSize(size: Long): String =
+        if (size > 0) Formatter.formatShortFileSize(getApplication(), size) else ""
+
+    private fun createFileData(file: File, info: EntryInfo = entryInfo(file)): FileData {
         return FileData(
-            Uri.fromFile(file), 
-            file.name, 
-            file.length(), 
-            Formatter.formatShortFileSize(getApplication(), file.length()), 
-            file.lastModified(), 
-            formatDate(file.lastModified()), 
-            creationTime, 
-            getMimeType(file), 
+            Uri.fromFile(file),
+            file.name,
+            info.size,
+            Formatter.formatShortFileSize(getApplication(), info.size),
+            info.lastModified,
+            formatDate(info.lastModified),
+            info.creationTime,
+            getMimeType(file),
             file.absolutePath
         )
     }
 
-    private fun createDirectoryData(file: File): DirectoryData {
-        val cachedSize = directorySizeCache[Uri.fromFile(file)] ?: 0L
-        val formattedSize = if (cachedSize > 0) Formatter.formatShortFileSize(getApplication(), cachedSize) else ""
-        val creationTime = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            try {
-                Files.readAttributes(file.toPath(), BasicFileAttributes::class.java).creationTime().toMillis()
-            } catch (e: Exception) { 0L }
-        } else 0L
+    private fun createDirectoryData(file: File, info: EntryInfo = entryInfo(file)): DirectoryData {
+        val cachedSize = sizeCalculator.cached(file.absolutePath) ?: 0L
         return DirectoryData(
-            Uri.fromFile(file), 
-            file.name, 
-            cachedSize, 
-            formattedSize, 
-            file.lastModified(), 
-            formatDate(file.lastModified()), 
-            creationTime, 
+            Uri.fromFile(file),
+            file.name,
+            cachedSize,
+            formatSize(cachedSize),
+            info.lastModified,
+            formatDate(info.lastModified),
+            info.creationTime,
             file.absolutePath
         )
+    }
+
+    private fun cachedSizeOf(uri: Uri): Long? =
+        if (uri.scheme == "file") uri.path?.let { sizeCalculator.cached(it) } else null
+
+    private fun invalidateSizes(uri: Uri) {
+        if (uri.scheme == "file") uri.path?.let { sizeCalculator.invalidate(it) }
     }
 
     private fun startDirectorySizeCalculations(directories: List<DirectoryData>) {
         sizeCalculationJob?.cancel()
+        if (directories.isEmpty()) return
         sizeCalculationJob = viewModelScope.launch(Dispatchers.IO) {
-            directories.forEach { dir ->
-                val size = calculateDirectorySizeIteratively(dir.uri)
-                withContext(Dispatchers.Main) {
-                    updateDirectorySize(dir.uri, size)
+            // Publish in batches: every update re-sorts and recomposes the whole list
+            val pending = HashMap<Uri, Long>()
+            var lastPublish = System.nanoTime()
+            for (dir in directories) {
+                pending[dir.uri] = calculateDirectorySize(dir.uri)
+                if ((System.nanoTime() - lastPublish) / 1_000_000 >= SIZE_PUBLISH_INTERVAL_MS) {
+                    publishSizes(HashMap(pending))
+                    pending.clear()
+                    lastPublish = System.nanoTime()
                 }
             }
+            if (pending.isNotEmpty()) publishSizes(pending)
         }
     }
 
-    private fun calculateDirectorySizeIteratively(uri: Uri): Long {
+    private suspend fun calculateDirectorySize(uri: Uri): Long {
+        if (uri.scheme == "file") {
+            return sizeCalculator.sizeOf(File(uri.path ?: return 0L))
+        }
         var totalSize = 0L
         try {
-            if (uri.scheme == "file") {
-                val root = File(uri.path ?: return 0L)
-                val stack = mutableListOf(root)
-                while (stack.isNotEmpty()) {
-                    val current = stack.removeAt(stack.size - 1)
-                    val files = try { current.listFiles() } catch (e: Exception) { null } ?: continue
-                    for (file in files) {
-                        if (file.isDirectory) {
-                            stack.add(file)
-                        } else {
-                            totalSize += file.length()
-                        }
-                    }
-                }
-            } else {
-                val context = getApplication<Application>()
-                val root = try { DocumentFile.fromTreeUri(context, uri) } catch (e: Exception) { null } ?: return 0L
-                val stack = mutableListOf(root)
-                while (stack.isNotEmpty()) {
-                    val current = stack.removeAt(stack.size - 1)
-                    val files = try { current.listFiles() } catch (e: Exception) { emptyArray<DocumentFile>() }
-                    for (file in files) {
-                        if (file.isDirectory) {
-                            stack.add(file)
-                        } else {
-                            totalSize += file.length()
-                        }
+            val context = getApplication<Application>()
+            val root = try { DocumentFile.fromTreeUri(context, uri) } catch (e: Exception) { null } ?: return 0L
+            val stack = mutableListOf(root)
+            while (stack.isNotEmpty()) {
+                currentCoroutineContext().ensureActive()
+                val current = stack.removeAt(stack.size - 1)
+                val files = try { current.listFiles() } catch (e: Exception) { emptyArray<DocumentFile>() }
+                for (file in files) {
+                    if (file.isDirectory) {
+                        stack.add(file)
+                    } else {
+                        totalSize += file.length()
                     }
                 }
             }
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             // Silently ignore permission errors
         }
         return totalSize
     }
 
-    private fun updateDirectorySize(uri: Uri, size: Long) {
-        val formattedSize = if (size > 0) Formatter.formatShortFileSize(getApplication(), size) else ""
-        directorySizeCache[uri] = size
-        _directories.value = _directories.value.map {
-            if (it.uri == uri) it.copy(size = size, formattedSize = formattedSize) else it
-        }
-        _currentDirectory.value?.let { currentUri ->
-            directoryContentCache[currentUri]?.let { (dirs, files) ->
-                val updatedDirs = dirs.map { if (it.uri == uri) it.copy(size = size, formattedSize = formattedSize) else it }
-                directoryContentCache[currentUri] = updatedDirs to files
-            }
+    private fun publishSizes(sizes: Map<Uri, Long>) {
+        _listing.update { listing ->
+            listing.copy(directories = listing.directories.map { dir ->
+                val size = sizes[dir.uri] ?: return@map dir
+                dir.copy(size = size, formattedSize = formatSize(size))
+            })
         }
     }
 
@@ -717,7 +747,7 @@ class FileManagerViewModel(application: Application) : AndroidViewModel(applicat
     private suspend fun invalidateCacheAndReload() {
         _currentDirectory.value?.let { currentUri ->
             directoryContentCache.remove(currentUri)
-            directorySizeCache.remove(currentUri)
+            invalidateSizes(currentUri)
             loadDirectoryContentsInternal(currentUri)
         }
     }

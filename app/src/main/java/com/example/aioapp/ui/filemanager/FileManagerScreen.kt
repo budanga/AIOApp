@@ -42,6 +42,7 @@ import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
@@ -94,6 +95,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -650,14 +652,48 @@ fun DirectoryContent(
     appGradient: Brush,
     onShowInfo: (Any) -> Unit
 ) {
-    val directories by viewModel.sortedDirectories.collectAsStateWithLifecycle()
-    val files by viewModel.sortedFiles.collectAsStateWithLifecycle()
+    val listing by viewModel.listing.collectAsStateWithLifecycle()
     val sortOrder by viewModel.sortOrder.collectAsStateWithLifecycle()
-    val listState = rememberLazyListState()
+    val folderStateHolder = rememberSaveableStateHolder()
 
-    LaunchedEffect(sortOrder) {
-        listState.scrollToItem(0)
+    // One saved state per folder, keyed by the folder the items belong to (not the one being opened),
+    // so a new folder starts at the top and going back restores where you were.
+    folderStateHolder.SaveableStateProvider(listing.directory.toString()) {
+        val listState = rememberLazyListState()
+        var appliedSortOrder by rememberSaveable { mutableStateOf(sortOrder) }
+
+        // Only jump to the top when the order actually changes, not when a folder's saved scroll is restored
+        LaunchedEffect(sortOrder) {
+            if (sortOrder != appliedSortOrder) {
+                appliedSortOrder = sortOrder
+                listState.scrollToItem(0)
+            }
+        }
+
+        FolderList(
+            listing = listing,
+            listState = listState,
+            viewModel = viewModel,
+            selectedItems = selectedItems,
+            cutItemUris = cutItemUris,
+            appGradient = appGradient,
+            onShowInfo = onShowInfo
+        )
     }
+}
+
+@Composable
+private fun FolderList(
+    listing: DirectoryListing,
+    listState: LazyListState,
+    viewModel: FileManagerViewModel,
+    selectedItems: Set<Uri>,
+    cutItemUris: Set<Uri>,
+    appGradient: Brush,
+    onShowInfo: (Any) -> Unit
+) {
+    val directories = listing.directories
+    val files = listing.files
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
