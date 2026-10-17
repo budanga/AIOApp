@@ -41,8 +41,27 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
+import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material3.IconButton
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import com.example.aioapp.ui.components.AioTopBar
 import com.example.aioapp.ui.components.DefaultNavigationIcon
+import com.example.aioapp.ui.components.FeatureSearchField
+import com.example.aioapp.ui.components.matchesSearch
 import com.example.aioapp.ui.theme.LocalAppGradient
 import androidx.compose.ui.unit.sp
 import com.example.aioapp.R
@@ -50,37 +69,99 @@ import com.example.aioapp.R
 @Composable
 fun HomeScreen(navController: NavController, drawerState: DrawerState) {
     val gradientColors = LocalAppGradient.current
+    val appGradient = remember(gradientColors) { Brush.horizontalGradient(gradientColors) }
     val scope = rememberCoroutineScope()
+    var isSearchExpanded by rememberSaveable { mutableStateOf(false) }
+    var searchQuery by rememberSaveable { mutableStateOf("") }
+    val searchFocusRequester = remember { FocusRequester() }
+
+    val names = functionalities.map { stringResource(it.nameResId) }
+    val visibleFunctionalities = remember(searchQuery, names) {
+        functionalities.filterIndexed { i, _ -> matchesSearch(names[i], searchQuery) }
+    }
+
+    fun closeSearch() {
+        isSearchExpanded = false
+        searchQuery = ""
+    }
+
+    BackHandler(enabled = isSearchExpanded) { closeSearch() }
+
+    LaunchedEffect(isSearchExpanded) {
+        if (isSearchExpanded) {
+            withFrameNanos { } // Wait until the field is composed and attached
+            searchFocusRequester.requestFocus()
+        }
+    }
 
     Scaffold(
         topBar = {
-            AioTopBar(
-                title = {
-                    Text(
-                        text = "AIOApp",
-                        style = TextStyle(
-                            brush = Brush.horizontalGradient(
-                                colors = gradientColors
-                            ),
-                            fontFamily = FontFamily(Font(R.font.bbhbogle_regular)),
-                            fontSize = 40.sp
+            Column {
+                AioTopBar(
+                    title = {
+                        Text(
+                            text = "AIOApp",
+                            style = TextStyle(
+                                brush = appGradient,
+                                fontFamily = FontFamily(Font(R.font.bbhbogle_regular)),
+                                fontSize = 40.sp
+                            )
                         )
+                    },
+                    navigationIcon = {
+                        DefaultNavigationIcon(navController, drawerState, scope)
+                    },
+                    actions = {
+                        IconButton(onClick = { if (isSearchExpanded) closeSearch() else isSearchExpanded = true }) {
+                            Icon(
+                                imageVector = if (isSearchExpanded) Icons.Default.Close else Icons.Default.Search,
+                                contentDescription = stringResource(
+                                    if (isSearchExpanded) R.string.feature_search_close else R.string.feature_search_open
+                                )
+                            )
+                        }
+                    }
+                )
+                AnimatedVisibility(
+                    visible = isSearchExpanded,
+                    enter = expandVertically() + fadeIn(),
+                    exit = shrinkVertically() + fadeOut()
+                ) {
+                    FeatureSearchField(
+                        query = searchQuery,
+                        onQueryChange = { searchQuery = it },
+                        appGradient = appGradient,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 8.dp)
+                            .focusRequester(searchFocusRequester)
                     )
-                },
-                navigationIcon = {
-                    DefaultNavigationIcon(navController, drawerState, scope)
                 }
-            )
+            }
         }
     ) { padding ->
-        LazyVerticalGrid(
-            columns = GridCells.Fixed(2),
-            modifier = Modifier.padding(padding).fillMaxSize(),
-            contentPadding = PaddingValues(16.dp)
-        ) {
-            itemsIndexed(functionalities) { index, functionality ->
-                FunctionalityItem(functionality = functionality, index = index) {
-                    navController.navigate(functionality.route)
+        if (visibleFunctionalities.isEmpty()) {
+            Text(
+                text = stringResource(R.string.feature_search_empty),
+                style = MaterialTheme.typography.bodyLarge,
+                textAlign = TextAlign.Center,
+                modifier = Modifier
+                    .padding(padding)
+                    .fillMaxWidth()
+                    .padding(32.dp)
+            )
+        } else {
+            LazyVerticalGrid(
+                columns = GridCells.Fixed(2),
+                modifier = Modifier.padding(padding).fillMaxSize(),
+                contentPadding = PaddingValues(16.dp)
+            ) {
+                // Keyed by route so cards that stay visible while filtering keep their state
+                itemsIndexed(visibleFunctionalities, key = { _, functionality -> functionality.route }) { index, functionality ->
+                    FunctionalityItem(functionality = functionality, index = index) {
+                        closeSearch()
+                        navController.navigate(functionality.route)
+                    }
                 }
             }
         }
