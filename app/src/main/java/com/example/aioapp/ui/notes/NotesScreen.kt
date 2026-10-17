@@ -305,7 +305,7 @@ fun NotesScreen(
                                 .padding(horizontal = 16.dp, vertical = 8.dp)
                                 .focusRequester(searchFocusRequester)
                                 .border(1.5.dp, appGradient, RoundedCornerShape(8.dp)),
-                            placeholder = { Text("Search notes...", fontFamily = robotoMono) },
+                            placeholder = { Text(stringResource(R.string.search_hint), fontFamily = robotoMono) },
                             leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
                             trailingIcon = {
                                 if (searchQuery.isNotEmpty()) {

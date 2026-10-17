@@ -46,7 +46,7 @@ fun FeatureSearchField(
         placeholder = {
             // Narrow containers (the drawer) would otherwise wrap the hint and make the field taller
             Text(
-                stringResource(R.string.feature_search_hint),
+                stringResource(R.string.search_hint),
                 fontFamily = RobotoMono,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis

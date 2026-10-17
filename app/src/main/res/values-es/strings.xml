@@ -20,7 +20,7 @@
     <string name="nav_back">Atrás</string>
     <string name="nav_menu">Menú</string>
     <string name="nav_settings">Ajustes</string>
-    <string name="feature_search_hint">Buscar…</string>
+    <string name="search_hint">Buscar</string>
     <string name="feature_search_clear">Borrar búsqueda</string>
     <string name="feature_search_open">Buscar funcionalidades</string>
     <string name="feature_search_close">Cerrar búsqueda</string>
@@ -28,6 +28,7 @@
 
     <!-- Nombres de funciones (cuadrícula principal + cajón) -->
     <string name="feature_file_manager">Gestor de archivos</string>
+    <string name="file_manager_empty_folder">Esta carpeta está vacía</string>
     <string name="feature_notes">Notas</string>
     <string name="feature_pomodoro">Pomodoro</string>
     <string name="feature_unit_converter">Conversor de unidades</string>

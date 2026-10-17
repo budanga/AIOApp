@@ -62,6 +62,7 @@ import androidx.compose.material.icons.filled.ContentPaste
 import androidx.compose.material.icons.filled.CreateNewFolder
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Folder
+import androidx.compose.material.icons.filled.FolderOpen
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.AlertDialog
@@ -106,6 +107,7 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
@@ -123,6 +125,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+import androidx.compose.ui.res.stringResource
 import com.example.aioapp.R
 import com.example.aioapp.ui.theme.LocalAppGradient
 import com.example.aioapp.ui.theme.RobotoMono
@@ -534,7 +537,7 @@ fun SearchTopAppBar(
                 modifier = Modifier
                     .fillMaxWidth()
                     .focusRequester(focusRequester),
-                placeholder = { Text("Search files & folders...") },
+                placeholder = { Text(stringResource(R.string.search_hint)) },
                 singleLine = true,
                 colors = TextFieldDefaults.colors(
                     focusedContainerColor = Color.Transparent,
@@ -694,11 +697,38 @@ private fun FolderList(
 ) {
     val directories = listing.directories
     val files = listing.files
+    // directory == null means nothing has been listed yet, which is not the same as an empty folder
+    val isEmptyFolder = listing.directory != null && directories.isEmpty() && files.isEmpty()
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         state = listState
     ) {
+        if (isEmptyFolder) {
+            // Kept inside the list so pull-to-refresh still works in empty folders
+            item(key = "empty") {
+                Column(
+                    modifier = Modifier
+                        .fillParentMaxSize()
+                        .padding(32.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.FolderOpen,
+                        contentDescription = null,
+                        modifier = Modifier.size(64.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Text(
+                        text = stringResource(R.string.file_manager_empty_folder),
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        }
         items(directories, key = { it.uri }) { dir ->
             DirectoryItem(
                 directory = dir, 
@@ -730,6 +760,11 @@ private fun FolderList(
     }
 }
 
+/** Slightly darker than the list background, in both light and dark themes. */
+@Composable
+private fun selectedItemColor(): Color =
+    Color.Black.copy(alpha = if (MaterialTheme.colorScheme.background.luminance() > 0.5f) 0.08f else 0.3f)
+
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun DirectoryItem(
@@ -746,7 +781,7 @@ fun DirectoryItem(
             .padding(horizontal = 4.dp, vertical = 2.dp)
             .alpha(if (isCut) 0.5f else 1f),
         shape = RoundedCornerShape(12.dp),
-        color = Color.Transparent,
+        color = if (isSelected) selectedItemColor() else Color.Transparent,
         border = if (isSelected) BorderStroke(2.dp, appGradient) else null
     ) {
         ListItem(
@@ -791,7 +826,7 @@ fun FileItem(
             .padding(horizontal = 4.dp, vertical = 2.dp)
             .alpha(if (isCut) 0.5f else 1f),
         shape = RoundedCornerShape(12.dp),
-        color = Color.Transparent,
+        color = if (isSelected) selectedItemColor() else Color.Transparent,
         border = if (isSelected) BorderStroke(2.dp, appGradient) else null
     ) {
         ListItem(
