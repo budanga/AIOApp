@@ -81,7 +81,7 @@ class PomodoroService : Service() {
                     )
                 }
                 if (remaining <= 0) break
-                updateNotification()
+                // No notification update here: while running it shows a system-driven countdown chronometer
                 delay(millisUntilNextTick(endAtElapsed, now))
             }
             _uiState.update { it.copy(isRunning = false, progress = 0f) }
@@ -142,7 +142,9 @@ class PomodoroService : Service() {
             .replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() }
 
         val contentTitle = if (state.currentMode == PomodoroMode.WORK) "Working" else modeNameFormatted
-        val contentText = "$timeStr remaining"
+        // While running the countdown chronometer shows the time, so the text doesn't need per-second rebuilds
+        val contentText = if (state.isRunning) null else "$timeStr remaining"
+        val remainingMs = (endAtElapsed - SystemClock.elapsedRealtime()).coerceAtLeast(0)
 
         // The Intent that will be used to open the Pomodoro screen
         val mainIntent = Intent(this, MainActivity::class.java).apply {
@@ -178,6 +180,10 @@ class PomodoroService : Service() {
             .setSmallIcon(android.R.drawable.ic_dialog_info)
             .setContentIntent(mainPendingIntent)
             .setOngoing(state.isRunning)
+            .setUsesChronometer(state.isRunning)
+            .setChronometerCountDown(state.isRunning)
+            .setShowWhen(state.isRunning)
+            .setWhen(if (state.isRunning) System.currentTimeMillis() + remainingMs else 0L)
             .addAction(pauseStartAction)
             .addAction(resetAction)
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)

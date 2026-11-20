@@ -3,11 +3,14 @@ package com.example.aioapp.ui.minesweeper
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 import kotlin.math.abs
@@ -39,20 +42,21 @@ class MinesweeperViewModel @Inject constructor(
 
     private var isFirstClick = true
     private var timerJob: Job? = null
+    private var saveJob: Job? = null
 
     init {
         viewModelScope.launch {
-            repository.savedGameFlow.collect { saved ->
-                // Only load if we are currently Idle and there's a valid saved game
-                if (saved != null && _gameState.value == GameState.Idle) {
-                    _difficulty.value = saved.difficulty
-                    _cells.value = saved.cells
-                    _timeElapsed.value = saved.timeElapsed
-                    _minesRemaining.value = saved.minesRemaining
-                    // If it was won or lost, keep that state but don't resume timer
-                    _gameState.value = if (saved.gameState == GameState.Playing) GameState.Paused else saved.gameState
-                    isFirstClick = saved.isFirstClick
-                }
+            // Read once, parsed off the main thread: collecting would re-parse the whole board after every save
+            val saved = repository.savedGameFlow.flowOn(Dispatchers.Default).first()
+            // Only load if we are currently Idle and there's a valid saved game
+            if (saved != null && _gameState.value == GameState.Idle) {
+                _difficulty.value = saved.difficulty
+                _cells.value = saved.cells
+                _timeElapsed.value = saved.timeElapsed
+                _minesRemaining.value = saved.minesRemaining
+                // If it was won or lost, keep that state but don't resume timer
+                _gameState.value = if (saved.gameState == GameState.Playing) GameState.Paused else saved.gameState
+                isFirstClick = saved.isFirstClick
             }
         }
         
@@ -65,17 +69,19 @@ class MinesweeperViewModel @Inject constructor(
 
     private fun saveCurrentGame() {
         val diff = _difficulty.value ?: return
-        viewModelScope.launch {
-            repository.saveGame(
-                SavedGame(
-                    cells = _cells.value,
-                    difficulty = diff,
-                    timeElapsed = _timeElapsed.value,
-                    minesRemaining = _minesRemaining.value,
-                    gameState = _gameState.value,
-                    isFirstClick = isFirstClick
-                )
-            )
+        // Snapshot on the main thread, serialize off it. A newer save supersedes a pending one,
+        // so an older board can never overwrite a newer one.
+        val snapshot = SavedGame(
+            cells = _cells.value,
+            difficulty = diff,
+            timeElapsed = _timeElapsed.value,
+            minesRemaining = _minesRemaining.value,
+            gameState = _gameState.value,
+            isFirstClick = isFirstClick
+        )
+        saveJob?.cancel()
+        saveJob = viewModelScope.launch(Dispatchers.Default) {
+            repository.saveGame(snapshot)
         }
     }
 
@@ -270,16 +276,17 @@ class MinesweeperViewModel @Inject constructor(
     private fun startTimer() {
         timerJob?.cancel()
         timerJob = viewModelScope.launch {
+            // Not saved per tick: moves, pause and leaving the screen (ON_STOP pauses) already persist the time
             while (true) {
                 delay(1000)
                 _timeElapsed.value++
-                saveCurrentGame()
             }
         }
     }
 
     fun returnToMenu() {
         if (_gameState.value == GameState.Won || _gameState.value == GameState.Lost) {
+            saveJob?.cancel() // A pending save of the finished board must not land after the clear
             viewModelScope.launch { repository.clearSavedGame() }
             _difficulty.value = null
             _gameState.value = GameState.Idle

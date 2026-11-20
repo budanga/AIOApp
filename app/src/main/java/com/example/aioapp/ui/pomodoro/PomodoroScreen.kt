@@ -1,5 +1,13 @@
 package com.example.aioapp.ui.pomodoro
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -14,10 +22,12 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import com.example.aioapp.R
@@ -40,8 +50,25 @@ fun PomodoroScreen(
     padding: PaddingValues,
     navController: NavController
 ) {
-    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    // Kept as State and read only where needed: the timer ticks every second and must not recompose the whole screen
+    val uiState = viewModel.uiState.collectAsStateWithLifecycle()
+    // Derived so that reading them only invalidates when they actually change, not on every tick
+    val currentMode by remember { derivedStateOf { uiState.value.currentMode } }
+    val isRunning by remember { derivedStateOf { uiState.value.isRunning } }
     val gradientColors = LocalAppGradient.current
+    val gradientBrush = remember(gradientColors) { Brush.horizontalGradient(gradientColors) }
+    val context = LocalContext.current
+
+    // Asked when the user starts a timer, the first moment the app needs to post notifications
+    val notificationPermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { viewModel.start() }
+    val onStart = {
+        val needsPermission = Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+        if (needsPermission) notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+        else viewModel.start()
+    }
 
     Scaffold(
         topBar = {
@@ -71,118 +98,172 @@ fun PomodoroScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Top
         ) {
-            // Mode Selector
-            SingleChoiceSegmentedButtonRow(
-                modifier = Modifier.fillMaxWidth().padding(top = 16.dp)
-            ) {
-                PomodoroMode.entries.forEachIndexed { index, mode ->
-                    SegmentedButton(
-                        selected = uiState.currentMode == mode,
-                        onClick = { viewModel.setMode(mode) },
-                        shape = SegmentedButtonDefaults.itemShape(index = index, count = PomodoroMode.entries.size)
-                    ) {
-                        Text(
-                            text = mode.label(),
-                            style = MaterialTheme.typography.bodySmall,
-                            fontFamily = RobotoMono
-                        )
-                    }
-                }
-            }
+            ModeSelector(
+                currentMode = currentMode,
+                onSelect = viewModel::setMode
+            )
 
             Spacer(modifier = Modifier.weight(0.3f))
 
-            Box(
-                contentAlignment = Alignment.Center,
-                modifier = Modifier.size(300.dp)
-            ) {
-                val surfaceVariant = MaterialTheme.colorScheme.surfaceVariant
-
-                Canvas(modifier = Modifier.fillMaxSize()) {
-                    // Track
-                    drawCircle(
-                        color = surfaceVariant,
-                        radius = size.minDimension / 2,
-                        style = Stroke(width = 12.dp.toPx())
-                    )
-                    // Gradient Progress
-                    drawArc(
-                        brush = Brush.sweepGradient(
-                            colors = if (gradientColors.size >= 2) gradientColors else listOf(Color.Cyan, Color.Magenta)
-                        ),
-                        startAngle = -90f,
-                        sweepAngle = 360f * uiState.progress,
-                        useCenter = false,
-                        style = Stroke(width = 12.dp.toPx(), cap = StrokeCap.Round)
-                    )
-                }
-
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(
-                        text = formatTime(uiState.timeLeft),
-                        style = MaterialTheme.typography.displayLarge.copy(
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 64.sp,
-                            color = MaterialTheme.colorScheme.onBackground,
-                            fontFamily = RobotoMono
-                        )
-                    )
-                    Text(
-                        text = uiState.currentMode.label(),
-                        style = MaterialTheme.typography.labelLarge,
-                        color = MaterialTheme.colorScheme.secondary,
-                        fontFamily = RobotoMono
-                    )
-                }
-            }
+            TimerDial(
+                progress = { uiState.value.progress },
+                timeLeft = { uiState.value.timeLeft },
+                mode = currentMode,
+                gradientColors = gradientColors
+            )
 
             Spacer(modifier = Modifier.weight(0.7f))
 
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(bottom = 32.dp),
-                horizontalArrangement = Arrangement.SpaceEvenly
-            ) {
-                Surface(
-                    modifier = Modifier
-                        .width(140.dp)
-                        .height(56.dp)
-                        .clip(MaterialTheme.shapes.large),
-                    color = Color.Transparent,
-                    onClick = {
-                        if (uiState.isRunning) viewModel.pause() else viewModel.start()
-                    }
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .background(Brush.horizontalGradient(gradientColors)),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = if (uiState.isRunning) stringResource(R.string.pomodoro_pause) else stringResource(R.string.pomodoro_start),
-                            style = MaterialTheme.typography.titleMedium,
-                            color = Color.White,
-                            fontFamily = RobotoMono
-                        )
-                    }
-                }
+            Controls(
+                isRunning = isRunning,
+                gradientBrush = gradientBrush,
+                onStart = onStart,
+                onPause = viewModel::pause,
+                onReset = viewModel::reset
+            )
+        }
+    }
+}
 
-                OutlinedButton(
-                    onClick = { viewModel.reset() },
-                    modifier = Modifier.width(140.dp).height(56.dp),
-                    shape = MaterialTheme.shapes.large,
-                    border = ButtonDefaults.outlinedButtonBorder(enabled = true).copy(
-                        brush = Brush.horizontalGradient(gradientColors)
-                    )
-                ) {
-                    Text(
-                        stringResource(R.string.pomodoro_reset),
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.onBackground,
-                        fontFamily = RobotoMono
-                    )
-                }
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ModeSelector(currentMode: PomodoroMode, onSelect: (PomodoroMode) -> Unit) {
+    SingleChoiceSegmentedButtonRow(
+        modifier = Modifier.fillMaxWidth().padding(top = 16.dp)
+    ) {
+        PomodoroMode.entries.forEachIndexed { index, mode ->
+            SegmentedButton(
+                selected = currentMode == mode,
+                onClick = { onSelect(mode) },
+                shape = SegmentedButtonDefaults.itemShape(index = index, count = PomodoroMode.entries.size)
+            ) {
+                Text(
+                    text = mode.label(),
+                    style = MaterialTheme.typography.bodySmall,
+                    fontFamily = RobotoMono
+                )
             }
+        }
+    }
+}
+
+@Composable
+private fun TimerDial(
+    progress: () -> Float,
+    timeLeft: () -> Long,
+    mode: PomodoroMode,
+    gradientColors: List<Color>
+) {
+    val surfaceVariant = MaterialTheme.colorScheme.surfaceVariant
+    val sweepBrush = remember(gradientColors) {
+        Brush.sweepGradient(if (gradientColors.size >= 2) gradientColors else listOf(Color.Cyan, Color.Magenta))
+    }
+
+    Box(
+        contentAlignment = Alignment.Center,
+        modifier = Modifier.size(300.dp)
+    ) {
+        ProgressRing(progress, surfaceVariant, sweepBrush)
+
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            TimeText(timeLeft)
+            Text(
+                text = mode.label(),
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.secondary,
+                fontFamily = RobotoMono
+            )
+        }
+    }
+}
+
+@Composable
+private fun ProgressRing(progress: () -> Float, trackColor: Color, brush: Brush) {
+    // Glides between the one-second steps instead of jumping
+    val animatedProgress = animateFloatAsState(
+        targetValue = progress(),
+        animationSpec = tween(durationMillis = 1000, easing = LinearEasing),
+        label = "progress"
+    )
+    Canvas(modifier = Modifier.fillMaxSize()) {
+        val stroke = 12.dp.toPx()
+        drawCircle(
+            color = trackColor,
+            radius = size.minDimension / 2,
+            style = Stroke(width = stroke)
+        )
+        // Read in the draw phase: animation frames only redraw, they don't recompose
+        drawArc(
+            brush = brush,
+            startAngle = -90f,
+            sweepAngle = 360f * animatedProgress.value,
+            useCenter = false,
+            style = Stroke(width = stroke, cap = StrokeCap.Round)
+        )
+    }
+}
+
+/** Recomposes on every tick, together with [ProgressRing]; nothing else does. */
+@Composable
+private fun TimeText(timeLeft: () -> Long) {
+    Text(
+        text = formatTime(timeLeft()),
+        style = MaterialTheme.typography.displayLarge.copy(
+            fontWeight = FontWeight.Bold,
+            fontSize = 64.sp,
+            color = MaterialTheme.colorScheme.onBackground,
+            fontFamily = RobotoMono
+        )
+    )
+}
+
+@Composable
+private fun Controls(
+    isRunning: Boolean,
+    gradientBrush: Brush,
+    onStart: () -> Unit,
+    onPause: () -> Unit,
+    onReset: () -> Unit
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(bottom = 32.dp),
+        horizontalArrangement = Arrangement.SpaceEvenly
+    ) {
+        Surface(
+            modifier = Modifier
+                .width(140.dp)
+                .height(56.dp)
+                .clip(MaterialTheme.shapes.large),
+            color = Color.Transparent,
+            onClick = { if (isRunning) onPause() else onStart() }
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(gradientBrush),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = if (isRunning) stringResource(R.string.pomodoro_pause) else stringResource(R.string.pomodoro_start),
+                    style = MaterialTheme.typography.titleMedium,
+                    color = Color.White,
+                    fontFamily = RobotoMono
+                )
+            }
+        }
+
+        OutlinedButton(
+            onClick = onReset,
+            modifier = Modifier.width(140.dp).height(56.dp),
+            shape = MaterialTheme.shapes.large,
+            border = ButtonDefaults.outlinedButtonBorder(enabled = true).copy(brush = gradientBrush)
+        ) {
+            Text(
+                stringResource(R.string.pomodoro_reset),
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onBackground,
+                fontFamily = RobotoMono
+            )
         }
     }
 }

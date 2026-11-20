@@ -39,8 +39,6 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.Font
-import androidx.compose.ui.text.font.FontFamily
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
@@ -62,6 +60,7 @@ import com.example.aioapp.ui.components.AioTopBar
 import com.example.aioapp.ui.components.DefaultNavigationIcon
 import com.example.aioapp.ui.components.FeatureSearchField
 import com.example.aioapp.ui.components.matchesSearch
+import com.example.aioapp.ui.theme.BbhBogle
 import com.example.aioapp.ui.theme.LocalAppGradient
 import androidx.compose.ui.unit.sp
 import com.example.aioapp.R
@@ -103,7 +102,7 @@ fun HomeScreen(navController: NavController, drawerState: DrawerState) {
                             text = "AIOApp",
                             style = TextStyle(
                                 brush = appGradient,
-                                fontFamily = FontFamily(Font(R.font.bbhbogle_regular)),
+                                fontFamily = BbhBogle,
                                 fontSize = 40.sp
                             )
                         )

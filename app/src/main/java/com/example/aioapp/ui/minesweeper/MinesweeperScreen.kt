@@ -17,6 +17,8 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.activity.compose.LocalActivity
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import kotlinx.coroutines.flow.StateFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -28,7 +30,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.drawText
@@ -43,7 +44,6 @@ import com.example.aioapp.ui.components.DefaultNavigationIcon
 import com.example.aioapp.ui.theme.LocalAppGradient
 import android.os.Vibrator
 import android.os.VibrationEffect
-import android.os.Build
 import androidx.compose.ui.platform.LocalContext
 
 @Composable
@@ -52,13 +52,14 @@ fun MinesweeperScreen(
     navController: NavController,
     drawerState: DrawerState
 ) {
-    val gameState by viewModel.gameState.collectAsState()
+    val gameState by viewModel.gameState.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope()
-    val appGradient = Brush.horizontalGradient(LocalAppGradient.current)
+    val gradientColors = LocalAppGradient.current
+    val appGradient = remember(gradientColors) { Brush.horizontalGradient(gradientColors) }
     
     var currentView by rememberSaveable { mutableStateOf("Menu") } // Menu, DifficultySelect, CustomSelect, Game
 
-    val difficulty by viewModel.difficulty.collectAsState()
+    val difficulty by viewModel.difficulty.collectAsStateWithLifecycle()
 
     // Stop the clock when the app goes to background or another screen covers this one (not on rotation)
     val activity = LocalActivity.current
@@ -230,14 +231,13 @@ fun CustomDifficultySelect(onStart: (Difficulty) -> Unit, onCancel: () -> Unit, 
 
 @Composable
 fun GameBoardView(viewModel: MinesweeperViewModel, appGradient: Brush, onReturnToMenu: () -> Unit) {
-    val gameState by viewModel.gameState.collectAsState()
-    val cells by viewModel.cells.collectAsState()
-    val difficulty = viewModel.difficulty.collectAsState().value ?: return
-    val isFlagMode by viewModel.isFlagMode.collectAsState()
-    val timeElapsed by viewModel.timeElapsed.collectAsState()
-    val minesRemaining by viewModel.minesRemaining.collectAsState()
-    val vibrationsEnabled by viewModel.vibrationsEnabled.collectAsState()
-    
+    val gameState by viewModel.gameState.collectAsStateWithLifecycle()
+    val cells by viewModel.cells.collectAsStateWithLifecycle()
+    val difficulty = viewModel.difficulty.collectAsStateWithLifecycle().value ?: return
+    val isFlagMode by viewModel.isFlagMode.collectAsStateWithLifecycle()
+    val minesRemaining by viewModel.minesRemaining.collectAsStateWithLifecycle()
+    val vibrationsEnabled by viewModel.vibrationsEnabled.collectAsStateWithLifecycle()
+
     Column(modifier = Modifier.fillMaxSize()) {
         Card(
             modifier = Modifier.fillMaxWidth().padding(8.dp),
@@ -251,7 +251,7 @@ fun GameBoardView(viewModel: MinesweeperViewModel, appGradient: Brush, onReturnT
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(Icons.Default.Timer, contentDescription = stringResource(R.string.ms_timer_desc))
                     Spacer(Modifier.width(4.dp))
-                    Text(String.format("%03d", timeElapsed), fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                    ElapsedTimeText(viewModel.timeElapsed)
                 }
                 
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -336,6 +336,18 @@ fun GameBoardView(viewModel: MinesweeperViewModel, appGradient: Brush, onReturnT
     }
 }
 
+/** Collects the clock itself so the per-second tick recomposes only this text, not the board. */
+@Composable
+private fun ElapsedTimeText(timeElapsed: StateFlow<Int>) {
+    val seconds by timeElapsed.collectAsStateWithLifecycle()
+    Text(String.format("%03d", seconds), fontSize = 20.sp, fontWeight = FontWeight.Bold)
+}
+
+private val numberColors = listOf(
+    Color.Blue, Color(0xFF007B00), Color.Red, Color(0xFF00007B),
+    Color(0xFF7B0000), Color(0xFF007B7B), Color.Black, Color.DarkGray
+)
+
 @Composable
 fun InteractiveMinesweeperBoard(
     cells: List<Cell>,
@@ -347,26 +359,36 @@ fun InteractiveMinesweeperBoard(
     vibrationsEnabled: Boolean = true
 ) {
     val context = LocalContext.current
-    val vibrator = remember { context.getSystemService(android.content.Context.VIBRATOR_SERVICE) as Vibrator }
-    
-    val triggerVibration = {
-        if (vibrationsEnabled) {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                vibrator.vibrate(VibrationEffect.createOneShot(30, VibrationEffect.DEFAULT_AMPLITUDE))
-            } else {
-                @Suppress("DEPRECATION")
-                vibrator.vibrate(30)
-            }
-        }
-    }
+    val vibrator = remember { context.getSystemService(Vibrator::class.java) }
+
     var scale by remember { mutableFloatStateOf(1f) }
     var viewOffset by remember { mutableStateOf(Offset.Zero) }
     val textMeasurer = rememberTextMeasurer()
     val cellSizeDp = 30.dp
     val density = androidx.compose.ui.platform.LocalDensity.current
-    val haptic = LocalHapticFeedback.current
     val cellSize = with(density) { cellSizeDp.toPx() }
-    
+
+    // The numbers 1..8 measured once instead of on every cell of every frame
+    val numberLayouts = remember(textMeasurer, density) {
+        numberColors.mapIndexed { i, color ->
+            textMeasurer.measure(
+                text = (i + 1).toString(),
+                style = TextStyle(color = color, fontSize = 20.sp, fontWeight = FontWeight.Black)
+            )
+        }
+    }
+
+    // Gesture handlers read the latest values instead of restarting on every change
+    val currentCells by rememberUpdatedState(cells)
+    val currentFlagMode by rememberUpdatedState(isFlagMode)
+    val currentVibrations by rememberUpdatedState(vibrationsEnabled)
+    val currentOnClick by rememberUpdatedState(onClick)
+    val currentOnLongClick by rememberUpdatedState(onLongClick)
+
+    fun vibrate() {
+        if (currentVibrations) vibrator.vibrate(VibrationEffect.createOneShot(30, VibrationEffect.DEFAULT_AMPLITUDE))
+    }
+
     BoxWithConstraints(
         modifier = Modifier
             .fillMaxSize()
@@ -376,50 +398,38 @@ fun InteractiveMinesweeperBoard(
                     viewOffset += pan
                 }
             }
-            .pointerInput(difficulty, gameState, scale, viewOffset, vibrationsEnabled) {
+            // scale and viewOffset are read at tap time, so pan/zoom frames no longer restart this detector
+            .pointerInput(difficulty, gameState) {
                 if (gameState != GameState.Playing) return@pointerInput
+
+                fun cellAt(pressPos: Offset): Pair<Int, Int>? {
+                    val boardWidth = difficulty.columns * cellSize
+                    val boardHeight = difficulty.rows * cellSize
+                    val centerOffsetX = (size.width - boardWidth) / 2f
+                    val centerOffsetY = (size.height - boardHeight) / 2f
+                    val localX = (pressPos.x - size.width / 2f) / scale + size.width / 2f - viewOffset.x / scale - centerOffsetX
+                    val localY = (pressPos.y - size.height / 2f) / scale + size.height / 2f - viewOffset.y / scale - centerOffsetY
+                    if (localX !in 0f..boardWidth || localY !in 0f..boardHeight) return null
+                    val col = (localX / cellSize).toInt()
+                    val row = (localY / cellSize).toInt()
+                    return if (col in 0 until difficulty.columns && row in 0 until difficulty.rows) col to row else null
+                }
+
+                fun isHidden(col: Int, row: Int): Boolean {
+                    val index = row * difficulty.columns + col
+                    return index in currentCells.indices && !currentCells[index].isRevealed
+                }
+
                 detectTapGestures(
                     onTap = { pressPos ->
-                        val boardWidth = difficulty.columns * cellSize
-                        val boardHeight = difficulty.rows * cellSize
-                        val centerOffsetX = (size.width - boardWidth) / 2f
-                        val centerOffsetY = (size.height - boardHeight) / 2f
-                        
-                        val localX = (pressPos.x - size.width/2f) / scale + size.width/2f - viewOffset.x/scale - centerOffsetX
-                        val localY = (pressPos.y - size.height/2f) / scale + size.height/2f - viewOffset.y/scale - centerOffsetY
-                        
-                        if (localX in 0f..boardWidth && localY in 0f..boardHeight) {
-                            val col = (localX / cellSize).toInt()
-                            val row = (localY / cellSize).toInt()
-                            if (col in 0 until difficulty.columns && row in 0 until difficulty.rows) {
-                                val index = row * difficulty.columns + col
-                                if (isFlagMode && index in cells.indices && !cells[index].isRevealed) {
-                                    triggerVibration()
-                                }
-                                onClick(col, row)
-                            }
-                        }
+                        val (col, row) = cellAt(pressPos) ?: return@detectTapGestures
+                        if (currentFlagMode && isHidden(col, row)) vibrate()
+                        currentOnClick(col, row)
                     },
                     onLongPress = { pressPos ->
-                        val boardWidth = difficulty.columns * cellSize
-                        val boardHeight = difficulty.rows * cellSize
-                        val centerOffsetX = (size.width - boardWidth) / 2f
-                        val centerOffsetY = (size.height - boardHeight) / 2f
-                        
-                        val localX = (pressPos.x - size.width/2f) / scale + size.width/2f - viewOffset.x/scale - centerOffsetX
-                        val localY = (pressPos.y - size.height/2f) / scale + size.height/2f - viewOffset.y/scale - centerOffsetY
-                        
-                        if (localX in 0f..boardWidth && localY in 0f..boardHeight) {
-                            val col = (localX / cellSize).toInt()
-                            val row = (localY / cellSize).toInt()
-                            if (col in 0 until difficulty.columns && row in 0 until difficulty.rows) {
-                                val index = row * difficulty.columns + col
-                                if (index in cells.indices && !cells[index].isRevealed) {
-                                    triggerVibration()
-                                }
-                                onLongClick(col, row)
-                            }
-                        }
+                        val (col, row) = cellAt(pressPos) ?: return@detectTapGestures
+                        if (isHidden(col, row)) vibrate()
+                        currentOnLongClick(col, row)
                     }
                 )
             }
@@ -439,23 +449,24 @@ fun InteractiveMinesweeperBoard(
                     translationY = viewOffset.y
                 }
         ) {
+            val pad = 2f
+            val tileSize = Size(cellSize - pad * 2, cellSize - pad * 2)
             for (cell in cells) {
                 val cx = centerOffsetX + cell.x * cellSize
                 val cy = centerOffsetY + cell.y * cellSize
-                
+
                 val backgroundColor = if (cell.isRevealed) {
                     if (cell.isMine) Color.Red else Color.LightGray
                 } else {
                     Color.DarkGray
                 }
-                
-                val pad = 2f
+
                 drawRect(
                     color = backgroundColor,
                     topLeft = Offset(cx + pad, cy + pad),
-                    size = Size(cellSize - pad * 2, cellSize - pad * 2),
+                    size = tileSize,
                 )
-                
+
                 if (cell.isRevealed) {
                     if (cell.isMine) {
                         drawCircle(
@@ -464,21 +475,13 @@ fun InteractiveMinesweeperBoard(
                             center = Offset(cx + cellSize / 2, cy + cellSize / 2)
                         )
                     } else if (cell.surroundingMines > 0) {
-                        val textColor = when (cell.surroundingMines) {
-                            1 -> Color.Blue
-                            2 -> Color(0xFF007B00)
-                            3 -> Color.Red
-                            4 -> Color(0xFF00007B)
-                            5 -> Color(0xFF7B0000)
-                            6 -> Color(0xFF007B7B)
-                            7 -> Color.Black
-                            else -> Color.DarkGray
-                        }
+                        val layout = numberLayouts[(cell.surroundingMines - 1).coerceIn(0, numberLayouts.lastIndex)]
                         drawText(
-                            textMeasurer = textMeasurer,
-                            text = cell.surroundingMines.toString(),
-                            topLeft = Offset(cx + cellSize * 0.3f, cy + cellSize * 0.15f),
-                            style = TextStyle(color = textColor, fontSize = 20.sp, fontWeight = FontWeight.Black)
+                            textLayoutResult = layout,
+                            topLeft = Offset(
+                                cx + (cellSize - layout.size.width) / 2f,
+                                cy + (cellSize - layout.size.height) / 2f
+                            )
                         )
                     }
                 } else if (cell.isFlagged) {
@@ -634,18 +637,25 @@ fun WinLossOverlay(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center
             ) {
-                val scale by animateFloatAsState(
+                // animateFloatAsState never pulsed (it starts at its target); an infinite transition does
+                val pulse = rememberInfiniteTransition(label = "resultPulse")
+                val scale by pulse.animateFloat(
+                    initialValue = 1f,
                     targetValue = 1.1f,
                     animationSpec = infiniteRepeatable(tween(1000), RepeatMode.Reverse),
                     label = "scale"
                 )
-                
+
                 Text(
                     text = if (hasWon) stringResource(R.string.ms_won) else stringResource(R.string.ms_lost),
                     color = if (hasWon) Color.Green else Color.Red,
                     fontSize = 54.sp,
                     fontWeight = FontWeight.Black,
-                    modifier = Modifier.graphicsLayer(scaleX = scale, scaleY = scale)
+                    // Read in the layer block: each frame only updates the layer, no recomposition
+                    modifier = Modifier.graphicsLayer {
+                        scaleX = scale
+                        scaleY = scale
+                    }
                 )
                 Spacer(modifier = Modifier.height(48.dp))
                 Button(

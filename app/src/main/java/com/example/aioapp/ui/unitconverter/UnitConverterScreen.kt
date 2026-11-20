@@ -46,7 +46,10 @@ import com.example.aioapp.ui.components.AppTopAppBar
 import com.example.aioapp.ui.theme.LocalAppGradient
 import com.example.aioapp.ui.theme.RobotoMono
 import kotlinx.coroutines.Job
-import java.text.SimpleDateFormat
+import androidx.compose.ui.platform.LocalConfiguration
+import java.time.Instant
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 import java.util.*
 
 @Composable
@@ -154,14 +157,17 @@ fun UnitConverterScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val focusManager = LocalFocusManager.current
     val gradientColors = LocalAppGradient.current
-    val gradientBrush = Brush.linearGradient(colors = gradientColors)
+    val gradientBrush = remember(gradientColors) { Brush.linearGradient(colors = gradientColors) }
     val textFieldShape = RoundedCornerShape(8.dp)
     val containerColor = MaterialTheme.colorScheme.background
     val snackbarHostState = remember { SnackbarHostState() }
-
-    val listState = rememberLazyListState()
-    val dragDropState = rememberDragDropState(listState) { fromIndex, toIndex ->
-        viewModel.moveUnit(fromIndex, toIndex)
+    val locale = LocalConfiguration.current.locales[0]
+    val lastUpdatedText = remember(uiState.lastUpdated, locale) {
+        uiState.lastUpdated?.let {
+            DateTimeFormatter.ofPattern("MMM dd, yyyy HH:mm", locale)
+                .withZone(ZoneId.systemDefault())
+                .format(Instant.ofEpochMilli(it))
+        }
     }
 
     LaunchedEffect(uiState.errorMessage) {
@@ -327,6 +333,12 @@ fun UnitConverterScreen(
                 },
                 label = "categoryContentTransition"
             ) { targetCategory ->
+                // Each side of the transition gets its own list and drag state: sharing one LazyListState
+                // between the incoming and outgoing lists made them fight over the scroll position
+                val listState = rememberLazyListState()
+                val dragDropState = rememberDragDropState(listState) { fromIndex, toIndex ->
+                    viewModel.moveUnit(fromIndex, toIndex)
+                }
                 LazyColumn(
                     state = listState,
                     modifier = Modifier
@@ -337,7 +349,7 @@ fun UnitConverterScreen(
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                     contentPadding = PaddingValues(bottom = 16.dp)
                 ) {
-                    itemsIndexed(uiState.results, key = { _, result -> result.unitName }) { index, result ->
+                    itemsIndexed(uiState.results, key = { _, result -> result.unitId }) { index, result ->
                         DraggableItem(dragDropState, index) { isDragging ->
                             val elevation by animateFloatAsState(if (isDragging) 8f else 0f, label = "elevation")
                             val scale by animateFloatAsState(if (isDragging) 1.02f else 1f, label = "scale")
@@ -412,16 +424,15 @@ fun UnitConverterScreen(
                         }
                     }
 
-                    if (targetCategory == UnitCategory.CURRENCY && uiState.lastUpdated != null) {
+                    if (targetCategory == UnitCategory.CURRENCY && lastUpdatedText != null) {
                         item {
                             Spacer(modifier = Modifier.height(16.dp))
                             Box(
                                 modifier = Modifier.fillMaxWidth(),
                                 contentAlignment = Alignment.Center
                             ) {
-                                val date = SimpleDateFormat("MMM dd, yyyy HH:mm", Locale.getDefault()).format(Date(uiState.lastUpdated!!))
                                 Text(
-                                    text = stringResource(R.string.unit_converter_last_updated, date),
+                                    text = stringResource(R.string.unit_converter_last_updated, lastUpdatedText),
                                     style = MaterialTheme.typography.labelSmall,
                                     color = Color.Gray,
                                     fontFamily = RobotoMono

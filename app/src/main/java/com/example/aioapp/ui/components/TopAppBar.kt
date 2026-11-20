@@ -18,12 +18,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.Font
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.res.stringResource
 import androidx.navigation.NavController
 import com.example.aioapp.R
+import com.example.aioapp.ui.theme.BbhBogle
 import com.example.aioapp.ui.theme.LocalAppGradient
 import com.example.aioapp.ui.theme.RobotoMono
 import kotlinx.coroutines.CoroutineScope
@@ -111,7 +110,7 @@ fun TopAppBar(
                     text = "AIOApp",
                     style = TextStyle(
                         brush = Brush.horizontalGradient(colors = gradientColors),
-                        fontFamily = FontFamily(Font(R.font.bbhbogle_regular)),
+                        fontFamily = BbhBogle,
                         fontSize = 40.sp
                     )
                 )

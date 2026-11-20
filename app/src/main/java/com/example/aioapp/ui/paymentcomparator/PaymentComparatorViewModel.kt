@@ -4,6 +4,10 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.aioapp.core.datastore.PaymentComparatorPreferencesRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -22,6 +26,8 @@ data class PaymentComparatorUiState(
     val tnaError: Boolean = false,
     val showBreakdown: Boolean = false
 )
+
+private const val SAVE_DEBOUNCE_MS = 300L
 
 @HiltViewModel
 class PaymentComparatorViewModel @Inject constructor(
@@ -48,26 +54,51 @@ class PaymentComparatorViewModel @Inject constructor(
 
     fun onPriceChange(value: String) {
         _uiState.update { it.copy(priceInput = value, priceError = false) }
-        viewModelScope.launch { repository.savePrice(value) }
+        persist()
         recalculate()
     }
 
     fun onInstallmentsChange(value: Int) {
         _uiState.update { it.copy(installmentsInput = value) }
-        viewModelScope.launch { repository.saveInstallments(value) }
+        persist()
         recalculate()
     }
 
     fun onTnaChange(value: String) {
         _uiState.update { it.copy(tnaInput = value, tnaError = false) }
-        viewModelScope.launch { repository.saveTna(value) }
+        persist()
         recalculate()
     }
 
     fun onInflationChange(value: String) {
         _uiState.update { it.copy(inflationInput = value) }
-        viewModelScope.launch { repository.saveInflation(value) }
+        persist()
         recalculate()
+    }
+
+    private var saveJob: Job? = null
+
+    /** Writes all inputs once typing pauses, instead of one DataStore write per keystroke. */
+    private fun persist() {
+        saveJob?.cancel()
+        saveJob = viewModelScope.launch {
+            delay(SAVE_DEBOUNCE_MS)
+            saveNow()
+        }
+    }
+
+    private suspend fun saveNow() {
+        val state = _uiState.value
+        repository.saveAll(state.priceInput, state.installmentsInput, state.tnaInput, state.inflationInput)
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        // Leaving the screen inside the debounce window must not drop the last edit
+        if (saveJob?.isActive == true) {
+            saveJob?.cancel()
+            CoroutineScope(Dispatchers.IO).launch { saveNow() }
+        }
     }
 
     fun toggleBreakdown() {
