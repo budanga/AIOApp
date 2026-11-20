@@ -444,55 +444,72 @@ fun WinOverlay(
     }
 }
 
+private val confettiColors = listOf(Color.Cyan, Color.Magenta, Color.Yellow, Color.Green, Color.Red)
+
 @Composable
 fun ConfettiEffect() {
     val pieces = remember {
-        List(100) {
+        List(100) { index ->
             ConfettiPiece(
-                x = (0..1000).random().toFloat() / 1000f,
-                y = (0..1000).random().toFloat() / 1000f,
-                color = listOf(Color.Cyan, Color.Magenta, Color.Yellow, Color.Green, Color.Red).random(),
-                speed = (5..15).random().toFloat() / 1000f,
+                seed = index,
+                // Staggered above the screen, so they enter from the top one after another
+                startY = -(0..1000).random() / 1000f,
+                speed = (15..35).random() / 100f,      // screen heights per second
+                spin = (-360..360).random().toFloat(),  // degrees per second
                 rotation = (0..360).random().toFloat()
             )
         }
     }
 
-    val infiniteTransition = rememberInfiniteTransition(label = "confetti")
-    val elapsed by infiniteTransition.animateFloat(
-        initialValue = 0f,
-        targetValue = 1f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(2000, easing = LinearEasing),
-            repeatMode = RepeatMode.Restart
-        ),
-        label = "elapsed"
-    )
+    // Continuous clock since the overlay appeared. A repeating 0..1 animation jumped back at every
+    // cycle, which made all the confetti look like it was regenerated every couple of seconds.
+    var seconds by remember { mutableFloatStateOf(0f) }
+    LaunchedEffect(Unit) {
+        val start = withFrameNanos { it }
+        while (true) {
+            withFrameNanos { seconds = (it - start) / 1_000_000_000f }
+        }
+    }
 
     Canvas(modifier = Modifier.fillMaxSize()) {
         val pieceSize = 8.dp.toPx()
         val pieceDimensions = androidx.compose.ui.geometry.Size(pieceSize, pieceSize)
-        pieces.forEach { piece ->
-            val yPos = ((piece.y + elapsed * piece.speed * 10) % 1.0f) * size.height
-            val xPos = piece.x * size.width
+        val travelHeight = size.height + pieceSize
+        val time = seconds // Read in the draw phase: each frame only redraws, no recomposition
 
-            // Spin each piece around its own center (the default pivot is the canvas center, which made them orbit)
-            rotate(piece.rotation + elapsed * 360, pivot = Offset(xPos + pieceSize / 2, yPos + pieceSize / 2)) {
-                drawRect(
-                    color = piece.color,
-                    topLeft = Offset(xPos, yPos),
-                    size = pieceDimensions
-                )
+        pieces.forEach { piece ->
+            val travel = piece.startY + time * piece.speed
+            if (travel < 0f) return@forEach // Still above the screen
+
+            // Every pass through the screen is a new "life": once a piece leaves at the bottom it
+            // re-enters from the top at another x and with another color, so it reads as new confetti
+            val life = travel.toInt()
+            val yPos = (travel - life) * travelHeight - pieceSize
+            val xPos = hash01(piece.seed, life) * (size.width - pieceSize)
+            val color = confettiColors[(hash01(life, piece.seed) * confettiColors.size).toInt().coerceAtMost(confettiColors.lastIndex)]
+
+            // Spin each piece around its own center
+            rotate(piece.rotation + time * piece.spin, pivot = Offset(xPos + pieceSize / 2, yPos + pieceSize / 2)) {
+                drawRect(color = color, topLeft = Offset(xPos, yPos), size = pieceDimensions)
             }
         }
     }
 }
 
+/** Deterministic pseudo-random value in [0, 1) without allocating a Random per piece per frame. */
+private fun hash01(a: Int, b: Int): Float {
+    var h = a * 0x27d4eb2d xor b * 0x165667b1
+    h = h xor (h ushr 15)
+    h *= 0x2c1b3c6d
+    h = h xor (h ushr 12)
+    return (h ushr 8) / 16_777_216f
+}
+
 data class ConfettiPiece(
-    val x: Float,
-    val y: Float,
-    val color: Color,
+    val seed: Int,
+    val startY: Float,
     val speed: Float,
+    val spin: Float,
     val rotation: Float
 )
 
