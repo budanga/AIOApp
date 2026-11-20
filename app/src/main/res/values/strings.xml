@@ -95,6 +95,37 @@
     <!-- Notes -->
     <string name="notes_pinned">PINNED</string>
     <string name="notes_created">Created: %1$s</string>
+    <plurals name="notes_selected">
+        <item quantity="one">%1$d selected</item>
+        <item quantity="other">%1$d selected</item>
+    </plurals>
+    <plurals name="notes_deleted">
+        <item quantity="one">Note deleted</item>
+        <item quantity="other">Notes deleted</item>
+    </plurals>
+    <string name="notes_clear_selection">Clear selection</string>
+    <string name="notes_toggle_pin">Pin or unpin</string>
+    <string name="notes_delete">Delete</string>
+    <string name="notes_sort">Sort</string>
+    <string name="notes_sort_name">Name</string>
+    <string name="notes_sort_created">Creation date</string>
+    <string name="notes_sort_modified">Modification date</string>
+    <string name="notes_empty_prefix">"Write "</string>
+    <string name="notes_empty_suffix">your first note!</string>
+    <string name="notes_add">Add note</string>
+    <string name="notes_none_yet">No notes yet</string>
+    <string name="notes_no_matches">No matches found</string>
+    <string name="notes_title_unique">The note title must be unique</string>
+    <string name="notes_title_empty">The note title cannot be empty</string>
+    <string name="notes_save">Save</string>
+    <string name="notes_edit">Edit</string>
+    <string name="notes_title_hint">Title</string>
+    <string name="notes_content_hint">Start typing…</string>
+    <string name="notes_new">New note</string>
+    <string name="notes_optional_hint">Note (optional)</string>
+    <string name="notes_background_color">Background color:</string>
+    <string name="notes_cancel">Cancel</string>
+    <string name="notes_add_button">Add</string>
 
     <!-- Unit Categories -->
     <string name="unit_cat_mass">Mass</string>
