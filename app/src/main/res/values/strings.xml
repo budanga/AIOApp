@@ -24,6 +24,8 @@
     <string name="feature_search_open">Search features</string>
     <string name="feature_search_close">Close search</string>
     <string name="feature_search_empty">No features found</string>
+    <string name="favorite_add">Add to favorites</string>
+    <string name="favorite_remove">Remove from favorites</string>
 
     <!-- Feature names (home grid + drawer) -->
     <string name="feature_file_manager">File Manager</string>

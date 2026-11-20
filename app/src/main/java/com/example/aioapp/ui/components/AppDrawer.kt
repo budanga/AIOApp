@@ -26,7 +26,9 @@ import com.example.aioapp.ui.theme.LocalAppGradient
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.example.aioapp.R
-import com.example.aioapp.core.model.functionalities
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.example.aioapp.ui.home.HomeViewModel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 
@@ -34,8 +36,10 @@ import kotlinx.coroutines.launch
 fun AppDrawer(
     navController: NavController,
     drawerState: DrawerState,
-    scope: CoroutineScope
+    scope: CoroutineScope,
+    viewModel: HomeViewModel = hiltViewModel()
 ) {
+    val featureList by viewModel.featureList.collectAsStateWithLifecycle()
     val gradientColors = LocalAppGradient.current
     val appGradient = remember(gradientColors) { Brush.horizontalGradient(gradientColors) }
     var searchQuery by rememberSaveable { mutableStateOf("") }
@@ -60,9 +64,11 @@ fun AppDrawer(
                 .fillMaxWidth()
                 .padding(horizontal = 12.dp, vertical = 16.dp)
         )
-        val matching = functionalities.map { it to stringResource(it.nameResId) }
+        val favoriteRoutes = featureList?.favoriteRoutes.orEmpty()
+        // Same order as the home grid: favorites first
+        val matching = featureList?.functionalities.orEmpty().map { it to stringResource(it.nameResId) }
             .filter { (_, name) -> matchesSearch(name, searchQuery) }
-        if (matching.isEmpty()) {
+        if (featureList != null && matching.isEmpty()) {
             Text(
                 text = stringResource(R.string.feature_search_empty),
                 style = MaterialTheme.typography.bodyMedium,
@@ -73,6 +79,12 @@ fun AppDrawer(
             NavigationDrawerItem(
                 label = { Text(name) },
                 icon = { Icon(functionality.icon, contentDescription = name) },
+                badge = {
+                    FavoriteStarButton(
+                        isFavorite = functionality.route in favoriteRoutes,
+                        onToggle = { viewModel.toggleFavorite(functionality.route) }
+                    )
+                },
                 selected = false,
                 onClick = {
                     navController.navigate(functionality.route)

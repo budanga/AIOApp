@@ -25,6 +25,8 @@
     <string name="feature_search_open">Buscar funcionalidades</string>
     <string name="feature_search_close">Cerrar búsqueda</string>
     <string name="feature_search_empty">No se encontraron funcionalidades</string>
+    <string name="favorite_add">Agregar a favoritas</string>
+    <string name="favorite_remove">Quitar de favoritas</string>
 
     <!-- Nombres de funciones (cuadrícula principal + cajón) -->
     <string name="feature_file_manager">Gestor de archivos</string>

@@ -3,6 +3,10 @@ package com.example.aioapp.ui.home
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.example.aioapp.ui.components.FavoriteStarButton
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
@@ -32,7 +36,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.example.aioapp.core.model.Functionality
-import com.example.aioapp.core.model.functionalities
 
 import androidx.compose.material3.DrawerState
 import androidx.compose.material3.Scaffold
@@ -66,7 +69,12 @@ import androidx.compose.ui.unit.sp
 import com.example.aioapp.R
 
 @Composable
-fun HomeScreen(navController: NavController, drawerState: DrawerState) {
+fun HomeScreen(
+    navController: NavController,
+    drawerState: DrawerState,
+    viewModel: HomeViewModel = hiltViewModel()
+) {
+    val featureList by viewModel.featureList.collectAsStateWithLifecycle()
     val gradientColors = LocalAppGradient.current
     val appGradient = remember(gradientColors) { Brush.horizontalGradient(gradientColors) }
     val scope = rememberCoroutineScope()
@@ -74,9 +82,11 @@ fun HomeScreen(navController: NavController, drawerState: DrawerState) {
     var searchQuery by rememberSaveable { mutableStateOf("") }
     val searchFocusRequester = remember { FocusRequester() }
 
-    val names = functionalities.map { stringResource(it.nameResId) }
-    val visibleFunctionalities = remember(searchQuery, names) {
-        functionalities.filterIndexed { i, _ -> matchesSearch(names[i], searchQuery) }
+    val orderedFunctionalities = featureList?.functionalities.orEmpty()
+    val favoriteRoutes = featureList?.favoriteRoutes.orEmpty()
+    val names = orderedFunctionalities.map { stringResource(it.nameResId) }
+    val visibleFunctionalities = remember(searchQuery, names, orderedFunctionalities) {
+        orderedFunctionalities.filterIndexed { i, _ -> matchesSearch(names[i], searchQuery) }
     }
 
     fun closeSearch() {
@@ -139,7 +149,9 @@ fun HomeScreen(navController: NavController, drawerState: DrawerState) {
             }
         }
     ) { padding ->
-        if (visibleFunctionalities.isEmpty()) {
+        if (featureList == null) {
+            // Favorites not loaded yet; draw nothing for this single frame instead of a list that reorders
+        } else if (visibleFunctionalities.isEmpty()) {
             Text(
                 text = stringResource(R.string.feature_search_empty),
                 style = MaterialTheme.typography.bodyLarge,
@@ -157,7 +169,13 @@ fun HomeScreen(navController: NavController, drawerState: DrawerState) {
             ) {
                 // Keyed by route so cards that stay visible while filtering keep their state
                 itemsIndexed(visibleFunctionalities, key = { _, functionality -> functionality.route }) { index, functionality ->
-                    FunctionalityItem(functionality = functionality, index = index) {
+                    FunctionalityItem(
+                        functionality = functionality,
+                        index = index,
+                        isFavorite = functionality.route in favoriteRoutes,
+                        onToggleFavorite = { viewModel.toggleFavorite(functionality.route) },
+                        modifier = Modifier.animateItem()
+                    ) {
                         closeSearch()
                         navController.navigate(functionality.route)
                     }
@@ -172,6 +190,9 @@ fun HomeScreen(navController: NavController, drawerState: DrawerState) {
 fun FunctionalityItem(
     functionality: Functionality,
     index: Int,
+    isFavorite: Boolean,
+    onToggleFavorite: () -> Unit,
+    modifier: Modifier = Modifier,
     onClick: () -> Unit
 ) {
     val name = stringResource(functionality.nameResId)
@@ -186,7 +207,7 @@ fun FunctionalityItem(
     Card(
         onClick = onClick,
         shape = RoundedCornerShape(16.dp),
-        modifier = Modifier
+        modifier = modifier
             .size(150.dp)
             .padding(8.dp)
             .graphicsLayer {
@@ -196,6 +217,7 @@ fun FunctionalityItem(
                 translationY = (1f - animatedProgress.value) * 40f
             }
     ) {
+      Box(modifier = Modifier.fillMaxSize()) {
         Column(
             modifier = Modifier.fillMaxSize().padding(12.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
@@ -216,5 +238,11 @@ fun FunctionalityItem(
                 modifier = Modifier.fillMaxWidth()
             )
         }
+        FavoriteStarButton(
+            isFavorite = isFavorite,
+            onToggle = onToggleFavorite,
+            modifier = Modifier.align(Alignment.TopEnd).size(36.dp)
+        )
+      }
     }
 }

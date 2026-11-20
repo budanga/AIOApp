@@ -28,3 +28,13 @@ val functionalities = listOf(
     Functionality(R.string.feature_minesweeper, Icons.Default.GridOn, "minesweeper"),
     Functionality(R.string.feature_bbq, Icons.Default.Restaurant, "bbq")
 )
+
+/**
+ * Favorites first (in the given order, most recently favorited first), then the rest
+ * in their default order. Shared by the home grid and the drawer so both always match.
+ */
+fun orderFunctionalities(favoriteRoutes: List<String>): List<Functionality> {
+    val byRoute = functionalities.associateBy { it.route }
+    val favorites = favoriteRoutes.mapNotNull { byRoute[it] }
+    return favorites + functionalities.filter { it.route !in favoriteRoutes }
+}
