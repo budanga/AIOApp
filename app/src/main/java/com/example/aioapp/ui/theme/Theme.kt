@@ -29,9 +29,10 @@ private val DarkColorScheme = darkColorScheme(
     onSurfaceVariant = OnDarkSurfaceVariant
 )
 
-val LocalAppGradient = staticCompositionLocalOf {
-    listOf(DarkGradient1, DarkGradient2, DarkGradient3, DarkGradient4, DarkGradient5)
-}
+private val DarkGradientColors = listOf(DarkGradient1, DarkGradient2, DarkGradient3, DarkGradient4, DarkGradient5)
+private val LightGradientColors = listOf(LightGradient1, LightGradient2, LightGradient3, LightGradient4, LightGradient5)
+
+val LocalAppGradient = staticCompositionLocalOf { DarkGradientColors }
 
 val LocalDarkTheme = staticCompositionLocalOf { false }
 
@@ -41,11 +42,7 @@ fun AIOAppTheme(
     content: @Composable () -> Unit
 ) {
     val colorScheme = if (darkTheme) DarkColorScheme else LightColorScheme
-    
-    val darkColors = listOf(DarkGradient1, DarkGradient2, DarkGradient3, DarkGradient4, DarkGradient5)
-    val lightColors = listOf(LightGradient1, LightGradient2, LightGradient3, LightGradient4, LightGradient5)
-    
-    val gradientColors = if (darkTheme) darkColors else lightColors
+    val gradientColors = if (darkTheme) DarkGradientColors else LightGradientColors
 
     CompositionLocalProvider(
         LocalAppGradient provides gradientColors,

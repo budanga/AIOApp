@@ -4,6 +4,7 @@ plugins {
     alias(libs.plugins.kotlin.compose)
     id("com.google.dagger.hilt.android")
     alias(libs.plugins.ksp)
+    alias(libs.plugins.baselineprofile)
 }
 
 android {
@@ -31,6 +32,13 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+        }
+        // Variants created by the baselineprofile plugin only run locally for profiling/benchmarks;
+        // signing them with the debug key lets them install. The real release stays unsigned here.
+        configureEach {
+            if (name == "benchmarkRelease" || name == "nonMinifiedRelease") {
+                signingConfig = signingConfigs.getByName("debug")
+            }
         }
     }
     compileOptions {
@@ -65,12 +73,9 @@ dependencies {
     implementation(libs.androidx.compose.animation)
     implementation(libs.androidx.compose.material3)
     implementation(libs.androidx.core.splashscreen)
-    implementation(libs.material)
     implementation(libs.androidx.navigation.compose)
     implementation(libs.androidx.documentfile)
-    implementation(libs.androidx.compose.ui.text.google.fonts)
     implementation(libs.androidx.datastore.preferences)
-    implementation(libs.coil.compose)
     implementation(libs.androidx.material.icons.extended)
     implementation(libs.androidx.appcompat)
 
@@ -84,9 +89,12 @@ dependencies {
     ksp(libs.hilt.compiler)
     implementation(libs.androidx.hilt.navigation.compose)
 
-    // Retrofit
-    implementation(libs.retrofit.core)
-    implementation(libs.retrofit.gson)
+    // Gson (Minesweeper saved games)
+    implementation(libs.gson)
+
+    // Installs the generated Baseline Profile on devices that don't get it from Play
+    implementation(libs.androidx.profileinstaller)
+    baselineProfile(project(":baselineprofile"))
 
     testImplementation(libs.junit)
     testImplementation(libs.hilt.android.testing)

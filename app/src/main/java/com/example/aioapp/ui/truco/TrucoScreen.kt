@@ -38,12 +38,15 @@ import com.example.aioapp.core.model.TrucoGame
 import com.example.aioapp.ui.components.AppTopAppBar
 import com.example.aioapp.ui.theme.LocalAppGradient
 import com.example.aioapp.ui.theme.RobotoMono
-import java.text.SimpleDateFormat
+import java.time.Instant
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 import java.util.*
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.LocalIndication
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.stringResource
 import com.example.aioapp.R
 
@@ -56,7 +59,7 @@ fun TrucoScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val gradientColors = LocalAppGradient.current
-    val appGradient = Brush.horizontalGradient(gradientColors)
+    val appGradient = remember(gradientColors) { Brush.horizontalGradient(gradientColors) }
     var showHistory by remember { mutableStateOf(false) }
 
     Scaffold(
@@ -181,6 +184,12 @@ fun HistoryDialog(
     onClear: () -> Unit,
     appGradient: Brush
 ) {
+    // One thread-safe formatter per locale, instead of a SimpleDateFormat per row per recomposition
+    val locale = LocalConfiguration.current.locales[0]
+    val historyDateFormat = remember(locale) {
+        DateTimeFormatter.ofPattern("MMM dd, HH:mm", locale).withZone(ZoneId.systemDefault())
+    }
+
     Dialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(usePlatformDefaultWidth = false)
@@ -232,7 +241,7 @@ fun HistoryDialog(
                                     verticalArrangement = Arrangement.spacedBy(12.dp),
                                     contentPadding = PaddingValues(vertical = 4.dp)
                                 ) {
-                                    items(history.size) { index ->
+                                    items(history.size, key = { history[it].id }) { index ->
                                         val game = history[index]
                                         Card(
                                             modifier = Modifier.fillMaxWidth(),
@@ -256,7 +265,7 @@ fun HistoryDialog(
                                                         color = if (game.winner == "Nos") MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondary
                                                     )
                                                     Text(
-                                                        text = SimpleDateFormat("MMM dd, HH:mm", Locale.getDefault()).format(game.timestamp),
+                                                        text = historyDateFormat.format(Instant.ofEpochMilli(game.timestamp)),
                                                         style = MaterialTheme.typography.bodySmall,
                                                         fontFamily = RobotoMono,
                                                         color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -402,7 +411,10 @@ fun WinOverlay(
                 ),
                 fontFamily = RobotoMono,
                 color = Color.White,
-                modifier = Modifier.graphicsLayer(scaleX = scale, scaleY = scale)
+                modifier = Modifier.graphicsLayer {
+                    scaleX = scale
+                    scaleY = scale
+                }
             )
 
             Spacer(modifier = Modifier.height(48.dp))
@@ -458,15 +470,18 @@ fun ConfettiEffect() {
     )
 
     Canvas(modifier = Modifier.fillMaxSize()) {
+        val pieceSize = 8.dp.toPx()
+        val pieceDimensions = androidx.compose.ui.geometry.Size(pieceSize, pieceSize)
         pieces.forEach { piece ->
             val yPos = ((piece.y + elapsed * piece.speed * 10) % 1.0f) * size.height
             val xPos = piece.x * size.width
 
-            rotate(piece.rotation + elapsed * 360) {
+            // Spin each piece around its own center (the default pivot is the canvas center, which made them orbit)
+            rotate(piece.rotation + elapsed * 360, pivot = Offset(xPos + pieceSize / 2, yPos + pieceSize / 2)) {
                 drawRect(
                     color = piece.color,
                     topLeft = Offset(xPos, yPos),
-                    size = androidx.compose.ui.geometry.Size(8.dp.toPx(), 8.dp.toPx())
+                    size = pieceDimensions
                 )
             }
         }

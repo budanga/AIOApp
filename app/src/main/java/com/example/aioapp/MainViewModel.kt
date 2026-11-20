@@ -18,11 +18,12 @@ class MainViewModel @Inject constructor(
     private val userPreferencesRepository: UserPreferencesRepository
 ) : ViewModel() {
 
+    /** null until the stored theme is read; the splash screen stays up meanwhile to avoid a theme flash. */
     val theme = userPreferencesRepository.themeFlow
         .stateIn(
             scope = viewModelScope,
-            started = SharingStarted.WhileSubscribed(5000),
-            initialValue = "System"
+            started = SharingStarted.Eagerly,
+            initialValue = null
         )
 
     val language = userPreferencesRepository.languageFlow

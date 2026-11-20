@@ -14,6 +14,7 @@ import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -79,7 +80,7 @@ fun BBQScreen(
 @Composable
 private fun CustomCard(content: @Composable ColumnScope.() -> Unit) {
     val gradientColors = LocalAppGradient.current
-    val cardBorder = Brush.horizontalGradient(gradientColors.map { it.copy(alpha = 0.2f) })
+    val cardBorder = remember(gradientColors) { Brush.horizontalGradient(gradientColors.map { it.copy(alpha = 0.2f) }) }
 
     Card(
         modifier = Modifier
@@ -278,8 +279,8 @@ private fun ResultRow(
     isHighlighted: Boolean = false
 ) {
     val gradientColors = LocalAppGradient.current
-    val highlightBg = Brush.horizontalGradient(gradientColors.map { it.copy(alpha = 0.15f) })
-    val highlightBorder = Brush.horizontalGradient(gradientColors.map { it.copy(alpha = 0.3f) })
+    val highlightBg = remember(gradientColors) { Brush.horizontalGradient(gradientColors.map { it.copy(alpha = 0.15f) }) }
+    val highlightBorder = remember(gradientColors) { Brush.horizontalGradient(gradientColors.map { it.copy(alpha = 0.3f) }) }
 
     Row(
         modifier = Modifier

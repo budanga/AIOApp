@@ -62,8 +62,6 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
-import androidx.compose.ui.text.font.Font
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
@@ -77,7 +75,10 @@ import com.example.aioapp.core.model.NoteSortOrder
 import com.example.aioapp.ui.theme.*
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.launch
-import java.text.SimpleDateFormat
+import androidx.compose.ui.platform.LocalConfiguration
+import java.time.Instant
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 import java.util.*
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -111,7 +112,7 @@ fun HighlightedText(
     overflow: TextOverflow = TextOverflow.Clip,
     autoScrollToMatch: Boolean = false
 ) {
-    val robotoMono = FontFamily(Font(R.font.roboto_mono_variable_font_wght))
+    val robotoMono = RobotoMono
     val highlightColor = LocalAppGradient.current.first().copy(alpha = 0.3f)
 
     val displayText = remember(text, query, autoScrollToMatch) {
@@ -202,10 +203,10 @@ fun NotesScreen(
         }
     }
 
-    val homemadeApple = FontFamily(Font(R.font.homemade_apple))
-    val robotoMono = FontFamily(Font(R.font.roboto_mono_variable_font_wght))
+    val homemadeApple = HomemadeApple
+    val robotoMono = RobotoMono
     val appGradientColors = LocalAppGradient.current
-    val appGradient = Brush.horizontalGradient(colors = appGradientColors)
+    val appGradient = remember(appGradientColors) { Brush.horizontalGradient(colors = appGradientColors) }
 
     Scaffold(
         snackbarHost = {
@@ -356,21 +357,31 @@ fun NotesScreen(
                         label = "fabScale"
                     )
 
-                    val infiniteTransition = rememberInfiniteTransition(label = "pulse")
-                    val pulseScale by infiniteTransition.animateFloat(
-                        initialValue = 1f,
-                        targetValue = if (notes.isEmpty() && searchQuery.isEmpty()) 1.1f else 1f,
-                        animationSpec = infiniteRepeatable(
-                            animation = tween(1000, easing = FastOutSlowInEasing),
-                            repeatMode = RepeatMode.Reverse
-                        ),
-                        label = "pulse"
-                    )
+                    // Pulse only while inviting the first note: an infinite transition keeps requesting frames
+                    // even when it animates 1f -> 1f, so it must not exist otherwise
+                    val pulseScale: State<Float> = if (notes.isEmpty() && searchQuery.isEmpty()) {
+                        rememberInfiniteTransition(label = "pulse").animateFloat(
+                            initialValue = 1f,
+                            targetValue = 1.1f,
+                            animationSpec = infiniteRepeatable(
+                                animation = tween(1000, easing = FastOutSlowInEasing),
+                                repeatMode = RepeatMode.Reverse
+                            ),
+                            label = "pulse"
+                        )
+                    } else {
+                        remember { mutableFloatStateOf(1f) }
+                    }
 
                     Box(
                         modifier = Modifier
                             .size(56.dp)
-                            .graphicsLayer(scaleX = scale * pulseScale, scaleY = scale * pulseScale)
+                            .graphicsLayer {
+                                // Read in the layer block so the pulse redraws without recomposing
+                                val s = scale * pulseScale.value
+                                scaleX = s
+                                scaleY = s
+                            }
                             .shadow(if (isPressed) 4.dp else 12.dp, CircleShape)
                             .clip(CircleShape)
                             .background(appGradient)
@@ -504,6 +515,14 @@ fun NotesScreen(
 }
 
 @OptIn(ExperimentalFoundationApi::class)
+// DateTimeFormatter is immutable: one per locale is shared by every note instead of a SimpleDateFormat each
+private val noteDateFormatters = java.util.concurrent.ConcurrentHashMap<Locale, DateTimeFormatter>()
+
+private fun noteDateFormatter(locale: Locale): DateTimeFormatter =
+    noteDateFormatters.getOrPut(locale) {
+        DateTimeFormatter.ofPattern("MMM d, yyyy", locale).withZone(ZoneId.systemDefault())
+    }
+
 @Composable
 fun NoteItem(
     note: Note,
@@ -512,14 +531,14 @@ fun NoteItem(
     onClick: () -> Unit,
     onLongClick: () -> Unit
 ) {
-    val dateFormat = remember { SimpleDateFormat("MMM d, yyyy", Locale.getDefault()) }
-    val dateString = remember(note.createdAt) { dateFormat.format(Date(note.createdAt)) }
+    val locale = LocalConfiguration.current.locales[0]
+    val dateString = remember(note.createdAt, locale) { noteDateFormatter(locale).format(Instant.ofEpochMilli(note.createdAt)) }
     val baseColor = Color(note.color)
-    val isLightNote = baseColor.luminance() > 0.5f
+    val isLightNote = remember(note.color) { baseColor.luminance() > 0.5f }
     val contentColor = if (isLightNote) Color.Black else Color.White
     val appGradientColors = LocalAppGradient.current
-    val selectionGradient = Brush.horizontalGradient(colors = appGradientColors)
-    val robotoMono = FontFamily(Font(R.font.roboto_mono_variable_font_wght))
+    val selectionGradient = remember(appGradientColors) { Brush.horizontalGradient(colors = appGradientColors) }
+    val robotoMono = RobotoMono
 
     Card(
         modifier = Modifier
@@ -615,8 +634,8 @@ fun ViewEditNoteScreen(
     var isEditing by rememberSaveable(note.id) { mutableStateOf(false) }
     var title by rememberSaveable(note.id) { mutableStateOf(note.title) }
     var content by rememberSaveable(note.id) { mutableStateOf(note.content) }
-    val dateFormat = remember { SimpleDateFormat("MMM d, yyyy", Locale.getDefault()) }
-    val dateString = dateFormat.format(Date(note.createdAt))
+    val locale = LocalConfiguration.current.locales[0]
+    val dateString = remember(note.createdAt, locale) { noteDateFormatter(locale).format(Instant.ofEpochMilli(note.createdAt)) }
     val scope = rememberCoroutineScope()
     val scrollState = rememberScrollState()
     val snackbarHostState = remember { SnackbarHostState() }

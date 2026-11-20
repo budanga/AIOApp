@@ -1,13 +1,10 @@
 package com.example.aioapp
 
-import android.Manifest
 import android.content.Intent
-import android.os.Build
 import android.os.Bundle
 import androidx.appcompat.app.AppCompatActivity
-import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.activity.compose.setContent
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.DrawerValue
@@ -43,8 +40,9 @@ class MainActivity : AppCompatActivity() {
     private var navigationIntent by mutableStateOf<Intent?>(null)
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        // Switches to postSplashScreenTheme (Theme.AIOApp) and keeps the splash until the stored theme is known
+        installSplashScreen().setKeepOnScreenCondition { viewModel.theme.value == null }
         super.onCreate(savedInstanceState)
-        setTheme(R.style.Theme_AIOApp)
 
         navigationIntent = intent
 
@@ -55,16 +53,6 @@ class MainActivity : AppCompatActivity() {
                 "Dark" -> true
                 "Light" -> false
                 else -> systemDarkTheme
-            }
-
-            val permissionLauncher = rememberLauncherForActivityResult(
-                contract = ActivityResultContracts.RequestPermission()
-            ) { _ -> }
-
-            LaunchedEffect(Unit) {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                    permissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-                }
             }
 
             AIOAppTheme(darkTheme = useDarkTheme) {

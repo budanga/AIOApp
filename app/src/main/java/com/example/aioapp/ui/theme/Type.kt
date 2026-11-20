@@ -12,6 +12,10 @@ val RobotoMono = FontFamily(
     Font(R.font.roboto_mono_variable_font_wght)
 )
 
+// Shared instances: a FontFamily built inside a composable is a new object on every recomposition
+val BbhBogle = FontFamily(Font(R.font.bbhbogle_regular))
+val HomemadeApple = FontFamily(Font(R.font.homemade_apple))
+
 // Set of Material typography styles to start with
 val Typography = Typography(
     bodyLarge = TextStyle(

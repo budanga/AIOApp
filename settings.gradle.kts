@@ -20,3 +20,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "AIO App"
 include(":app")
+include(":baselineprofile")

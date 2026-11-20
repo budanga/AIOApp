@@ -13,7 +13,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -46,8 +46,11 @@ class PomodoroViewModel @Inject constructor(
         override fun onServiceDisconnected(arg0: ComponentName) {
             isBound = false
             pomodoroService = null
+            stateJob?.cancel()
         }
     }
+
+    private var stateJob: Job? = null
 
     init {
         Intent(application, PomodoroService::class.java).also { intent ->
@@ -56,44 +59,43 @@ class PomodoroViewModel @Inject constructor(
     }
 
     private fun observeServiceState() {
-        viewModelScope.launch {
-            pomodoroService?.uiState?.collectLatest { serviceState ->
-                _uiState.value = serviceState
-            }
+        // A reconnection gets a new service instance: drop the collector of the old one
+        stateJob?.cancel()
+        val state = pomodoroService?.uiState ?: return
+        stateJob = viewModelScope.launch {
+            state.collect { _uiState.value = it }
         }
     }
 
     fun start() {
+        // Started (not only bound) so the timer survives leaving the screen; the intent runs startTimer()
         val intent = Intent(getApplication(), PomodoroService::class.java).apply {
             action = PomodoroService.ACTION_START
         }
         getApplication<Application>().startForegroundService(intent)
-        pomodoroService?.startTimer()
     }
 
+    // Each action goes through one path only: the bound service directly, or an intent if not bound yet
     fun pause() {
-        val intent = Intent(getApplication(), PomodoroService::class.java).apply {
-            action = PomodoroService.ACTION_PAUSE
-        }
-        getApplication<Application>().startService(intent)
-        pomodoroService?.pauseTimer()
+        pomodoroService?.pauseTimer() ?: sendAction(PomodoroService.ACTION_PAUSE)
     }
 
     fun reset() {
-        val intent = Intent(getApplication(), PomodoroService::class.java).apply {
-            action = PomodoroService.ACTION_RESET
-        }
-        getApplication<Application>().startService(intent)
-        pomodoroService?.resetTimer()
+        pomodoroService?.resetTimer() ?: sendAction(PomodoroService.ACTION_RESET)
     }
 
     fun setMode(mode: PomodoroMode) {
-        val intent = Intent(getApplication(), PomodoroService::class.java).apply {
-            action = PomodoroService.ACTION_SET_MODE
+        pomodoroService?.setMode(mode) ?: sendAction(PomodoroService.ACTION_SET_MODE) {
             putExtra(PomodoroService.EXTRA_MODE, mode.name)
         }
+    }
+
+    private fun sendAction(action: String, extras: Intent.() -> Unit = {}) {
+        val intent = Intent(getApplication(), PomodoroService::class.java).apply {
+            this.action = action
+            extras()
+        }
         getApplication<Application>().startService(intent)
-        pomodoroService?.setMode(mode)
     }
 
     override fun onCleared() {
