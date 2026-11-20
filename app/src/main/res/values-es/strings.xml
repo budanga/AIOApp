@@ -96,6 +96,39 @@
     <!-- Notas -->
     <string name="notes_pinned">FIJADA</string>
     <string name="notes_created">Creada: %1$s</string>
+    <plurals name="notes_selected">
+        <item quantity="one">%1$d seleccionada</item>
+        <item quantity="many">%1$d seleccionadas</item>
+        <item quantity="other">%1$d seleccionadas</item>
+    </plurals>
+    <plurals name="notes_deleted">
+        <item quantity="one">Nota eliminada</item>
+        <item quantity="many">Notas eliminadas</item>
+        <item quantity="other">Notas eliminadas</item>
+    </plurals>
+    <string name="notes_clear_selection">Quitar selección</string>
+    <string name="notes_toggle_pin">Fijar o desfijar</string>
+    <string name="notes_delete">Eliminar</string>
+    <string name="notes_sort">Ordenar</string>
+    <string name="notes_sort_name">Nombre</string>
+    <string name="notes_sort_created">Fecha de creación</string>
+    <string name="notes_sort_modified">Fecha de modificación</string>
+    <string name="notes_empty_prefix">"¡Escribí "</string>
+    <string name="notes_empty_suffix">tu primera nota!</string>
+    <string name="notes_add">Agregar nota</string>
+    <string name="notes_none_yet">Todavía no hay notas</string>
+    <string name="notes_no_matches">No se encontraron coincidencias</string>
+    <string name="notes_title_unique">El título de la nota debe ser único</string>
+    <string name="notes_title_empty">El título de la nota no puede estar vacío</string>
+    <string name="notes_save">Guardar</string>
+    <string name="notes_edit">Editar</string>
+    <string name="notes_title_hint">Título</string>
+    <string name="notes_content_hint">Empezá a escribir…</string>
+    <string name="notes_new">Nueva nota</string>
+    <string name="notes_optional_hint">Nota (opcional)</string>
+    <string name="notes_background_color">Color de fondo:</string>
+    <string name="notes_cancel">Cancelar</string>
+    <string name="notes_add_button">Agregar</string>
 
     <!-- Categorías de Unidades -->
     <string name="unit_cat_mass">Masa</string>

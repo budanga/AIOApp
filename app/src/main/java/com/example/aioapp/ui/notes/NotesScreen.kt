@@ -67,6 +67,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.navigation.NavController
 import com.example.aioapp.R
@@ -76,6 +77,7 @@ import com.example.aioapp.ui.theme.*
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.launch
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -207,6 +209,9 @@ fun NotesScreen(
     val robotoMono = RobotoMono
     val appGradientColors = LocalAppGradient.current
     val appGradient = remember(appGradientColors) { Brush.horizontalGradient(colors = appGradientColors) }
+    // Resolved here because snackbars are shown from coroutines, where stringResource can't be called
+    val resources = LocalContext.current.resources
+    val titleUniqueMessage = stringResource(R.string.notes_title_unique)
 
     Scaffold(
         snackbarHost = {
@@ -221,7 +226,11 @@ fun NotesScreen(
                     AppTopAppBar(
                         title = {
                             Text(
-                                text = if (isSelectionMode) "${selectedNoteIds.size} Selected" else "Notes",
+                                text = if (isSelectionMode) {
+                                    pluralStringResource(R.plurals.notes_selected, selectedNoteIds.size, selectedNoteIds.size)
+                                } else {
+                                    stringResource(R.string.feature_notes)
+                                },
                                 color = MaterialTheme.colorScheme.onSurface,
                                 style = MaterialTheme.typography.titleLarge.copy(fontFamily = robotoMono)
                             )
@@ -229,15 +238,15 @@ fun NotesScreen(
                         navigationIcon = {
                             if (isSelectionMode) {
                                 IconButton(onClick = { selectedNoteIds = emptySet() }) {
-                                    Icon(Icons.Default.Close, contentDescription = "Clear Selection", tint = MaterialTheme.colorScheme.onSurface)
+                                    Icon(Icons.Default.Close, contentDescription = stringResource(R.string.notes_clear_selection), tint = MaterialTheme.colorScheme.onSurface)
                                 }
                             } else if (navController.previousBackStackEntry != null) {
                                 IconButton(onClick = { navController.navigateUp() }) {
-                                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = MaterialTheme.colorScheme.onSurface)
+                                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.nav_back), tint = MaterialTheme.colorScheme.onSurface)
                                 }
                             } else {
                                 IconButton(onClick = { scope.launch { drawerState.open() } }) {
-                                    Icon(Icons.Filled.Menu, contentDescription = "Menu", tint = MaterialTheme.colorScheme.onSurface)
+                                    Icon(Icons.Filled.Menu, contentDescription = stringResource(R.string.nav_menu), tint = MaterialTheme.colorScheme.onSurface)
                                 }
                             }
                         },
@@ -247,30 +256,30 @@ fun NotesScreen(
                                     viewModel.togglePinForSelected(selectedNoteIds)
                                     selectedNoteIds = emptySet()
                                 }) {
-                                    Icon(Icons.Default.PushPin, contentDescription = "Toggle Pin", tint = MaterialTheme.colorScheme.primary)
+                                    Icon(Icons.Default.PushPin, contentDescription = stringResource(R.string.notes_toggle_pin), tint = MaterialTheme.colorScheme.primary)
                                 }
                                 IconButton(onClick = {
                                     val count = selectedNoteIds.size
                                     viewModel.deleteNotes(selectedNoteIds)
                                     selectedNoteIds = emptySet()
                                     scope.launch {
-                                        val msg = if (count == 1) "Note deleted successfully" else "Notes deleted successfully"
+                                        val msg = resources.getQuantityString(R.plurals.notes_deleted, count)
                                         snackbarHostState.showSnackbar(msg)
                                     }
                                 }) {
-                                    Icon(Icons.Default.Delete, contentDescription = "Delete", tint = Color.Red)
+                                    Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.notes_delete), tint = Color.Red)
                                 }
                             } else if (!showAddDialog) {
                                 IconButton(onClick = { isSearchExpanded = !isSearchExpanded }) {
                                     Icon(
                                         imageVector = if (isSearchExpanded) Icons.Default.SearchOff else Icons.Default.Search,
-                                        contentDescription = "Search",
+                                        contentDescription = stringResource(R.string.search_hint),
                                         tint = if (isSearchExpanded) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
                                     )
                                 }
                                 Box {
                                     IconButton(onClick = { showSortMenu = true }) {
-                                        Icon(Icons.AutoMirrored.Filled.Sort, contentDescription = "Sort", tint = MaterialTheme.colorScheme.onSurface)
+                                        Icon(Icons.AutoMirrored.Filled.Sort, contentDescription = stringResource(R.string.notes_sort), tint = MaterialTheme.colorScheme.onSurface)
                                     }
                                     DropdownMenu(
                                         expanded = showSortMenu,
@@ -278,7 +287,7 @@ fun NotesScreen(
                                     ) {
                                         NoteSortOrder.entries.forEach { order ->
                                             DropdownMenuItem(
-                                                text = { Text(if (order == NoteSortOrder.ALPHABETICAL) "Name" else order.name.replace("_", " ").lowercase().replaceFirstChar { it.uppercase() }) },
+                                                text = { Text(stringResource(order.labelRes())) },
                                                 onClick = {
                                                     viewModel.setSortOrder(order)
                                                     showSortMenu = false
@@ -311,7 +320,7 @@ fun NotesScreen(
                             trailingIcon = {
                                 if (searchQuery.isNotEmpty()) {
                                     IconButton(onClick = { viewModel.onSearchQueryChange("") }) {
-                                        Icon(Icons.Default.Clear, contentDescription = "Clear Search")
+                                        Icon(Icons.Default.Clear, contentDescription = stringResource(R.string.feature_search_clear))
                                     }
                                 }
                             },
@@ -342,8 +351,8 @@ fun NotesScreen(
                     if (notes.isEmpty() && searchQuery.isEmpty()) {
                         Text(
                             text = buildAnnotatedString {
-                                withStyle(style = SpanStyle(fontFamily = homemadeApple, fontSize = 20.sp)) { append("Write ") }
-                                withStyle(style = SpanStyle(fontSize = 20.sp)) { append("your first note!") }
+                                withStyle(style = SpanStyle(fontFamily = homemadeApple, fontSize = 20.sp)) { append(stringResource(R.string.notes_empty_prefix)) }
+                                withStyle(style = SpanStyle(fontSize = 20.sp)) { append(stringResource(R.string.notes_empty_suffix)) }
                             },
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -394,7 +403,7 @@ fun NotesScreen(
                     ) {
                         Icon(
                             Icons.Filled.Add,
-                            contentDescription = "Add Note",
+                            contentDescription = stringResource(R.string.notes_add),
                             tint = Color.White,
                             modifier = Modifier.size(28.dp)
                         )
@@ -456,13 +465,18 @@ fun NotesScreen(
                                 horizontalAlignment = Alignment.CenterHorizontally,
                                 verticalArrangement = Arrangement.Center
                             ) {
-                                Text(
-                                    text = if (searchQuery.isEmpty()) "No notes yet" else "No matches found",
-                                    style = MaterialTheme.typography.displaySmall,
-                                    fontWeight = FontWeight.Normal,
-                                    color = MaterialTheme.colorScheme.onSurface,
-                                    fontFamily = robotoMono
-                                )
+                                if (searchQuery.isEmpty()) {
+                                    // No notes at all: the illustration plus the "write your first note" hint next to the FAB
+                                    EmptyNotebook(gradientColors = appGradientColors)
+                                } else {
+                                    Text(
+                                        text = stringResource(R.string.notes_no_matches),
+                                        style = MaterialTheme.typography.displaySmall,
+                                        fontWeight = FontWeight.Normal,
+                                        color = MaterialTheme.colorScheme.onSurface,
+                                        fontFamily = robotoMono
+                                    )
+                                }
                             }
                         }
                     }
@@ -476,7 +490,7 @@ fun NotesScreen(
                             appGradient = appGradient,
                             onUniqueError = {
                                 scope.launch {
-                                    snackbarHostState.showSnackbar("Note title must be unique")
+                                    snackbarHostState.showSnackbar(titleUniqueMessage)
                                 }
                             }
                         )
@@ -503,7 +517,7 @@ fun NotesScreen(
                             if (viewModel.addNote(title, content, color)) {
                                 showAddDialog = false
                             } else {
-                                snackbarHostState.showSnackbar("Note title must be unique")
+                                snackbarHostState.showSnackbar(titleUniqueMessage)
                             }
                         }
                     },
@@ -515,6 +529,12 @@ fun NotesScreen(
 }
 
 @OptIn(ExperimentalFoundationApi::class)
+private fun NoteSortOrder.labelRes(): Int = when (this) {
+    NoteSortOrder.ALPHABETICAL -> R.string.notes_sort_name
+    NoteSortOrder.CREATION_DATE -> R.string.notes_sort_created
+    NoteSortOrder.MODIFICATION_DATE -> R.string.notes_sort_modified
+}
+
 // DateTimeFormatter is immutable: one per locale is shared by every note instead of a SimpleDateFormat each
 private val noteDateFormatters = java.util.concurrent.ConcurrentHashMap<Locale, DateTimeFormatter>()
 
@@ -570,7 +590,7 @@ fun NoteItem(
                             ) {
                                 Icon(
                                     imageVector = Icons.Default.PushPin,
-                                    contentDescription = "Pinned",
+                                    contentDescription = stringResource(R.string.notes_pinned),
                                     tint = contentColor.copy(alpha = 0.8f),
                                     modifier = Modifier.size(14.dp)
                                 )
@@ -638,6 +658,9 @@ fun ViewEditNoteScreen(
     val dateString = remember(note.createdAt, locale) { noteDateFormatter(locale).format(Instant.ofEpochMilli(note.createdAt)) }
     val scope = rememberCoroutineScope()
     val scrollState = rememberScrollState()
+    // Resolved here because the snackbars are shown from coroutines
+    val titleEmptyMessage = stringResource(R.string.notes_title_empty)
+    val titleUniqueMessage = stringResource(R.string.notes_title_unique)
     val snackbarHostState = remember { SnackbarHostState() }
 
     val isDarkApp = LocalDarkTheme.current
@@ -698,7 +721,7 @@ fun ViewEditNoteScreen(
                         if (isEditing) {
                             if (title.isBlank()) {
                                 scope.launch {
-                                    snackbarHostState.showSnackbar("Note title cannot be empty")
+                                    snackbarHostState.showSnackbar(titleEmptyMessage)
                                 }
                                 return@clickable
                             }
@@ -706,7 +729,7 @@ fun ViewEditNoteScreen(
                                 if (viewModel.updateNote(note.id, title, content)) {
                                     isEditing = false
                                 } else {
-                                    snackbarHostState.showSnackbar("Note title must be unique")
+                                    snackbarHostState.showSnackbar(titleUniqueMessage)
                                 }
                             }
                         } else {
@@ -725,7 +748,7 @@ fun ViewEditNoteScreen(
                 ) { editing ->
                     Icon(
                         if (editing) Icons.Default.Check else Icons.Default.Edit,
-                        contentDescription = if (editing) "Save" else "Edit",
+                        contentDescription = stringResource(if (editing) R.string.notes_save else R.string.notes_edit),
                         tint = Color.White,
                         modifier = Modifier
                             .size(28.dp)
@@ -753,7 +776,7 @@ fun ViewEditNoteScreen(
             ) {
                 Icon(
                     Icons.AutoMirrored.Filled.ArrowBack,
-                    contentDescription = "Back",
+                    contentDescription = stringResource(R.string.nav_back),
                     tint = contentColor
                 )
             }
@@ -785,7 +808,7 @@ fun ViewEditNoteScreen(
                                 onValueChange = { title = it },
                                 modifier = Modifier.fillMaxWidth(),
                                 textStyle = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold, color = contentColor),
-                                placeholder = { Text("Title", color = contentColor.copy(alpha = 0.5f)) },
+                                placeholder = { Text(stringResource(R.string.notes_title_hint), color = contentColor.copy(alpha = 0.5f)) },
                                 colors = TextFieldDefaults.colors(
                                     focusedContainerColor = Color.Transparent,
                                     unfocusedContainerColor = Color.Transparent,
@@ -809,7 +832,7 @@ fun ViewEditNoteScreen(
                                 onValueChange = { content = it },
                                 modifier = Modifier.fillMaxWidth(),
                                 textStyle = MaterialTheme.typography.bodyLarge.copy(color = contentColor),
-                                placeholder = { Text("Start typing...", color = contentColor.copy(alpha = 0.5f)) },
+                                placeholder = { Text(stringResource(R.string.notes_content_hint), color = contentColor.copy(alpha = 0.5f)) },
                                 colors = TextFieldDefaults.colors(
                                     focusedContainerColor = Color.Transparent,
                                     unfocusedContainerColor = Color.Transparent,
@@ -881,7 +904,7 @@ fun AddNoteDialog(
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             Text(
-                "New Note",
+                stringResource(R.string.notes_new),
                 style = MaterialTheme.typography.headlineSmall,
                 color = MaterialTheme.colorScheme.onBackground
             )
@@ -895,7 +918,7 @@ fun AddNoteDialog(
                 TextField(
                     value = title,
                     onValueChange = { title = it },
-                    placeholder = { Text("Title") },
+                    placeholder = { Text(stringResource(R.string.notes_title_hint)) },
                     modifier = Modifier.fillMaxWidth().focusRequester(focusRequester),
                     colors = TextFieldDefaults.colors(
                         focusedContainerColor = Color.Transparent,
@@ -918,7 +941,7 @@ fun AddNoteDialog(
                 TextField(
                     value = content,
                     onValueChange = { content = it },
-                    placeholder = { Text("Note (Optional)") },
+                    placeholder = { Text(stringResource(R.string.notes_optional_hint)) },
                     modifier = Modifier.fillMaxWidth().heightIn(min = 100.dp),
                     colors = TextFieldDefaults.colors(
                         focusedContainerColor = Color.Transparent,
@@ -932,7 +955,7 @@ fun AddNoteDialog(
             }
 
             Column {
-                Text("Background Color:", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onBackground)
+                Text(stringResource(R.string.notes_background_color), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onBackground)
                 Spacer(modifier = Modifier.height(8.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     colors.forEach { color ->
@@ -963,7 +986,7 @@ fun AddNoteDialog(
                     onClick = onDismiss,
                     modifier = Modifier.height(44.dp).width(100.dp)
                 ) {
-                    Text("Cancel", fontWeight = FontWeight.Bold)
+                    Text(stringResource(R.string.notes_cancel), fontWeight = FontWeight.Bold)
                 }
 
                 val interactionSource = remember { MutableInteractionSource() }
@@ -988,7 +1011,7 @@ fun AddNoteDialog(
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        "Add",
+                        stringResource(R.string.notes_add_button),
                         color = if (isFormComplete) Color.White else Color.DarkGray,
                         fontWeight = FontWeight.Bold
                     )
