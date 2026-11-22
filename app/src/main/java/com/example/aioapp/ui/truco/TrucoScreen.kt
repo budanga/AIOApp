@@ -24,6 +24,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.rotate
@@ -36,7 +37,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import com.example.aioapp.core.model.TrucoGame
 import com.example.aioapp.ui.components.AppTopAppBar
-import com.example.aioapp.ui.theme.LocalAppGradient
 import com.example.aioapp.ui.theme.RobotoMono
 import java.time.Instant
 import java.time.ZoneId
@@ -58,8 +58,7 @@ fun TrucoScreen(
     navController: NavController
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    val gradientColors = LocalAppGradient.current
-    val appGradient = remember(gradientColors) { Brush.horizontalGradient(gradientColors) }
+    val accentBrush = SolidColor(MaterialTheme.colorScheme.primary)
     var showHistory by remember { mutableStateOf(false) }
 
     Scaffold(
@@ -133,7 +132,7 @@ fun TrucoScreen(
                         maxPoints = uiState.maxPoints,
                         onIncrement = { viewModel.incrementNos() },
                         onDecrement = { viewModel.decrementNos() },
-                        appGradient = appGradient,
+                        accentBrush = accentBrush,
                         modifier = Modifier.weight(1f)
                     )
 
@@ -144,7 +143,7 @@ fun TrucoScreen(
                         maxPoints = uiState.maxPoints,
                         onIncrement = { viewModel.incrementEllos() },
                         onDecrement = { viewModel.decrementEllos() },
-                        appGradient = appGradient,
+                        accentBrush = accentBrush,
                         modifier = Modifier.weight(1f)
                     )
                 }
@@ -160,7 +159,7 @@ fun TrucoScreen(
                 WinOverlay(
                     winner = uiState.winner ?: "",
                     onReset = { viewModel.reset() },
-                    appGradient = appGradient
+                    accentBrush = accentBrush
                 )
             }
 
@@ -170,7 +169,7 @@ fun TrucoScreen(
                     history = uiState.history,
                     onDismiss = { showHistory = false },
                     onClear = { viewModel.clearHistory() },
-                    appGradient = appGradient
+                    accentBrush = accentBrush
                 )
             }
         }
@@ -182,7 +181,7 @@ fun HistoryDialog(
     history: List<TrucoGame>,
     onDismiss: () -> Unit,
     onClear: () -> Unit,
-    appGradient: Brush
+    accentBrush: Brush
 ) {
     // One thread-safe formatter per locale, instead of a SimpleDateFormat per row per recomposition
     val locale = LocalConfiguration.current.locales[0]
@@ -342,7 +341,7 @@ fun HistoryDialog(
                                     .width(100.dp)
                                     .graphicsLayer(scaleX = scale, scaleY = scale)
                                     .clip(RoundedCornerShape(12.dp))
-                                    .background(appGradient)
+                                    .background(accentBrush)
                                     .clickable(
                                         interactionSource = interactionSource,
                                         indication = LocalIndication.current
@@ -351,7 +350,7 @@ fun HistoryDialog(
                             ) {
                                 Text(
                                     stringResource(R.string.truco_history_close),
-                                    color = Color.White,
+                                    color = MaterialTheme.colorScheme.onPrimary,
                                     fontWeight = FontWeight.Bold,
                                     fontFamily = RobotoMono
                                 )
@@ -368,7 +367,7 @@ fun HistoryDialog(
 fun WinOverlay(
     winner: String,
     onReset: () -> Unit,
-    appGradient: Brush
+    accentBrush: Brush
 ) {
     Box(
         modifier = Modifier
@@ -425,17 +424,17 @@ fun WinOverlay(
                     .fillMaxWidth(0.7f)
                     .height(56.dp)
                     .clip(RoundedCornerShape(28.dp))
-                    .background(appGradient),
+                    .background(accentBrush),
                 colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent)
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Default.Refresh, contentDescription = null, tint = Color.White)
+                    Icon(Icons.Default.Refresh, contentDescription = null, tint = MaterialTheme.colorScheme.onPrimary)
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
                         stringResource(R.string.truco_play_again),
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
-                        color = Color.White,
+                        color = MaterialTheme.colorScheme.onPrimary,
                         fontFamily = RobotoMono
                     )
                 }
@@ -520,7 +519,7 @@ fun TeamColumn(
     maxPoints: Int,
     onIncrement: () -> Unit,
     onDecrement: () -> Unit,
-    appGradient: Brush,
+    accentBrush: Brush,
     modifier: Modifier = Modifier
 ) {
     Column(
@@ -580,9 +579,9 @@ fun TeamColumn(
                     modifier = Modifier
                         .size(48.dp)
                         .clip(CircleShape)
-                        .background(appGradient)
+                        .background(accentBrush)
                 ) {
-                    Icon(Icons.Default.Add, contentDescription = stringResource(R.string.truco_increment), tint = Color.White)
+                    Icon(Icons.Default.Add, contentDescription = stringResource(R.string.truco_increment), tint = MaterialTheme.colorScheme.onPrimary)
                 }
             }
         }

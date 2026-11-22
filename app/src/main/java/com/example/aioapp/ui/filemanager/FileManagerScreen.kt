@@ -106,6 +106,7 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.graphicsLayer
@@ -127,7 +128,6 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import androidx.compose.ui.res.stringResource
 import com.example.aioapp.R
-import com.example.aioapp.ui.theme.LocalAppGradient
 import com.example.aioapp.ui.theme.RobotoMono
 import kotlinx.coroutines.flow.collectLatest
 
@@ -156,8 +156,7 @@ fun FileManagerScreen(
     var infoItem by remember { mutableStateOf<Any?>(null) }
     var isSearchBarVisible by remember { mutableStateOf(false) }
 
-    val appGradientColors = LocalAppGradient.current
-    val appGradient = remember(appGradientColors) { Brush.horizontalGradient(colors = appGradientColors) }
+    val accentBrush = SolidColor(MaterialTheme.colorScheme.primary)
 
     val fullPath = remember(currentDirectory) {
         currentDirectory?.let { uri ->
@@ -298,7 +297,7 @@ fun FileManagerScreen(
                             .graphicsLayer(scaleX = scale, scaleY = scale)
                             .shadow(if (isPressed) 4.dp else 12.dp, CircleShape)
                             .clip(CircleShape)
-                            .background(appGradient)
+                            .background(accentBrush)
                             .border(1.dp, Color.White.copy(alpha = 0.2f), CircleShape)
                             .clickable(
                                 interactionSource = interactionSource,
@@ -309,7 +308,7 @@ fun FileManagerScreen(
                         Icon(
                             Icons.Default.Add, 
                             contentDescription = "Create file", 
-                            tint = Color.White,
+                            tint = MaterialTheme.colorScheme.onPrimary,
                             modifier = Modifier.size(28.dp)
                         )
                     }
@@ -331,7 +330,7 @@ fun FileManagerScreen(
                                 viewModel = viewModel,
                                 selectedItems = selectedItems,
                                 cutItemUris = cutItemUris,
-                                appGradient = appGradient,
+                                accentBrush = accentBrush,
                                 onShowInfo = { infoItem = it }
                             )
                         }
@@ -396,7 +395,7 @@ fun FileManagerScreen(
                 CreateFileDialog(
                     onDismiss = { showCreateFileDialog = false },
                     onCreate = viewModel::createFile,
-                    appGradient = appGradient,
+                    accentBrush = accentBrush,
                     titleFontFamily = RobotoMono
                 )
             }
@@ -414,7 +413,7 @@ fun FileManagerScreen(
                 CreateFolderDialog(
                     onDismiss = { showCreateFolderDialog = false },
                     onCreate = viewModel::createFolder,
-                    appGradient = appGradient,
+                    accentBrush = accentBrush,
                     titleFontFamily = RobotoMono
                 )
             }
@@ -652,7 +651,7 @@ fun DirectoryContent(
     viewModel: FileManagerViewModel,
     selectedItems: Set<Uri>,
     cutItemUris: Set<Uri>,
-    appGradient: Brush,
+    accentBrush: Brush,
     onShowInfo: (Any) -> Unit
 ) {
     val listing by viewModel.listing.collectAsStateWithLifecycle()
@@ -679,7 +678,7 @@ fun DirectoryContent(
             viewModel = viewModel,
             selectedItems = selectedItems,
             cutItemUris = cutItemUris,
-            appGradient = appGradient,
+            accentBrush = accentBrush,
             onShowInfo = onShowInfo
         )
     }
@@ -692,7 +691,7 @@ private fun FolderList(
     viewModel: FileManagerViewModel,
     selectedItems: Set<Uri>,
     cutItemUris: Set<Uri>,
-    appGradient: Brush,
+    accentBrush: Brush,
     onShowInfo: (Any) -> Unit
 ) {
     val directories = listing.directories
@@ -734,7 +733,7 @@ private fun FolderList(
                 directory = dir, 
                 isSelected = selectedItems.contains(dir.uri),
                 isCut = cutItemUris.contains(dir.uri),
-                appGradient = appGradient,
+                accentBrush = accentBrush,
                 onClick = { 
                     if (selectedItems.isNotEmpty()) viewModel.toggleSelection(dir.uri)
                     else viewModel.navigateToDirectory(dir.uri)
@@ -748,7 +747,7 @@ private fun FolderList(
                 file = file, 
                 isSelected = selectedItems.contains(file.uri),
                 isCut = cutItemUris.contains(file.uri),
-                appGradient = appGradient,
+                accentBrush = accentBrush,
                 onClick = { 
                     if (selectedItems.isNotEmpty()) viewModel.toggleSelection(file.uri)
                     else viewModel.openFile(file.uri, file.mimeType)
@@ -771,7 +770,7 @@ fun DirectoryItem(
     directory: DirectoryData,
     isSelected: Boolean,
     isCut: Boolean,
-    appGradient: Brush,
+    accentBrush: Brush,
     onClick: () -> Unit,
     onLongClick: () -> Unit,
     onInfo: () -> Unit
@@ -782,7 +781,7 @@ fun DirectoryItem(
             .alpha(if (isCut) 0.5f else 1f),
         shape = RoundedCornerShape(12.dp),
         color = if (isSelected) selectedItemColor() else Color.Transparent,
-        border = if (isSelected) BorderStroke(2.dp, appGradient) else null
+        border = if (isSelected) BorderStroke(2.dp, accentBrush) else null
     ) {
         ListItem(
             modifier = Modifier
@@ -816,7 +815,7 @@ fun FileItem(
     file: FileData,
     isSelected: Boolean,
     isCut: Boolean,
-    appGradient: Brush,
+    accentBrush: Brush,
     onClick: () -> Unit,
     onLongClick: () -> Unit,
     onInfo: () -> Unit
@@ -827,7 +826,7 @@ fun FileItem(
             .alpha(if (isCut) 0.5f else 1f),
         shape = RoundedCornerShape(12.dp),
         color = if (isSelected) selectedItemColor() else Color.Transparent,
-        border = if (isSelected) BorderStroke(2.dp, appGradient) else null
+        border = if (isSelected) BorderStroke(2.dp, accentBrush) else null
     ) {
         ListItem(
             modifier = Modifier
@@ -947,7 +946,7 @@ fun FileManagerTopAppBar(
 }
 
 @Composable
-fun CreateFileDialog(onDismiss: () -> Unit, onCreate: (String) -> Unit, appGradient: Brush, titleFontFamily: FontFamily) {
+fun CreateFileDialog(onDismiss: () -> Unit, onCreate: (String) -> Unit, accentBrush: Brush, titleFontFamily: FontFamily) {
     var fileName by rememberSaveable { mutableStateOf("") }
     val focusRequester = remember { FocusRequester() }
     val isFormComplete = fileName.isNotBlank()
@@ -975,7 +974,7 @@ fun CreateFileDialog(onDismiss: () -> Unit, onCreate: (String) -> Unit, appGradi
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .border(1.5.dp, appGradient, RoundedCornerShape(8.dp))
+                    .border(1.5.dp, accentBrush, RoundedCornerShape(8.dp))
                     .padding(2.dp)
             ) {
                 TextField(
@@ -1014,7 +1013,7 @@ fun CreateFileDialog(onDismiss: () -> Unit, onCreate: (String) -> Unit, appGradi
                         .width(100.dp)
                         .graphicsLayer(scaleX = scale, scaleY = scale)
                         .clip(RoundedCornerShape(12.dp))
-                        .background(if (isFormComplete) appGradient else Brush.linearGradient(listOf(Color.LightGray, Color.LightGray)))
+                        .background(if (isFormComplete) accentBrush else Brush.linearGradient(listOf(Color.LightGray, Color.LightGray)))
                         .clickable(
                             enabled = isFormComplete,
                             interactionSource = interactionSource,
@@ -1024,7 +1023,7 @@ fun CreateFileDialog(onDismiss: () -> Unit, onCreate: (String) -> Unit, appGradi
                 ) {
                     Text(
                         "Create",
-                        color = if (isFormComplete) Color.White else Color.DarkGray,
+                        color = if (isFormComplete) MaterialTheme.colorScheme.onPrimary else Color.DarkGray,
                         fontWeight = FontWeight.Bold,
                         fontFamily = titleFontFamily
                     )
@@ -1035,7 +1034,7 @@ fun CreateFileDialog(onDismiss: () -> Unit, onCreate: (String) -> Unit, appGradi
 }
 
 @Composable
-fun CreateFolderDialog(onDismiss: () -> Unit, onCreate: (String) -> Unit, appGradient: Brush, titleFontFamily: FontFamily) {
+fun CreateFolderDialog(onDismiss: () -> Unit, onCreate: (String) -> Unit, accentBrush: Brush, titleFontFamily: FontFamily) {
     var folderName by rememberSaveable { mutableStateOf("") }
     val focusRequester = remember { FocusRequester() }
     val isFormComplete = folderName.isNotBlank()
@@ -1063,7 +1062,7 @@ fun CreateFolderDialog(onDismiss: () -> Unit, onCreate: (String) -> Unit, appGra
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .border(1.5.dp, appGradient, RoundedCornerShape(8.dp))
+                    .border(1.5.dp, accentBrush, RoundedCornerShape(8.dp))
                     .padding(2.dp)
             ) {
                 TextField(
@@ -1102,7 +1101,7 @@ fun CreateFolderDialog(onDismiss: () -> Unit, onCreate: (String) -> Unit, appGra
                         .width(100.dp)
                         .graphicsLayer(scaleX = scale, scaleY = scale)
                         .clip(RoundedCornerShape(12.dp))
-                        .background(if (isFormComplete) appGradient else Brush.linearGradient(listOf(Color.LightGray, Color.LightGray)))
+                        .background(if (isFormComplete) accentBrush else Brush.linearGradient(listOf(Color.LightGray, Color.LightGray)))
                         .clickable(
                             enabled = isFormComplete,
                             interactionSource = interactionSource,
@@ -1112,7 +1111,7 @@ fun CreateFolderDialog(onDismiss: () -> Unit, onCreate: (String) -> Unit, appGra
                 ) {
                     Text(
                         "Create",
-                        color = if (isFormComplete) Color.White else Color.DarkGray,
+                        color = if (isFormComplete) MaterialTheme.colorScheme.onPrimary else Color.DarkGray,
                         fontWeight = FontWeight.Bold,
                         fontFamily = titleFontFamily
                     )

@@ -54,6 +54,7 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
@@ -208,7 +209,7 @@ fun NotesScreen(
     val homemadeApple = HomemadeApple
     val robotoMono = RobotoMono
     val appGradientColors = LocalAppGradient.current
-    val appGradient = remember(appGradientColors) { Brush.horizontalGradient(colors = appGradientColors) }
+    val accentBrush = SolidColor(MaterialTheme.colorScheme.primary)
     // Resolved here because snackbars are shown from coroutines, where stringResource can't be called
     val resources = LocalContext.current.resources
     val titleUniqueMessage = stringResource(R.string.notes_title_unique)
@@ -314,7 +315,7 @@ fun NotesScreen(
                                 .fillMaxWidth()
                                 .padding(horizontal = 16.dp, vertical = 8.dp)
                                 .focusRequester(searchFocusRequester)
-                                .border(1.5.dp, appGradient, RoundedCornerShape(8.dp)),
+                                .border(1.5.dp, accentBrush, RoundedCornerShape(8.dp)),
                             placeholder = { Text(stringResource(R.string.search_hint), fontFamily = robotoMono) },
                             leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
                             trailingIcon = {
@@ -393,7 +394,7 @@ fun NotesScreen(
                             }
                             .shadow(if (isPressed) 4.dp else 12.dp, CircleShape)
                             .clip(CircleShape)
-                            .background(appGradient)
+                            .background(accentBrush)
                             .border(1.dp, Color.White.copy(alpha = 0.2f), CircleShape)
                             .clickable(
                                 interactionSource = interactionSource,
@@ -404,7 +405,7 @@ fun NotesScreen(
                         Icon(
                             Icons.Filled.Add,
                             contentDescription = stringResource(R.string.notes_add),
-                            tint = Color.White,
+                            tint = MaterialTheme.colorScheme.onPrimary,
                             modifier = Modifier.size(28.dp)
                         )
                     }
@@ -487,7 +488,7 @@ fun NotesScreen(
                             note = note,
                             viewModel = viewModel,
                             onDismiss = { viewingNoteId = null },
-                            appGradient = appGradient,
+                            accentBrush = accentBrush,
                             onUniqueError = {
                                 scope.launch {
                                     snackbarHostState.showSnackbar(titleUniqueMessage)
@@ -521,7 +522,7 @@ fun NotesScreen(
                             }
                         }
                     },
-                    appGradient = appGradient
+                    accentBrush = accentBrush
                 )
             }
         }
@@ -556,8 +557,7 @@ fun NoteItem(
     val baseColor = Color(note.color)
     val isLightNote = remember(note.color) { baseColor.luminance() > 0.5f }
     val contentColor = if (isLightNote) Color.Black else Color.White
-    val appGradientColors = LocalAppGradient.current
-    val selectionGradient = remember(appGradientColors) { Brush.horizontalGradient(colors = appGradientColors) }
+    val selectionBrush = SolidColor(MaterialTheme.colorScheme.primary)
     val robotoMono = RobotoMono
 
     Card(
@@ -565,7 +565,7 @@ fun NoteItem(
             .fillMaxWidth()
             .combinedClickable(onClick = onClick, onLongClick = onLongClick),
         shape = RoundedCornerShape(12.dp),
-        border = if (isSelected) BorderStroke(1.5.dp, selectionGradient) else null,
+        border = if (isSelected) BorderStroke(1.5.dp, selectionBrush) else null,
         colors = CardDefaults.cardColors(containerColor = baseColor),
         elevation = CardDefaults.cardElevation(defaultElevation = if (isSelected) 0.dp else 2.dp)
     ) {
@@ -648,7 +648,7 @@ fun ViewEditNoteScreen(
     note: Note,
     viewModel: NotesViewModel,
     onDismiss: () -> Unit,
-    appGradient: Brush,
+    accentBrush: Brush,
     onUniqueError: () -> Unit
 ) {
     var isEditing by rememberSaveable(note.id) { mutableStateOf(false) }
@@ -712,7 +712,7 @@ fun ViewEditNoteScreen(
                     .graphicsLayer(scaleX = scale, scaleY = scale)
                     .shadow(if (isPressed) 4.dp else 12.dp, CircleShape)
                     .clip(CircleShape)
-                    .background(appGradient)
+                    .background(accentBrush)
                     .border(1.dp, Color.White.copy(alpha = 0.2f), CircleShape)
                     .clickable(
                         interactionSource = interactionSource,
@@ -749,7 +749,7 @@ fun ViewEditNoteScreen(
                     Icon(
                         if (editing) Icons.Default.Check else Icons.Default.Edit,
                         contentDescription = stringResource(if (editing) R.string.notes_save else R.string.notes_edit),
-                        tint = Color.White,
+                        tint = MaterialTheme.colorScheme.onPrimary,
                         modifier = Modifier
                             .size(28.dp)
                             .graphicsLayer(rotationZ = rotation)
@@ -877,7 +877,7 @@ fun ViewEditNoteScreen(
 fun AddNoteDialog(
     onDismiss: () -> Unit,
     onConfirm: (String, String, Int) -> Unit,
-    appGradient: Brush
+    accentBrush: Brush
 ) {
     var title by rememberSaveable { mutableStateOf("") }
     var content by rememberSaveable { mutableStateOf("") }
@@ -912,7 +912,7 @@ fun AddNoteDialog(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .border(1.5.dp, appGradient, RoundedCornerShape(8.dp))
+                    .border(1.5.dp, accentBrush, RoundedCornerShape(8.dp))
                     .padding(2.dp)
             ) {
                 TextField(
@@ -935,7 +935,7 @@ fun AddNoteDialog(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .border(1.5.dp, appGradient, RoundedCornerShape(8.dp))
+                    .border(1.5.dp, accentBrush, RoundedCornerShape(8.dp))
                     .padding(2.dp)
             ) {
                 TextField(
@@ -1002,7 +1002,7 @@ fun AddNoteDialog(
                         .width(100.dp)
                         .graphicsLayer(scaleX = scale, scaleY = scale)
                         .clip(RoundedCornerShape(12.dp))
-                        .background(if (isFormComplete) appGradient else Brush.linearGradient(listOf(Color.LightGray, Color.LightGray)))
+                        .background(if (isFormComplete) accentBrush else Brush.linearGradient(listOf(Color.LightGray, Color.LightGray)))
                         .clickable(
                             enabled = isFormComplete,
                             interactionSource = interactionSource,
@@ -1012,7 +1012,7 @@ fun AddNoteDialog(
                 ) {
                     Text(
                         stringResource(R.string.notes_add_button),
-                        color = if (isFormComplete) Color.White else Color.DarkGray,
+                        color = if (isFormComplete) MaterialTheme.colorScheme.onPrimary else Color.DarkGray,
                         fontWeight = FontWeight.Bold
                     )
                 }

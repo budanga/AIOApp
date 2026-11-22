@@ -1,6 +1,5 @@
 package com.example.aioapp.ui.components
 
-import androidx.compose.foundation.border
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Clear
@@ -13,14 +12,11 @@ import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.example.aioapp.R
-import com.example.aioapp.ui.theme.RobotoMono
 import java.text.Normalizer
 
 private val diacritics = "\\p{Mn}+".toRegex()
@@ -36,18 +32,16 @@ fun matchesSearch(name: String, query: String): Boolean =
 fun FeatureSearchField(
     query: String,
     onQueryChange: (String) -> Unit,
-    appGradient: Brush,
     modifier: Modifier = Modifier
 ) {
     OutlinedTextField(
         value = query,
         onValueChange = onQueryChange,
-        modifier = modifier.border(1.5.dp, appGradient, RoundedCornerShape(8.dp)),
+        modifier = modifier,
         placeholder = {
             // Narrow containers (the drawer) would otherwise wrap the hint and make the field taller
             Text(
                 stringResource(R.string.search_hint),
-                fontFamily = RobotoMono,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
@@ -60,14 +54,13 @@ fun FeatureSearchField(
                 }
             }
         },
-        shape = RoundedCornerShape(8.dp),
+        shape = RoundedCornerShape(28.dp),
         singleLine = true,
         colors = OutlinedTextFieldDefaults.colors(
-            focusedBorderColor = Color.Transparent,
+            focusedBorderColor = MaterialTheme.colorScheme.primary,
             unfocusedBorderColor = Color.Transparent,
-            focusedContainerColor = MaterialTheme.colorScheme.surface,
-            unfocusedContainerColor = MaterialTheme.colorScheme.surface
-        ),
-        textStyle = TextStyle(fontFamily = RobotoMono)
+            focusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+            unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh
+        )
     )
 }

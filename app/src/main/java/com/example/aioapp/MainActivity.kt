@@ -1,7 +1,10 @@
 package com.example.aioapp
 
 import android.content.Intent
+import android.graphics.Color
 import android.os.Bundle
+import androidx.activity.SystemBarStyle
+import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.activity.compose.setContent
@@ -53,6 +56,12 @@ class MainActivity : AppCompatActivity() {
                 "Dark" -> true
                 "Light" -> false
                 else -> systemDarkTheme
+            }
+
+            // Status/navigation bar icons follow the app's theme, not the system's: dark icons on the light theme
+            LaunchedEffect(useDarkTheme) {
+                val barStyle = SystemBarStyle.auto(Color.TRANSPARENT, Color.TRANSPARENT) { useDarkTheme }
+                enableEdgeToEdge(statusBarStyle = barStyle, navigationBarStyle = barStyle)
             }
 
             AIOAppTheme(darkTheme = useDarkTheme) {

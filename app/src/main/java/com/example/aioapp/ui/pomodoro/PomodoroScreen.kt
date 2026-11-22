@@ -19,6 +19,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -56,7 +57,7 @@ fun PomodoroScreen(
     val currentMode by remember { derivedStateOf { uiState.value.currentMode } }
     val isRunning by remember { derivedStateOf { uiState.value.isRunning } }
     val gradientColors = LocalAppGradient.current
-    val gradientBrush = remember(gradientColors) { Brush.horizontalGradient(gradientColors) }
+    val accentBrush = SolidColor(MaterialTheme.colorScheme.primary)
     val context = LocalContext.current
 
     // Asked when the user starts a timer, the first moment the app needs to post notifications
@@ -116,7 +117,7 @@ fun PomodoroScreen(
 
             Controls(
                 isRunning = isRunning,
-                gradientBrush = gradientBrush,
+                accentBrush = accentBrush,
                 onStart = onStart,
                 onPause = viewModel::pause,
                 onReset = viewModel::reset
@@ -220,7 +221,7 @@ private fun TimeText(timeLeft: () -> Long) {
 @Composable
 private fun Controls(
     isRunning: Boolean,
-    gradientBrush: Brush,
+    accentBrush: Brush,
     onStart: () -> Unit,
     onPause: () -> Unit,
     onReset: () -> Unit
@@ -240,13 +241,13 @@ private fun Controls(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(gradientBrush),
+                    .background(accentBrush),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
                     text = if (isRunning) stringResource(R.string.pomodoro_pause) else stringResource(R.string.pomodoro_start),
                     style = MaterialTheme.typography.titleMedium,
-                    color = Color.White,
+                    color = MaterialTheme.colorScheme.onPrimary,
                     fontFamily = RobotoMono
                 )
             }
@@ -256,7 +257,7 @@ private fun Controls(
             onClick = onReset,
             modifier = Modifier.width(140.dp).height(56.dp),
             shape = MaterialTheme.shapes.large,
-            border = ButtonDefaults.outlinedButtonBorder(enabled = true).copy(brush = gradientBrush)
+            border = ButtonDefaults.outlinedButtonBorder(enabled = true).copy(brush = accentBrush)
         ) {
             Text(
                 stringResource(R.string.pomodoro_reset),

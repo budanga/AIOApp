@@ -26,6 +26,7 @@ import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.graphicsLayer
@@ -41,7 +42,6 @@ import androidx.navigation.NavController
 import com.example.aioapp.R
 import com.example.aioapp.ui.components.AioTopBar
 import com.example.aioapp.ui.components.DefaultNavigationIcon
-import com.example.aioapp.ui.theme.LocalAppGradient
 import android.os.Vibrator
 import android.os.VibrationEffect
 import androidx.compose.ui.platform.LocalContext
@@ -54,8 +54,7 @@ fun MinesweeperScreen(
 ) {
     val gameState by viewModel.gameState.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope()
-    val gradientColors = LocalAppGradient.current
-    val appGradient = remember(gradientColors) { Brush.horizontalGradient(gradientColors) }
+    val accentBrush = SolidColor(MaterialTheme.colorScheme.primary)
     
     var currentView by rememberSaveable { mutableStateOf("Menu") } // Menu, DifficultySelect, CustomSelect, Game
 
@@ -105,7 +104,7 @@ fun MinesweeperScreen(
                         viewModel.resumeGame()
                     },
                     canContinue = difficulty != null,
-                    appGradient = appGradient
+                    accentBrush = accentBrush
                 )
                 "DifficultySelect" -> DifficultySelect(
                     onDifficultySelected = {
@@ -114,7 +113,7 @@ fun MinesweeperScreen(
                     },
                     onCustomSelected = { currentView = "CustomSelect" },
                     onBack = { currentView = "Menu" },
-                    appGradient = appGradient
+                    accentBrush = accentBrush
                 )
                 "CustomSelect" -> CustomDifficultySelect(
                     onStart = {
@@ -122,11 +121,11 @@ fun MinesweeperScreen(
                         currentView = "Game"
                     },
                     onCancel = { currentView = "DifficultySelect" },
-                    appGradient = appGradient
+                    accentBrush = accentBrush
                 )
                 "Game" -> GameBoardView(
                     viewModel = viewModel,
-                    appGradient = appGradient,
+                    accentBrush = accentBrush,
                     onReturnToMenu = { 
                         viewModel.returnToMenu()
                         currentView = "Menu"
@@ -138,7 +137,7 @@ fun MinesweeperScreen(
 }
 
 @Composable
-fun AppButton(text: String, onClick: () -> Unit, appGradient: Brush, enabled: Boolean = true) {
+fun AppButton(text: String, onClick: () -> Unit, accentBrush: Brush, enabled: Boolean = true) {
     Button(
         onClick = onClick,
         enabled = enabled,
@@ -147,23 +146,23 @@ fun AppButton(text: String, onClick: () -> Unit, appGradient: Brush, enabled: Bo
             .height(56.dp)
             .padding(vertical = 4.dp)
             .clip(RoundedCornerShape(28.dp))
-            .background(if (enabled) appGradient else Brush.horizontalGradient(listOf(Color.Gray, Color.DarkGray))),
+            .background(if (enabled) accentBrush else Brush.horizontalGradient(listOf(Color.Gray, Color.DarkGray))),
         colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent, disabledContainerColor = Color.Transparent)
     ) {
-        Text(text, fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color.White)
+        Text(text, fontSize = 18.sp, fontWeight = FontWeight.Bold, color = if (enabled) MaterialTheme.colorScheme.onPrimary else Color.White)
     }
 }
 
 @Composable
-fun MainMenu(onNewGame: () -> Unit, onContinue: () -> Unit, canContinue: Boolean, appGradient: Brush) {
+fun MainMenu(onNewGame: () -> Unit, onContinue: () -> Unit, canContinue: Boolean, accentBrush: Brush) {
     Column(
         modifier = Modifier.fillMaxSize().padding(32.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        AppButton(stringResource(R.string.ms_new_game), onNewGame, appGradient)
+        AppButton(stringResource(R.string.ms_new_game), onNewGame, accentBrush)
         Spacer(modifier = Modifier.height(16.dp))
-        AppButton(stringResource(R.string.ms_continue), onContinue, appGradient, enabled = canContinue)
+        AppButton(stringResource(R.string.ms_continue), onContinue, accentBrush, enabled = canContinue)
     }
 }
 
@@ -172,7 +171,7 @@ fun DifficultySelect(
     onDifficultySelected: (Difficulty) -> Unit,
     onCustomSelected: () -> Unit,
     onBack: () -> Unit,
-    appGradient: Brush
+    accentBrush: Brush
 ) {
     Column(
         modifier = Modifier.fillMaxSize().padding(32.dp),
@@ -182,9 +181,9 @@ fun DifficultySelect(
         val difficulties = listOf(BeginnerDifficulty, EasyDifficulty, IntermediateDifficulty, AdvancedDifficulty)
         
         difficulties.forEach { diff ->
-            AppButton(stringResource(diff.nameResId, diff.columns, diff.rows), { onDifficultySelected(diff) }, appGradient)
+            AppButton(stringResource(diff.nameResId, diff.columns, diff.rows), { onDifficultySelected(diff) }, accentBrush)
         }
-        AppButton(stringResource(R.string.ms_custom), onCustomSelected, appGradient)
+        AppButton(stringResource(R.string.ms_custom), onCustomSelected, accentBrush)
         
         Spacer(modifier = Modifier.height(24.dp))
         OutlinedButton(onClick = onBack, modifier = Modifier.fillMaxWidth().height(56.dp)) {
@@ -194,7 +193,7 @@ fun DifficultySelect(
 }
 
 @Composable
-fun CustomDifficultySelect(onStart: (Difficulty) -> Unit, onCancel: () -> Unit, appGradient: Brush) {
+fun CustomDifficultySelect(onStart: (Difficulty) -> Unit, onCancel: () -> Unit, accentBrush: Brush) {
     var width by remember { mutableFloatStateOf(10f) }
     var height by remember { mutableFloatStateOf(10f) }
     var mines by remember { mutableFloatStateOf(15f) }
@@ -221,7 +220,7 @@ fun CustomDifficultySelect(onStart: (Difficulty) -> Unit, onCancel: () -> Unit, 
         
         Spacer(modifier = Modifier.height(48.dp))
         
-        AppButton(stringResource(R.string.ms_continue), { onStart(Difficulty(R.string.ms_custom, width.toInt(), height.toInt(), mines.toInt(), isCustom = true)) }, appGradient)
+        AppButton(stringResource(R.string.ms_continue), { onStart(Difficulty(R.string.ms_custom, width.toInt(), height.toInt(), mines.toInt(), isCustom = true)) }, accentBrush)
         Spacer(modifier = Modifier.height(8.dp))
         OutlinedButton(onClick = onCancel, modifier = Modifier.fillMaxWidth().height(56.dp)) {
             Text(stringResource(R.string.ms_cancel), fontSize = 18.sp, fontWeight = FontWeight.Bold)
@@ -230,7 +229,7 @@ fun CustomDifficultySelect(onStart: (Difficulty) -> Unit, onCancel: () -> Unit, 
 }
 
 @Composable
-fun GameBoardView(viewModel: MinesweeperViewModel, appGradient: Brush, onReturnToMenu: () -> Unit) {
+fun GameBoardView(viewModel: MinesweeperViewModel, accentBrush: Brush, onReturnToMenu: () -> Unit) {
     val gameState by viewModel.gameState.collectAsStateWithLifecycle()
     val cells by viewModel.cells.collectAsStateWithLifecycle()
     val difficulty = viewModel.difficulty.collectAsStateWithLifecycle().value ?: return
@@ -329,7 +328,7 @@ fun GameBoardView(viewModel: MinesweeperViewModel, appGradient: Brush, onReturnT
                     hasWon = gameState == GameState.Won,
                     onReturn = onReturnToMenu,
                     onRestart = { viewModel.startNewGame(difficulty) },
-                    appGradient = appGradient
+                    accentBrush = accentBrush
                 )
             }
         }
@@ -574,7 +573,7 @@ fun WinLossOverlay(
     hasWon: Boolean, 
     onReturn: () -> Unit, 
     onRestart: () -> Unit, 
-    appGradient: Brush
+    accentBrush: Brush
 ) {
     var showUi by remember { mutableStateOf(hasWon) }
     val explosionProgress = remember { Animatable(0f) }
@@ -664,10 +663,10 @@ fun WinLossOverlay(
                         .fillMaxWidth(0.7f)
                         .height(56.dp)
                         .clip(RoundedCornerShape(28.dp))
-                        .background(appGradient),
+                        .background(accentBrush),
                     colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent)
                 ) {
-                    Text(stringResource(R.string.ms_new_game), fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                    Text(stringResource(R.string.ms_new_game), fontSize = 18.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onPrimary)
                 }
                 Spacer(modifier = Modifier.height(16.dp))
                 Button(
@@ -676,10 +675,10 @@ fun WinLossOverlay(
                         .fillMaxWidth(0.7f)
                         .height(56.dp)
                         .clip(RoundedCornerShape(28.dp))
-                        .background(appGradient),
+                        .background(accentBrush),
                     colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent)
                 ) {
-                    Text(stringResource(R.string.ms_return_to_menu), fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                    Text(stringResource(R.string.ms_return_to_menu), fontSize = 18.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onPrimary)
                 }
             }
         }

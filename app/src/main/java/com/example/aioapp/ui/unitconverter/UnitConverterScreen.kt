@@ -27,6 +27,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
@@ -43,7 +44,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import com.example.aioapp.R
 import com.example.aioapp.ui.components.AppTopAppBar
-import com.example.aioapp.ui.theme.LocalAppGradient
 import com.example.aioapp.ui.theme.RobotoMono
 import kotlinx.coroutines.Job
 import androidx.compose.ui.platform.LocalConfiguration
@@ -156,8 +156,7 @@ fun UnitConverterScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val focusManager = LocalFocusManager.current
-    val gradientColors = LocalAppGradient.current
-    val gradientBrush = remember(gradientColors) { Brush.linearGradient(colors = gradientColors) }
+    val accentBrush = SolidColor(MaterialTheme.colorScheme.primary)
     val textFieldShape = RoundedCornerShape(8.dp)
     val containerColor = MaterialTheme.colorScheme.background
     val snackbarHostState = remember { SnackbarHostState() }
@@ -218,7 +217,7 @@ fun UnitConverterScreen(
                     viewModel.selectCategory(category)
                     focusManager.clearFocus()
                 },
-                gradientBrush = gradientBrush
+                accentBrush = accentBrush
             )
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -233,7 +232,7 @@ fun UnitConverterScreen(
                     modifier = Modifier.weight(1f),
                     selectedUnitId = uiState.fromUnit,
                     units = uiState.availableUnits,
-                    gradientBrush = gradientBrush,
+                    accentBrush = accentBrush,
                     shape = textFieldShape,
                     onUnitSelected = {
                         viewModel.onFromUnitChange(it)
@@ -253,7 +252,7 @@ fun UnitConverterScreen(
                     },
                     modifier = Modifier
                         .weight(1f)
-                        .border(1.5.dp, gradientBrush, textFieldShape),
+                        .border(1.5.dp, accentBrush, textFieldShape),
                     keyboardOptions = KeyboardOptions(
                         keyboardType = if (uiState.selectedCategory == UnitCategory.NUMBERS &&
                             radixFor(uiState.fromUnit, uiState.customBase) > 10) {
@@ -284,7 +283,7 @@ fun UnitConverterScreen(
                     Box(
                         modifier = Modifier
                             .weight(1f)
-                            .border(1.5.dp, gradientBrush, textFieldShape)
+                            .border(1.5.dp, accentBrush, textFieldShape)
                             .padding(horizontal = 12.dp, vertical = 12.dp)
                     ) {
                         Text(
@@ -306,7 +305,7 @@ fun UnitConverterScreen(
                         placeholder = { Text("Base", color = Color.Gray, fontFamily = RobotoMono) },
                         modifier = Modifier
                             .width(100.dp)
-                            .border(1.5.dp, gradientBrush, textFieldShape),
+                            .border(1.5.dp, accentBrush, textFieldShape),
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         singleLine = true,
                         textStyle = LocalTextStyle.current.copy(fontFamily = RobotoMono),
@@ -450,7 +449,7 @@ fun UnitConverterScreen(
 fun UnitCategoryTabs(
     selectedCategory: UnitCategory,
     onCategorySelected: (UnitCategory) -> Unit,
-    gradientBrush: Brush
+    accentBrush: Brush
 ) {
     val categories = UnitCategory.entries
     val selectedIndex = categories.indexOf(selectedCategory)
@@ -471,7 +470,7 @@ fun UnitCategoryTabs(
                     .tabIndicatorOffset(selectedIndex)
                     .height(3.dp)
                     .clip(RoundedCornerShape(topStart = 3.dp, topEnd = 3.dp))
-                    .background(gradientBrush)
+                    .background(accentBrush)
             )
         },
         modifier = Modifier.fillMaxWidth()
@@ -622,7 +621,7 @@ fun UnitSelector(
     modifier: Modifier = Modifier,
     selectedUnitId: String,
     units: List<UnitInfo>,
-    gradientBrush: Brush,
+    accentBrush: Brush,
     shape: RoundedCornerShape,
     onUnitSelected: (String) -> Unit
 ) {
@@ -643,7 +642,7 @@ fun UnitSelector(
             modifier = Modifier
                 .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable)
                 .fillMaxWidth()
-                .border(1.5.dp, gradientBrush, shape),
+                .border(1.5.dp, accentBrush, shape),
             textStyle = LocalTextStyle.current.copy(fontFamily = RobotoMono),
             shape = shape,
             colors = OutlinedTextFieldDefaults.colors(

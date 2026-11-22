@@ -24,7 +24,6 @@ import androidx.navigation.NavController
 import com.example.aioapp.R
 import com.example.aioapp.ui.theme.BbhBogle
 import com.example.aioapp.ui.theme.LocalAppGradient
-import com.example.aioapp.ui.theme.RobotoMono
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 
@@ -124,7 +123,7 @@ fun TopAppBar(
                     "paymentcomparator" -> stringResource(R.string.feature_payment_comparator)
                     else                -> currentScreen.replaceFirstChar { it.uppercase() }
                 }
-                Text(text = title, fontFamily = RobotoMono)
+                Text(text = title)
             }
         },
         navigationIcon = {

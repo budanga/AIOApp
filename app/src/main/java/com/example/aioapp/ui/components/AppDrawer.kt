@@ -15,14 +15,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.stringResource
-import com.example.aioapp.ui.theme.LocalAppGradient
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.example.aioapp.R
@@ -40,8 +37,6 @@ fun AppDrawer(
     viewModel: HomeViewModel = hiltViewModel()
 ) {
     val featureList by viewModel.featureList.collectAsStateWithLifecycle()
-    val gradientColors = LocalAppGradient.current
-    val appGradient = remember(gradientColors) { Brush.horizontalGradient(gradientColors) }
     var searchQuery by rememberSaveable { mutableStateOf("") }
     val focusManager = LocalFocusManager.current
 
@@ -59,7 +54,6 @@ fun AppDrawer(
         FeatureSearchField(
             query = searchQuery,
             onQueryChange = { searchQuery = it },
-            appGradient = appGradient,
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 12.dp, vertical = 16.dp)

@@ -8,11 +8,11 @@
     <string name="language_selection">Idioma</string>
     <string name="language_english">English</string>
     <string name="language_spanish">Español</string>
-    <string name="language_system">System</string>
+    <string name="language_system">Sistema</string>
 
     <!-- Tema -->
     <string name="theme_title">Tema</string>
-    <string name="theme_system">System</string>
+    <string name="theme_system">Sistema</string>
     <string name="theme_light">Modo claro</string>
     <string name="theme_dark">Modo oscuro</string>
 
@@ -25,6 +25,9 @@
     <string name="feature_search_open">Buscar funcionalidades</string>
     <string name="feature_search_close">Cerrar búsqueda</string>
     <string name="feature_search_empty">No se encontraron funcionalidades</string>
+    <string name="home_section_favorites">Favoritas</string>
+    <string name="home_section_tools">Herramientas</string>
+    <string name="home_section_leisure">Juegos y ocio</string>
     <string name="favorite_add">Agregar a favoritas</string>
     <string name="favorite_remove">Quitar de favoritas</string>
 

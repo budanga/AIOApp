@@ -24,6 +24,9 @@
     <string name="feature_search_open">Search features</string>
     <string name="feature_search_close">Close search</string>
     <string name="feature_search_empty">No features found</string>
+    <string name="home_section_favorites">Favorites</string>
+    <string name="home_section_tools">Tools</string>
+    <string name="home_section_leisure">Games and leisure</string>
     <string name="favorite_add">Add to favorites</string>
     <string name="favorite_remove">Remove from favorites</string>
 
