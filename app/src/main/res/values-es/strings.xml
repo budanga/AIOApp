@@ -240,25 +240,37 @@
     <string name="unit_base_n">Base N</string>
 
     <!-- Buscaminas -->
-    <string name="ms_new_game">Nuevo Juego</string>
+    <string name="ms_new_game">Nueva partida</string>
     <string name="ms_continue">Continuar</string>
-    <string name="ms_difficulty_select">Dificultad</string>
-    <string name="ms_beginner">Principiante (%1$dx%2$d)</string>
-    <string name="ms_easy">Fácil (%1$dx%2$d)</string>
-    <string name="ms_intermediate">Intermedio (%1$dx%2$d)</string>
-    <string name="ms_advanced">Avanzado (%1$dx%2$d)</string>
-    <string name="ms_custom">Personalizado</string>
+    <string name="ms_section_in_progress">Partida en curso</string>
+    <string name="ms_board_title">%1$s · %2$d×%3$d</string>
+    <string name="ms_in_progress_summary">%1$s · quedan %2$d minas</string>
+    <string name="ms_board_summary">%1$d×%2$d · %3$d minas</string>
+    <string name="ms_beginner">Principiante</string>
+    <string name="ms_easy">Fácil</string>
+    <string name="ms_intermediate">Intermedio</string>
+    <string name="ms_advanced">Avanzado</string>
+    <string name="ms_custom">Personalizada</string>
+    <string name="ms_custom_desc">Elegí el tamaño del tablero y la cantidad de minas</string>
     <string name="ms_width">Ancho: %1$d</string>
     <string name="ms_height">Largo: %1$d</string>
     <string name="ms_mines">Minas: %1$d</string>
-    <string name="ms_back">Atrás</string>
-    <string name="ms_cancel">Cancelar</string>
+    <string name="ms_density">%1$d%% de minas</string>
+    <string name="ms_play">Jugar</string>
     <string name="ms_timer_desc">Tiempo</string>
     <string name="ms_mines_left_desc">Minas restantes</string>
-    <string name="ms_pause">PAUSA</string>
-    <string name="ms_won">¡GANASTE!</string>
-    <string name="ms_lost">¡PERDISTE!</string>
-    <string name="ms_return_to_menu">Volver al menú</string>
+    <string name="ms_mode_reveal">Revelar</string>
+    <string name="ms_mode_flag">Bandera</string>
+    <string name="ms_pause_action">Pausar</string>
+    <string name="ms_pause">Pausado</string>
+    <string name="ms_resume">Seguir</string>
+    <string name="ms_more_options">Más opciones</string>
+    <string name="ms_vibration">Vibración</string>
+    <string name="ms_won">¡Ganaste!</string>
+    <string name="ms_lost">¡Perdiste!</string>
+    <string name="ms_result_time">Tiempo: %1$s</string>
+    <string name="ms_play_again">Otra vez</string>
+    <string name="ms_change_difficulty">Cambiar dificultad</string>
 
     <!-- Calculadora de Asado -->
     <string name="feature_bbq">Calculadora de Asado</string>

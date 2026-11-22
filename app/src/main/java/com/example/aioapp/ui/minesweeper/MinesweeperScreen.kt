@@ -1,6 +1,9 @@
 package com.example.aioapp.ui.minesweeper
 
+import android.os.VibrationEffect
+import android.os.Vibrator
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.LocalActivity
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -8,43 +11,56 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.activity.compose.LocalActivity
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.compose.LifecycleEventEffect
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import kotlinx.coroutines.flow.StateFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.drawscope.rotate
+import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import com.example.aioapp.R
 import com.example.aioapp.ui.components.AioTopBar
 import com.example.aioapp.ui.components.DefaultNavigationIcon
-import android.os.Vibrator
-import android.os.VibrationEffect
-import androidx.compose.ui.platform.LocalContext
+import com.example.aioapp.ui.theme.LocalDarkTheme
+import kotlinx.coroutines.flow.StateFlow
+import kotlin.math.max
+import kotlin.math.min
+import kotlin.math.roundToInt
+
+private const val VIEW_MENU = "Menu"
+private const val VIEW_GAME = "Game"
+
+private val presetDifficulties = listOf(BeginnerDifficulty, EasyDifficulty, IntermediateDifficulty, AdvancedDifficulty)
 
 @Composable
 fun MinesweeperScreen(
@@ -53,12 +69,21 @@ fun MinesweeperScreen(
     drawerState: DrawerState
 ) {
     val gameState by viewModel.gameState.collectAsStateWithLifecycle()
-    val scope = rememberCoroutineScope()
-    val accentBrush = SolidColor(MaterialTheme.colorScheme.primary)
-    
-    var currentView by rememberSaveable { mutableStateOf("Menu") } // Menu, DifficultySelect, CustomSelect, Game
-
     val difficulty by viewModel.difficulty.collectAsStateWithLifecycle()
+    val scope = rememberCoroutineScope()
+
+    var currentView by rememberSaveable { mutableStateOf(VIEW_MENU) }
+    var showCustomSheet by rememberSaveable { mutableStateOf(false) }
+
+    fun startGame(selected: Difficulty) {
+        viewModel.startNewGame(selected)
+        currentView = VIEW_GAME
+    }
+
+    fun backToMenu() {
+        viewModel.returnToMenu()
+        currentView = VIEW_MENU
+    }
 
     // Stop the clock when the app goes to background or another screen covers this one (not on rotation)
     val activity = LocalActivity.current
@@ -66,271 +91,368 @@ fun MinesweeperScreen(
         if (activity?.isChangingConfigurations != true) viewModel.pauseGame()
     }
 
-    // Handle system back button
-    BackHandler(enabled = currentView != "Menu") {
-        when (currentView) {
-            "Game" -> {
-                viewModel.returnToMenu()
-                currentView = "Menu"
-            }
-            "DifficultySelect" -> currentView = "Menu"
-            "CustomSelect" -> currentView = "DifficultySelect"
-        }
-    }
-    
+    BackHandler(enabled = currentView == VIEW_GAME) { backToMenu() }
+
     // Auto return to menu if difficulty is cleared (game properly ended when going back from Win/Loss)
     LaunchedEffect(difficulty, gameState) {
-        if (difficulty == null && currentView == "Game") {
-            currentView = "Menu"
+        if (difficulty == null && currentView == VIEW_GAME) {
+            currentView = VIEW_MENU
         }
     }
 
-    Scaffold(
-        topBar = {
-            AioTopBar(
-                title = { Text(text = stringResource(R.string.feature_minesweeper), fontWeight = FontWeight.Bold) },
-                navigationIcon = {
-                    DefaultNavigationIcon(navController, drawerState, scope)
-                }
+    if (currentView == VIEW_GAME && difficulty != null) {
+        GameView(viewModel = viewModel, onBackToMenu = ::backToMenu)
+    } else {
+        Scaffold(
+            topBar = {
+                AioTopBar(
+                    title = { Text(text = stringResource(R.string.feature_minesweeper)) },
+                    navigationIcon = { DefaultNavigationIcon(navController, drawerState, scope) }
+                )
+            }
+        ) { padding ->
+            MenuView(
+                viewModel = viewModel,
+                onContinue = {
+                    viewModel.resumeGame()
+                    currentView = VIEW_GAME
+                },
+                onStart = ::startGame,
+                onCustom = { showCustomSheet = true },
+                modifier = Modifier.padding(padding)
             )
         }
-    ) { padding ->
-        Box(modifier = Modifier.fillMaxSize().padding(padding)) {
-            when (currentView) {
-                "Menu" -> MainMenu(
-                    onNewGame = { currentView = "DifficultySelect" },
-                    onContinue = { 
-                        currentView = "Game"
-                        viewModel.resumeGame()
-                    },
-                    canContinue = difficulty != null,
-                    accentBrush = accentBrush
-                )
-                "DifficultySelect" -> DifficultySelect(
-                    onDifficultySelected = {
-                        viewModel.startNewGame(it)
-                        currentView = "Game"
-                    },
-                    onCustomSelected = { currentView = "CustomSelect" },
-                    onBack = { currentView = "Menu" },
-                    accentBrush = accentBrush
-                )
-                "CustomSelect" -> CustomDifficultySelect(
-                    onStart = {
-                        viewModel.startNewGame(it)
-                        currentView = "Game"
-                    },
-                    onCancel = { currentView = "DifficultySelect" },
-                    accentBrush = accentBrush
-                )
-                "Game" -> GameBoardView(
-                    viewModel = viewModel,
-                    accentBrush = accentBrush,
-                    onReturnToMenu = { 
-                        viewModel.returnToMenu()
-                        currentView = "Menu"
+    }
+
+    if (showCustomSheet) {
+        CustomDifficultySheet(
+            onDismiss = { showCustomSheet = false },
+            onStart = {
+                showCustomSheet = false
+                startGame(it)
+            }
+        )
+    }
+}
+
+// ---------- Menu ----------
+
+@Composable
+private fun MenuView(
+    viewModel: MinesweeperViewModel,
+    onContinue: () -> Unit,
+    onStart: (Difficulty) -> Unit,
+    onCustom: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val savedDifficulty by viewModel.difficulty.collectAsStateWithLifecycle()
+    val cells by viewModel.cells.collectAsStateWithLifecycle()
+    val seconds by viewModel.timeElapsed.collectAsStateWithLifecycle()
+    val minesRemaining by viewModel.minesRemaining.collectAsStateWithLifecycle()
+
+    Column(
+        modifier = modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = 16.dp)
+            .padding(bottom = 16.dp)
+    ) {
+        savedDifficulty?.let { saved ->
+            SectionTitle(stringResource(R.string.ms_section_in_progress))
+            Card(
+                onClick = onContinue,
+                shape = RoundedCornerShape(20.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.primaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                ),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(
+                    modifier = Modifier.padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    MiniBoard(columns = saved.columns, rows = saved.rows, cells = cells, height = 56.dp)
+                    Spacer(Modifier.width(16.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = stringResource(R.string.ms_board_title, stringResource(saved.nameResId), saved.columns, saved.rows),
+                            style = MaterialTheme.typography.titleMedium
+                        )
+                        Text(
+                            text = stringResource(R.string.ms_in_progress_summary, formatTime(seconds), minesRemaining),
+                            style = MaterialTheme.typography.bodyMedium
+                        )
                     }
-                )
+                    Icon(Icons.Default.PlayArrow, contentDescription = stringResource(R.string.ms_continue), modifier = Modifier.size(32.dp))
+                }
+            }
+        }
+
+        SectionTitle(stringResource(R.string.ms_new_game))
+        presetDifficulties.chunked(2).forEach { pair ->
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(bottom = 8.dp)) {
+                pair.forEach { preset ->
+                    DifficultyCard(preset, onClick = { onStart(preset) }, modifier = Modifier.weight(1f))
+                }
+            }
+        }
+        Card(
+            onClick = onCustom,
+            shape = RoundedCornerShape(20.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Default.Tune, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                Spacer(Modifier.width(16.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(stringResource(R.string.ms_custom), style = MaterialTheme.typography.titleMedium)
+                    Text(
+                        stringResource(R.string.ms_custom_desc),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null)
             }
         }
     }
 }
 
 @Composable
-fun AppButton(text: String, onClick: () -> Unit, accentBrush: Brush, enabled: Boolean = true) {
-    Button(
+private fun SectionTitle(text: String) {
+    Text(
+        text = text,
+        style = MaterialTheme.typography.titleSmall,
+        color = MaterialTheme.colorScheme.primary,
+        modifier = Modifier.padding(start = 12.dp, top = 20.dp, bottom = 8.dp)
+    )
+}
+
+@Composable
+private fun DifficultyCard(difficulty: Difficulty, onClick: () -> Unit, modifier: Modifier = Modifier) {
+    Card(
         onClick = onClick,
-        enabled = enabled,
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(56.dp)
-            .padding(vertical = 4.dp)
-            .clip(RoundedCornerShape(28.dp))
-            .background(if (enabled) accentBrush else Brush.horizontalGradient(listOf(Color.Gray, Color.DarkGray))),
-        colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent, disabledContainerColor = Color.Transparent)
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+        modifier = modifier
     ) {
-        Text(text, fontSize = 18.sp, fontWeight = FontWeight.Bold, color = if (enabled) MaterialTheme.colorScheme.onPrimary else Color.White)
-    }
-}
-
-@Composable
-fun MainMenu(onNewGame: () -> Unit, onContinue: () -> Unit, canContinue: Boolean, accentBrush: Brush) {
-    Column(
-        modifier = Modifier.fillMaxSize().padding(32.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
-    ) {
-        AppButton(stringResource(R.string.ms_new_game), onNewGame, accentBrush)
-        Spacer(modifier = Modifier.height(16.dp))
-        AppButton(stringResource(R.string.ms_continue), onContinue, accentBrush, enabled = canContinue)
-    }
-}
-
-@Composable
-fun DifficultySelect(
-    onDifficultySelected: (Difficulty) -> Unit,
-    onCustomSelected: () -> Unit,
-    onBack: () -> Unit,
-    accentBrush: Brush
-) {
-    Column(
-        modifier = Modifier.fillMaxSize().padding(32.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
-    ) {
-        val difficulties = listOf(BeginnerDifficulty, EasyDifficulty, IntermediateDifficulty, AdvancedDifficulty)
-        
-        difficulties.forEach { diff ->
-            AppButton(stringResource(diff.nameResId, diff.columns, diff.rows), { onDifficultySelected(diff) }, accentBrush)
-        }
-        AppButton(stringResource(R.string.ms_custom), onCustomSelected, accentBrush)
-        
-        Spacer(modifier = Modifier.height(24.dp))
-        OutlinedButton(onClick = onBack, modifier = Modifier.fillMaxWidth().height(56.dp)) {
-            Text(stringResource(R.string.ms_back), fontSize = 18.sp, fontWeight = FontWeight.Bold)
+        Column(modifier = Modifier.padding(16.dp)) {
+            MiniBoard(columns = difficulty.columns, rows = difficulty.rows, cells = emptyList(), height = 40.dp)
+            Spacer(Modifier.height(12.dp))
+            Text(stringResource(difficulty.nameResId), style = MaterialTheme.typography.titleMedium)
+            Text(
+                stringResource(R.string.ms_board_summary, difficulty.columns, difficulty.rows, difficulty.mines),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
     }
 }
 
+/** Small picture of a board: hidden cells in the accent color, revealed ones in the surface color. */
 @Composable
-fun CustomDifficultySelect(onStart: (Difficulty) -> Unit, onCancel: () -> Unit, accentBrush: Brush) {
-    var width by remember { mutableFloatStateOf(10f) }
-    var height by remember { mutableFloatStateOf(10f) }
-    var mines by remember { mutableFloatStateOf(15f) }
-    
+private fun MiniBoard(columns: Int, rows: Int, cells: List<Cell>, height: Dp) {
+    val hidden = MaterialTheme.colorScheme.primary
+    val revealed = MaterialTheme.colorScheme.surface
+    val flagged = MaterialTheme.colorScheme.tertiary
+    Canvas(modifier = Modifier.height(height).aspectRatio(columns.toFloat() / rows)) {
+        val cell = min(size.width / columns, size.height / rows)
+        val gap = cell * 0.15f
+        for (y in 0 until rows) {
+            for (x in 0 until columns) {
+                val state = cells.getOrNull(y * columns + x)
+                val color = when {
+                    state == null -> hidden
+                    state.isRevealed -> revealed
+                    state.isFlagged -> flagged
+                    else -> hidden
+                }
+                drawRect(color, topLeft = Offset(x * cell, y * cell), size = Size(cell - gap, cell - gap))
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun CustomDifficultySheet(onDismiss: () -> Unit, onStart: (Difficulty) -> Unit) {
+    var width by rememberSaveable { mutableFloatStateOf(10f) }
+    var height by rememberSaveable { mutableFloatStateOf(10f) }
+    var mines by rememberSaveable { mutableFloatStateOf(15f) }
+
     val maxMines = ((width * height) * 0.5f).toInt()
     if (mines > maxMines) mines = maxMines.toFloat()
-    
-    Column(
-        modifier = Modifier.fillMaxSize().padding(32.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
-    ) {
-        Text(stringResource(R.string.ms_custom), fontSize = 28.sp, fontWeight = FontWeight.Bold)
-        Spacer(modifier = Modifier.height(32.dp))
-        
-        Text(stringResource(R.string.ms_width, width.toInt()), fontWeight = FontWeight.Bold)
-        Slider(value = width, onValueChange = { width = it }, valueRange = 5f..30f, steps = 25)
-        
-        Text(stringResource(R.string.ms_height, height.toInt()), fontWeight = FontWeight.Bold)
-        Slider(value = height, onValueChange = { height = it }, valueRange = 5f..30f, steps = 25)
-        
-        Text(stringResource(R.string.ms_mines, mines.toInt()), fontWeight = FontWeight.Bold)
-        Slider(value = mines, onValueChange = { mines = it }, valueRange = 1f..maxMines.toFloat().coerceAtLeast(1f), steps = maxMines - 1)
-        
-        Spacer(modifier = Modifier.height(48.dp))
-        
-        AppButton(stringResource(R.string.ms_continue), { onStart(Difficulty(R.string.ms_custom, width.toInt(), height.toInt(), mines.toInt(), isCustom = true)) }, accentBrush)
-        Spacer(modifier = Modifier.height(8.dp))
-        OutlinedButton(onClick = onCancel, modifier = Modifier.fillMaxWidth().height(56.dp)) {
-            Text(stringResource(R.string.ms_cancel), fontSize = 18.sp, fontWeight = FontWeight.Bold)
+    val density = (mines / (width * height) * 100).toInt()
+
+    // Fully expanded: half-open, the play button would sit under the navigation bar
+    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)) {
+        Column(modifier = Modifier.navigationBarsPadding().padding(horizontal = 24.dp).padding(bottom = 24.dp)) {
+            Text(stringResource(R.string.ms_custom), style = MaterialTheme.typography.titleLarge)
+            Spacer(Modifier.height(16.dp))
+            Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                MiniBoard(columns = width.toInt(), rows = height.toInt(), cells = emptyList(), height = 120.dp)
+            }
+            Text(
+                stringResource(R.string.ms_density, density),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center
+            )
+            Spacer(Modifier.height(16.dp))
+
+            Text(stringResource(R.string.ms_width, width.toInt()), style = MaterialTheme.typography.labelLarge)
+            // Rounded by hand instead of with `steps`, which would draw a dot for every value
+            Slider(value = width, onValueChange = { width = it.roundToInt().toFloat() }, valueRange = 5f..30f)
+
+            Text(stringResource(R.string.ms_height, height.toInt()), style = MaterialTheme.typography.labelLarge)
+            Slider(value = height, onValueChange = { height = it.roundToInt().toFloat() }, valueRange = 5f..30f)
+
+            Text(stringResource(R.string.ms_mines, mines.toInt()), style = MaterialTheme.typography.labelLarge)
+            Slider(value = mines, onValueChange = { mines = it.roundToInt().toFloat() }, valueRange = 1f..maxMines.toFloat().coerceAtLeast(2f))
+
+            Spacer(Modifier.height(16.dp))
+            Button(
+                onClick = { onStart(Difficulty(R.string.ms_custom, width.toInt(), height.toInt(), mines.toInt(), isCustom = true)) },
+                modifier = Modifier.fillMaxWidth().height(52.dp)
+            ) {
+                Text(stringResource(R.string.ms_play))
+            }
         }
     }
 }
 
+// ---------- Game ----------
+
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun GameBoardView(viewModel: MinesweeperViewModel, accentBrush: Brush, onReturnToMenu: () -> Unit) {
+private fun GameView(viewModel: MinesweeperViewModel, onBackToMenu: () -> Unit) {
     val gameState by viewModel.gameState.collectAsStateWithLifecycle()
     val cells by viewModel.cells.collectAsStateWithLifecycle()
     val difficulty = viewModel.difficulty.collectAsStateWithLifecycle().value ?: return
     val isFlagMode by viewModel.isFlagMode.collectAsStateWithLifecycle()
     val minesRemaining by viewModel.minesRemaining.collectAsStateWithLifecycle()
     val vibrationsEnabled by viewModel.vibrationsEnabled.collectAsStateWithLifecycle()
+    val isFinished = gameState == GameState.Won || gameState == GameState.Lost
+    var showMenu by remember { mutableStateOf(false) }
 
-    Column(modifier = Modifier.fillMaxSize()) {
-        Card(
-            modifier = Modifier.fillMaxWidth().padding(8.dp),
-            shape = RoundedCornerShape(12.dp)
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(16.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Default.Timer, contentDescription = stringResource(R.string.ms_timer_desc))
-                    Spacer(Modifier.width(4.dp))
-                    ElapsedTimeText(viewModel.timeElapsed)
-                }
-                
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    IconButton(onClick = {
-                        if (gameState == GameState.Playing) viewModel.pauseGame()
-                        else if (gameState == GameState.Paused) viewModel.resumeGame()
-                    }) {
-                        Icon(
-                            if (gameState == GameState.Paused) Icons.Default.PlayArrow else Icons.Default.Pause,
-                            contentDescription = "Pause/Resume"
-                        )
+    Scaffold(
+        topBar = {
+            AioTopBar(
+                title = {
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        StatChip(
+                            icon = Icons.Default.Flag,
+                            contentDescription = stringResource(R.string.ms_mines_left_desc),
+                            container = MaterialTheme.colorScheme.tertiaryContainer,
+                            content = MaterialTheme.colorScheme.onTertiaryContainer
+                        ) { Text(minesRemaining.toString(), style = MaterialTheme.typography.titleMedium) }
+                        StatChip(
+                            icon = Icons.Default.Timer,
+                            contentDescription = stringResource(R.string.ms_timer_desc),
+                            container = MaterialTheme.colorScheme.surfaceContainerHigh,
+                            content = MaterialTheme.colorScheme.onSurface
+                        ) { ElapsedTimeText(viewModel.timeElapsed) }
                     }
-                    
-                    IconButton(onClick = { viewModel.toggleFlagMode() }) {
-                        Icon(
-                            if (isFlagMode) Icons.Default.Flag else Icons.Default.AdsClick, 
-                            contentDescription = "Toggle Mode"
-                        )
+                },
+                navigationIcon = {
+                    IconButton(onClick = onBackToMenu) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.nav_back))
                     }
-
-                    IconButton(onClick = { viewModel.toggleVibrations() }) {
-                        val iconColor = if (vibrationsEnabled) LocalContentColor.current else LocalContentColor.current.copy(alpha = 0.38f)
-                        Box(contentAlignment = Alignment.Center, modifier = Modifier.size(24.dp)) {
+                },
+                actions = {
+                    if (!isFinished) {
+                        IconButton(onClick = {
+                            if (gameState == GameState.Playing) viewModel.pauseGame() else viewModel.resumeGame()
+                        }) {
                             Icon(
-                                Icons.Default.Vibration,
-                                contentDescription = "Toggle Vibrations",
-                                tint = iconColor
+                                if (gameState == GameState.Paused) Icons.Default.PlayArrow else Icons.Default.Pause,
+                                contentDescription = stringResource(if (gameState == GameState.Paused) R.string.ms_resume else R.string.ms_pause_action)
                             )
-                            if (!vibrationsEnabled) {
-                                Canvas(modifier = Modifier.fillMaxSize()) {
-                                    drawLine(
-                                        color = iconColor,
-                                        start = Offset(0f, 0f),
-                                        end = Offset(size.width, size.height),
-                                        strokeWidth = 2.dp.toPx()
-                                    )
-                                }
-                            }
                         }
                     }
-                    
-                    IconButton(onClick = onReturnToMenu) {
-                        Icon(Icons.Default.Home, contentDescription = "Menu")
+                    Box {
+                        IconButton(onClick = { showMenu = true }) {
+                            Icon(Icons.Default.MoreVert, contentDescription = stringResource(R.string.ms_more_options))
+                        }
+                        DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }) {
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.ms_vibration)) },
+                                leadingIcon = { Icon(Icons.Default.Vibration, contentDescription = null) },
+                                trailingIcon = { Checkbox(checked = vibrationsEnabled, onCheckedChange = null) },
+                                onClick = { viewModel.toggleVibrations() }
+                            )
+                        }
                     }
                 }
-                
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Default.Flag, contentDescription = stringResource(R.string.ms_mines_left_desc))
-                    Spacer(Modifier.width(4.dp))
-                    Text(String.format("%03d", minesRemaining), fontSize = 20.sp, fontWeight = FontWeight.Bold)
+            )
+        }
+    ) { padding ->
+        Column(modifier = Modifier.fillMaxSize().padding(padding)) {
+            Box(modifier = Modifier.fillMaxWidth().weight(1f).clipToBounds()) {
+                InteractiveMinesweeperBoard(
+                    cells = cells,
+                    difficulty = difficulty,
+                    gameState = gameState,
+                    onClick = { x, y -> viewModel.onCellClicked(x, y) },
+                    onLongClick = { x, y -> viewModel.onCellLongClicked(x, y) },
+                    isFlagMode = isFlagMode,
+                    vibrationsEnabled = vibrationsEnabled
+                )
+                if (gameState == GameState.Paused) {
+                    PausedCover(onResume = { viewModel.resumeGame() })
+                } else if (isFinished) {
+                    ResultEffects(hasWon = gameState == GameState.Won)
+                }
+            }
+
+            if (isFinished) {
+                ResultPanel(
+                    hasWon = gameState == GameState.Won,
+                    timeElapsed = viewModel.timeElapsed,
+                    onPlayAgain = { viewModel.startNewGame(difficulty) },
+                    onChangeDifficulty = onBackToMenu
+                )
+            } else {
+                SingleChoiceSegmentedButtonRow(
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp)
+                ) {
+                    SegmentedButton(
+                        selected = !isFlagMode,
+                        onClick = { if (isFlagMode) viewModel.toggleFlagMode() },
+                        shape = SegmentedButtonDefaults.itemShape(index = 0, count = 2),
+                        icon = { Icon(Icons.Default.TouchApp, contentDescription = null, modifier = Modifier.size(18.dp)) }
+                    ) { Text(stringResource(R.string.ms_mode_reveal)) }
+                    SegmentedButton(
+                        selected = isFlagMode,
+                        onClick = { if (!isFlagMode) viewModel.toggleFlagMode() },
+                        shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2),
+                        icon = { Icon(Icons.Default.Flag, contentDescription = null, modifier = Modifier.size(18.dp)) }
+                    ) { Text(stringResource(R.string.ms_mode_flag)) }
                 }
             }
         }
-        
-        Box(modifier = Modifier.fillMaxSize().weight(1f).clipToBounds()) {
-            InteractiveMinesweeperBoard(
-                cells = cells,
-                difficulty = difficulty,
-                gameState = gameState,
-                onClick = { x, y -> viewModel.onCellClicked(x, y) },
-                onLongClick = { x, y -> viewModel.onCellLongClicked(x, y) },
-                isFlagMode = isFlagMode,
-                vibrationsEnabled = vibrationsEnabled
-            )
-            
-            if (gameState == GameState.Paused) {
-                Box(
-                    modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.5f)).clickable(enabled=false){},
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(stringResource(R.string.ms_pause), color = Color.White, fontSize = 48.sp, fontWeight = FontWeight.Black)
-                }
-            } else if (gameState == GameState.Won || gameState == GameState.Lost) {
-                WinLossOverlay(
-                    hasWon = gameState == GameState.Won,
-                    onReturn = onReturnToMenu,
-                    onRestart = { viewModel.startNewGame(difficulty) },
-                    accentBrush = accentBrush
-                )
-            }
+    }
+}
+
+@Composable
+private fun StatChip(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    contentDescription: String,
+    container: Color,
+    content: Color,
+    value: @Composable () -> Unit
+) {
+    Surface(shape = RoundedCornerShape(50), color = container, contentColor = content) {
+        Row(
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(icon, contentDescription = contentDescription, modifier = Modifier.size(18.dp))
+            Spacer(Modifier.width(6.dp))
+            value()
         }
     }
 }
@@ -339,12 +461,81 @@ fun GameBoardView(viewModel: MinesweeperViewModel, accentBrush: Brush, onReturnT
 @Composable
 private fun ElapsedTimeText(timeElapsed: StateFlow<Int>) {
     val seconds by timeElapsed.collectAsStateWithLifecycle()
-    Text(String.format("%03d", seconds), fontSize = 20.sp, fontWeight = FontWeight.Bold)
+    Text(formatTime(seconds), style = MaterialTheme.typography.titleMedium)
 }
 
-private val numberColors = listOf(
-    Color.Blue, Color(0xFF007B00), Color.Red, Color(0xFF00007B),
-    Color(0xFF7B0000), Color(0xFF007B7B), Color.Black, Color.DarkGray
+private fun formatTime(seconds: Int): String = "%d:%02d".format(seconds / 60, seconds % 60)
+
+/** Hides the board completely while paused, so pausing can't be used to study it. */
+@Composable
+private fun PausedCover(onResume: () -> Unit) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
+            .clickable(enabled = false) {},
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Icon(Icons.Default.Pause, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(48.dp))
+        Spacer(Modifier.height(8.dp))
+        Text(stringResource(R.string.ms_pause), style = MaterialTheme.typography.headlineSmall)
+        Spacer(Modifier.height(24.dp))
+        Button(onClick = onResume, modifier = Modifier.height(52.dp)) {
+            Icon(Icons.Default.PlayArrow, contentDescription = null)
+            Spacer(Modifier.width(8.dp))
+            Text(stringResource(R.string.ms_resume))
+        }
+    }
+}
+
+@Composable
+private fun ResultPanel(
+    hasWon: Boolean,
+    timeElapsed: StateFlow<Int>,
+    onPlayAgain: () -> Unit,
+    onChangeDifficulty: () -> Unit
+) {
+    val seconds by timeElapsed.collectAsStateWithLifecycle()
+    Surface(
+        color = MaterialTheme.colorScheme.surfaceContainerLow,
+        shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(modifier = Modifier.padding(24.dp)) {
+            Text(
+                text = stringResource(if (hasWon) R.string.ms_won else R.string.ms_lost),
+                style = MaterialTheme.typography.headlineSmall,
+                color = if (hasWon) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
+            )
+            Text(
+                text = stringResource(R.string.ms_result_time, formatTime(seconds)),
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Spacer(Modifier.height(20.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                OutlinedButton(onClick = onChangeDifficulty, modifier = Modifier.weight(1f).height(52.dp)) {
+                    Text(stringResource(R.string.ms_change_difficulty))
+                }
+                Button(onClick = onPlayAgain, modifier = Modifier.weight(1f).height(52.dp)) {
+                    Text(stringResource(R.string.ms_play_again))
+                }
+            }
+        }
+    }
+}
+
+// ---------- Board ----------
+
+/** Number colors per count (1..8) that stay readable on the revealed cell in each theme. */
+private val lightNumberColors = listOf(
+    Color(0xFF185FA5), Color(0xFF3B6D11), Color(0xFFA32D2D), Color(0xFF3C3489),
+    Color(0xFF993C1D), Color(0xFF0F6E56), Color(0xFF444441), Color(0xFF5F5E5A)
+)
+private val darkNumberColors = listOf(
+    Color(0xFF85B7EB), Color(0xFF97C459), Color(0xFFF09595), Color(0xFFAFA9EC),
+    Color(0xFFF0997B), Color(0xFF5DCAA5), Color(0xFFD3D1C7), Color(0xFFB4B2A9)
 )
 
 @Composable
@@ -359,23 +550,20 @@ fun InteractiveMinesweeperBoard(
 ) {
     val context = LocalContext.current
     val vibrator = remember { context.getSystemService(Vibrator::class.java) }
-
-    var scale by remember { mutableFloatStateOf(1f) }
-    var viewOffset by remember { mutableStateOf(Offset.Zero) }
+    val density = LocalDensity.current
     val textMeasurer = rememberTextMeasurer()
-    val cellSizeDp = 30.dp
-    val density = androidx.compose.ui.platform.LocalDensity.current
-    val cellSize = with(density) { cellSizeDp.toPx() }
+    val isDark = LocalDarkTheme.current
 
-    // The numbers 1..8 measured once instead of on every cell of every frame
-    val numberLayouts = remember(textMeasurer, density) {
-        numberColors.mapIndexed { i, color ->
-            textMeasurer.measure(
-                text = (i + 1).toString(),
-                style = TextStyle(color = color, fontSize = 20.sp, fontWeight = FontWeight.Black)
-            )
-        }
-    }
+    val hiddenColor = MaterialTheme.colorScheme.primaryContainer
+    val revealedColor = MaterialTheme.colorScheme.surfaceContainerHighest
+    val mineCellColor = MaterialTheme.colorScheme.errorContainer
+    val mineColor = MaterialTheme.colorScheme.onErrorContainer
+    val flagColor = MaterialTheme.colorScheme.tertiary
+    val flagPainter = rememberVectorPainter(Icons.Filled.Flag)
+
+    // Zoom and pan start fresh for every board size
+    var scale by remember(difficulty) { mutableFloatStateOf(1f) }
+    var viewOffset by remember(difficulty) { mutableStateOf(Offset.Zero) }
 
     // Gesture handlers read the latest values instead of restarting on every change
     val currentCells by rememberUpdatedState(cells)
@@ -388,114 +576,160 @@ fun InteractiveMinesweeperBoard(
         if (currentVibrations) vibrator.vibrate(VibrationEffect.createOneShot(30, VibrationEffect.DEFAULT_AMPLITUDE))
     }
 
-    BoxWithConstraints(
-        modifier = Modifier
-            .fillMaxSize()
-            .pointerInput(difficulty) {
-                detectTransformGestures { _, pan, zoom, _ ->
-                    scale = (scale * zoom).coerceIn(0.5f, 5f)
-                    viewOffset += pan
-                }
-            }
-            // scale and viewOffset are read at tap time, so pan/zoom frames no longer restart this detector
-            .pointerInput(difficulty, gameState) {
-                if (gameState != GameState.Playing) return@pointerInput
-
-                fun cellAt(pressPos: Offset): Pair<Int, Int>? {
-                    val boardWidth = difficulty.columns * cellSize
-                    val boardHeight = difficulty.rows * cellSize
-                    val centerOffsetX = (size.width - boardWidth) / 2f
-                    val centerOffsetY = (size.height - boardHeight) / 2f
-                    val localX = (pressPos.x - size.width / 2f) / scale + size.width / 2f - viewOffset.x / scale - centerOffsetX
-                    val localY = (pressPos.y - size.height / 2f) / scale + size.height / 2f - viewOffset.y / scale - centerOffsetY
-                    if (localX !in 0f..boardWidth || localY !in 0f..boardHeight) return null
-                    val col = (localX / cellSize).toInt()
-                    val row = (localY / cellSize).toInt()
-                    return if (col in 0 until difficulty.columns && row in 0 until difficulty.rows) col to row else null
-                }
-
-                fun isHidden(col: Int, row: Int): Boolean {
-                    val index = row * difficulty.columns + col
-                    return index in currentCells.indices && !currentCells[index].isRevealed
-                }
-
-                detectTapGestures(
-                    onTap = { pressPos ->
-                        val (col, row) = cellAt(pressPos) ?: return@detectTapGestures
-                        if (currentFlagMode && isHidden(col, row)) vibrate()
-                        currentOnClick(col, row)
-                    },
-                    onLongPress = { pressPos ->
-                        val (col, row) = cellAt(pressPos) ?: return@detectTapGestures
-                        if (isHidden(col, row)) vibrate()
-                        currentOnLongClick(col, row)
-                    }
-                )
-            }
-    ) {
+    BoxWithConstraints(modifier = Modifier.fillMaxSize().padding(8.dp)) {
+        // The whole board fits on screen at scale 1; pinch to zoom in from there
+        val cellSizeDp = min(maxWidth.value / difficulty.columns, maxHeight.value / difficulty.rows).coerceIn(16f, 48f).dp
+        val cellSize = with(density) { cellSizeDp.toPx() }
+        val viewportWidth = constraints.maxWidth.toFloat()
+        val viewportHeight = constraints.maxHeight.toFloat()
         val boardWidth = difficulty.columns * cellSize
         val boardHeight = difficulty.rows * cellSize
-        val centerOffsetX = (constraints.maxWidth - boardWidth) / 2f
-        val centerOffsetY = (constraints.maxHeight - boardHeight) / 2f
+        val centerOffsetX = (viewportWidth - boardWidth) / 2f
+        val centerOffsetY = (viewportHeight - boardHeight) / 2f
 
-        Canvas(
+        // The numbers 1..8 measured once per cell size and theme instead of on every cell of every frame
+        val numberLayouts = remember(textMeasurer, cellSizeDp, isDark) {
+            (if (isDark) darkNumberColors else lightNumberColors).mapIndexed { i, color ->
+                textMeasurer.measure(
+                    text = (i + 1).toString(),
+                    style = TextStyle(color = color, fontSize = (cellSizeDp.value * 0.55f).sp, fontWeight = FontWeight.Bold)
+                )
+            }
+        }
+
+        Box(
             modifier = Modifier
                 .fillMaxSize()
-                .graphicsLayer {
-                    scaleX = scale
-                    scaleY = scale
-                    translationX = viewOffset.x
-                    translationY = viewOffset.y
-                }
-        ) {
-            val pad = 2f
-            val tileSize = Size(cellSize - pad * 2, cellSize - pad * 2)
-            for (cell in cells) {
-                val cx = centerOffsetX + cell.x * cellSize
-                val cy = centerOffsetY + cell.y * cellSize
-
-                val backgroundColor = if (cell.isRevealed) {
-                    if (cell.isMine) Color.Red else Color.LightGray
-                } else {
-                    Color.DarkGray
-                }
-
-                drawRect(
-                    color = backgroundColor,
-                    topLeft = Offset(cx + pad, cy + pad),
-                    size = tileSize,
-                )
-
-                if (cell.isRevealed) {
-                    if (cell.isMine) {
-                        drawCircle(
-                            color = Color.Black,
-                            radius = cellSize * 0.3f,
-                            center = Offset(cx + cellSize / 2, cy + cellSize / 2)
-                        )
-                    } else if (cell.surroundingMines > 0) {
-                        val layout = numberLayouts[(cell.surroundingMines - 1).coerceIn(0, numberLayouts.lastIndex)]
-                        drawText(
-                            textLayoutResult = layout,
-                            topLeft = Offset(
-                                cx + (cellSize - layout.size.width) / 2f,
-                                cy + (cellSize - layout.size.height) / 2f
-                            )
+                .pointerInput(difficulty, cellSize) {
+                    detectTransformGestures { _, pan, zoom, _ ->
+                        scale = (scale * zoom).coerceIn(1f, 4f)
+                        // Keep the board on screen: it can only move as far as its zoomed size exceeds the viewport
+                        val limitX = max(0f, (boardWidth * scale - viewportWidth) / 2f)
+                        val limitY = max(0f, (boardHeight * scale - viewportHeight) / 2f)
+                        viewOffset = Offset(
+                            (viewOffset.x + pan.x).coerceIn(-limitX, limitX),
+                            (viewOffset.y + pan.y).coerceIn(-limitY, limitY)
                         )
                     }
-                } else if (cell.isFlagged) {
-                    drawRect(
-                        color = Color.Black,
-                        topLeft = Offset(cx + cellSize * 0.35f, cy + cellSize * 0.2f),
-                        size = Size(cellSize * 0.1f, cellSize * 0.6f)
-                    )
-                    drawRect(
-                        color = Color.Red,
-                        topLeft = Offset(cx + cellSize * 0.45f, cy + cellSize * 0.2f),
-                        size = Size(cellSize * 0.3f, cellSize * 0.3f)
+                }
+                // scale and viewOffset are read at tap time, so pan/zoom frames don't restart this detector
+                .pointerInput(difficulty, gameState, cellSize) {
+                    if (gameState != GameState.Playing) return@pointerInput
+
+                    fun cellAt(pressPos: Offset): Pair<Int, Int>? {
+                        val localX = (pressPos.x - size.width / 2f) / scale + size.width / 2f - viewOffset.x / scale - centerOffsetX
+                        val localY = (pressPos.y - size.height / 2f) / scale + size.height / 2f - viewOffset.y / scale - centerOffsetY
+                        if (localX !in 0f..boardWidth || localY !in 0f..boardHeight) return null
+                        val col = (localX / cellSize).toInt()
+                        val row = (localY / cellSize).toInt()
+                        return if (col in 0 until difficulty.columns && row in 0 until difficulty.rows) col to row else null
+                    }
+
+                    fun isHidden(col: Int, row: Int): Boolean {
+                        val index = row * difficulty.columns + col
+                        return index in currentCells.indices && !currentCells[index].isRevealed
+                    }
+
+                    detectTapGestures(
+                        onTap = { pressPos ->
+                            val (col, row) = cellAt(pressPos) ?: return@detectTapGestures
+                            if (currentFlagMode && isHidden(col, row)) vibrate()
+                            currentOnClick(col, row)
+                        },
+                        onLongPress = { pressPos ->
+                            val (col, row) = cellAt(pressPos) ?: return@detectTapGestures
+                            if (isHidden(col, row)) vibrate()
+                            currentOnLongClick(col, row)
+                        }
                     )
                 }
+        ) {
+            Canvas(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .graphicsLayer {
+                        scaleX = scale
+                        scaleY = scale
+                        translationX = viewOffset.x
+                        translationY = viewOffset.y
+                    }
+            ) {
+                val pad = cellSize * 0.06f
+                val tileSize = Size(cellSize - pad * 2, cellSize - pad * 2)
+                val corner = CornerRadius(cellSize * 0.18f)
+                val iconSize = cellSize * 0.62f
+                for (cell in cells) {
+                    val cx = centerOffsetX + cell.x * cellSize
+                    val cy = centerOffsetY + cell.y * cellSize
+                    val center = Offset(cx + cellSize / 2, cy + cellSize / 2)
+
+                    val tileColor = when {
+                        !cell.isRevealed -> hiddenColor
+                        cell.isMine -> mineCellColor
+                        else -> revealedColor
+                    }
+                    drawRoundRect(tileColor, topLeft = Offset(cx + pad, cy + pad), size = tileSize, cornerRadius = corner)
+
+                    if (cell.isRevealed) {
+                        if (cell.isMine) {
+                            val r = cellSize * 0.2f
+                            for (angle in listOf(0f, 45f, 90f, 135f)) {
+                                rotate(angle, pivot = center) {
+                                    drawLine(mineColor, Offset(center.x - r * 1.5f, center.y), Offset(center.x + r * 1.5f, center.y), strokeWidth = cellSize * 0.07f)
+                                }
+                            }
+                            drawCircle(mineColor, radius = r, center = center)
+                        } else if (cell.surroundingMines > 0) {
+                            val layout = numberLayouts[(cell.surroundingMines - 1).coerceIn(0, numberLayouts.lastIndex)]
+                            drawText(
+                                textLayoutResult = layout,
+                                topLeft = Offset(center.x - layout.size.width / 2f, center.y - layout.size.height / 2f)
+                            )
+                        }
+                    } else if (cell.isFlagged) {
+                        translate(left = center.x - iconSize / 2, top = center.y - iconSize / 2) {
+                            with(flagPainter) {
+                                draw(Size(iconSize, iconSize), colorFilter = ColorFilter.tint(flagColor))
+                            }
+                        }
+                    }
+                }
             }
+        }
+    }
+}
+
+// ---------- End of game effects ----------
+
+/** Confetti on a win; a one-off blast over the board on a loss. */
+@Composable
+private fun ResultEffects(hasWon: Boolean) {
+    if (hasWon) {
+        MinesweeperExplosionConfetti()
+        return
+    }
+    val explosionProgress = remember { Animatable(0f) }
+    LaunchedEffect(Unit) {
+        explosionProgress.animateTo(1f, animationSpec = tween(1200, easing = FastOutSlowInEasing))
+    }
+    if (explosionProgress.value >= 1f) return
+    Canvas(modifier = Modifier.fillMaxSize()) {
+        val maxRadius = kotlin.math.hypot(size.width.toDouble(), size.height.toDouble()).toFloat()
+        val currentRadius = maxRadius * explosionProgress.value
+        val alpha = (1f - explosionProgress.value).coerceIn(0f, 1f)
+        val color = when {
+            explosionProgress.value < 0.2f -> Color.White
+            explosionProgress.value < 0.4f -> Color.Yellow
+            explosionProgress.value < 0.7f -> Color(0xFFFF5722) // Orange
+            else -> Color.Red
+        }
+        val center = Offset(size.width / 2, size.height / 2)
+        drawCircle(color = color.copy(alpha = alpha), radius = currentRadius, center = center)
+        if (explosionProgress.value > 0.1f) {
+            drawCircle(color = Color.DarkGray.copy(alpha = alpha * 0.8f), radius = currentRadius * 0.8f, center = center)
+        }
+        if (explosionProgress.value > 0.2f) {
+            drawCircle(color = Color.Black.copy(alpha = alpha * 0.6f), radius = currentRadius * 0.5f, center = center)
         }
     }
 }
@@ -506,7 +740,7 @@ fun MinesweeperExplosionConfetti() {
         List(180) {
             ExplosionPiece(
                 angle = (210..330).random().toDouble(),
-                speed = (20..50).random().toFloat(), 
+                speed = (20..50).random().toFloat(),
                 rotationSpeed = (-15..15).random().toFloat(),
                 color = listOf(
                     Color(0xFF00E5FF),
@@ -534,18 +768,18 @@ fun MinesweeperExplosionConfetti() {
 
     Canvas(modifier = Modifier.fillMaxSize()) {
         val centerX = size.width / 2
-        val centerY = size.height 
-        
+        val centerY = size.height
+
         pieces.forEach { piece ->
-            val t = elapsed * 35f 
+            val t = elapsed * 35f
             val rad = Math.toRadians(piece.angle)
             val vx = Math.cos(rad).toFloat() * piece.speed
             val vy = Math.sin(rad).toFloat() * piece.speed
             val gravity = 0.45f
-            
+
             val x = centerX + vx * t
             val y = centerY + vy * t + 0.5f * gravity * t * t
-            
+
             if (y > -100 && y < centerY + 100) {
                 val alpha = (1f - (elapsed - 0.7f) / 0.3f).coerceIn(0f, 1f)
                 rotate(piece.rotationSpeed * t * 12f, pivot = Offset(x, y)) {
@@ -567,120 +801,3 @@ data class ExplosionPiece(
     val color: Color,
     val size: androidx.compose.ui.unit.Dp
 )
-
-@Composable
-fun WinLossOverlay(
-    hasWon: Boolean, 
-    onReturn: () -> Unit, 
-    onRestart: () -> Unit, 
-    accentBrush: Brush
-) {
-    var showUi by remember { mutableStateOf(hasWon) }
-    val explosionProgress = remember { Animatable(0f) }
-    
-    LaunchedEffect(hasWon) {
-        if (!hasWon) {
-            explosionProgress.animateTo(
-                targetValue = 1f,
-                animationSpec = tween(1200, easing = FastOutSlowInEasing)
-            )
-            showUi = true
-        }
-    }
-
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color.Black.copy(alpha = 0.85f))
-            .clickable(enabled = false) {},
-        contentAlignment = Alignment.Center
-    ) {
-        if (hasWon) {
-            MinesweeperExplosionConfetti()
-        } else if (explosionProgress.value < 1f) {
-            Canvas(modifier = Modifier.fillMaxSize()) {
-                val maxRadius = kotlin.math.hypot(size.width.toDouble(), size.height.toDouble()).toFloat()
-                val currentRadius = maxRadius * explosionProgress.value
-                val alpha = (1f - explosionProgress.value).coerceIn(0f, 1f)
-                val color = when {
-                    explosionProgress.value < 0.2f -> Color.White
-                    explosionProgress.value < 0.4f -> Color.Yellow
-                    explosionProgress.value < 0.7f -> Color(0xFFFF5722) // Orange
-                    else -> Color.Red
-                }
-                
-                drawCircle(
-                    color = color.copy(alpha = alpha),
-                    radius = currentRadius,
-                    center = Offset(size.width / 2, size.height / 2)
-                )
-                if (explosionProgress.value > 0.1f) {
-                     drawCircle(
-                        color = Color.DarkGray.copy(alpha = alpha * 0.8f),
-                        radius = currentRadius * 0.8f,
-                        center = Offset(size.width / 2, size.height / 2)
-                    )
-                }
-                if (explosionProgress.value > 0.2f) {
-                     drawCircle(
-                        color = Color.Black.copy(alpha = alpha * 0.6f),
-                        radius = currentRadius * 0.5f,
-                        center = Offset(size.width / 2, size.height / 2)
-                    )
-                }
-            }
-        }
-
-        if (showUi) {
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center
-            ) {
-                // animateFloatAsState never pulsed (it starts at its target); an infinite transition does
-                val pulse = rememberInfiniteTransition(label = "resultPulse")
-                val scale by pulse.animateFloat(
-                    initialValue = 1f,
-                    targetValue = 1.1f,
-                    animationSpec = infiniteRepeatable(tween(1000), RepeatMode.Reverse),
-                    label = "scale"
-                )
-
-                Text(
-                    text = if (hasWon) stringResource(R.string.ms_won) else stringResource(R.string.ms_lost),
-                    color = if (hasWon) Color.Green else Color.Red,
-                    fontSize = 54.sp,
-                    fontWeight = FontWeight.Black,
-                    // Read in the layer block: each frame only updates the layer, no recomposition
-                    modifier = Modifier.graphicsLayer {
-                        scaleX = scale
-                        scaleY = scale
-                    }
-                )
-                Spacer(modifier = Modifier.height(48.dp))
-                Button(
-                    onClick = onRestart,
-                    modifier = Modifier
-                        .fillMaxWidth(0.7f)
-                        .height(56.dp)
-                        .clip(RoundedCornerShape(28.dp))
-                        .background(accentBrush),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent)
-                ) {
-                    Text(stringResource(R.string.ms_new_game), fontSize = 18.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onPrimary)
-                }
-                Spacer(modifier = Modifier.height(16.dp))
-                Button(
-                    onClick = onReturn,
-                    modifier = Modifier
-                        .fillMaxWidth(0.7f)
-                        .height(56.dp)
-                        .clip(RoundedCornerShape(28.dp))
-                        .background(accentBrush),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent)
-                ) {
-                    Text(stringResource(R.string.ms_return_to_menu), fontSize = 18.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onPrimary)
-                }
-            }
-        }
-    }
-}
