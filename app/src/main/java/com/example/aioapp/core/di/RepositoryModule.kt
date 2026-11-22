@@ -2,6 +2,8 @@ package com.example.aioapp.core.di
 
 import com.example.aioapp.core.repository.CurrencyRepository
 import com.example.aioapp.core.repository.CurrencyRepositoryImpl
+import com.example.aioapp.core.repository.InflationRepository
+import com.example.aioapp.core.repository.InflationRepositoryImpl
 import com.example.aioapp.core.repository.UnitOrderRepository
 import com.example.aioapp.core.repository.UnitOrderRepositoryImpl
 import com.example.aioapp.core.repository.TrucoRepository
@@ -21,6 +23,12 @@ abstract class RepositoryModule {
     abstract fun bindCurrencyRepository(
         currencyRepositoryImpl: CurrencyRepositoryImpl
     ): CurrencyRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindInflationRepository(
+        inflationRepositoryImpl: InflationRepositoryImpl
+    ): InflationRepository
 
     @Binds
     @Singleton
